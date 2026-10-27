@@ -91,9 +91,7 @@
         </div>
     </header>
 
-    <!-- ==========================================================================
-       SECTION 1: LANDING PAGE
-       ========================================================================== -->
+    <!-- SECTION 1: LANDING VIEW -->
     <div id="landingView">
         <section class="max-w-7xl mx-auto px-6 pt-12 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div class="lg:col-span-7 space-y-6 text-left">
@@ -116,6 +114,7 @@
                 </div>
             </div>
 
+            <!-- 3D Canvas -->
             <div class="lg:col-span-5 h-[420px] w-full rounded-3xl relative overflow-hidden flex items-center justify-center light-card border-none bg-gradient-to-br from-indigo-50/50 to-white">
                 <canvas id="threeCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
                 <div class="absolute bottom-4 left-6 text-xs font-semibold text-slate-400 flex items-center gap-2 pointer-events-none">
@@ -124,37 +123,9 @@
                 </div>
             </div>
         </section>
-
-        <section class="max-w-7xl mx-auto px-6 pb-28">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="light-card p-8 rounded-3xl">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center mb-6">
-                        <i data-lucide="link-2-off" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-900 mb-2">Automated Anti-Link Shield</h3>
-                    <p class="text-xs text-slate-500 leading-relaxed">Instantly detects and strips unauthorized links, invite codes, and malicious URLs.</p>
-                </div>
-                <div class="light-card p-8 rounded-3xl">
-                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-6">
-                        <i data-lucide="shield-alert" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-900 mb-2">Custom Profanity Filters</h3>
-                    <p class="text-xs text-slate-500 leading-relaxed">Configure strict word blacklists with automated delete, warn count, and permanent kick/ban triggers.</p>
-                </div>
-                <div class="light-card p-8 rounded-3xl">
-                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
-                        <i data-lucide="lock" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-900 mb-2">Instant Emergency Lockdown</h3>
-                    <p class="text-xs text-slate-500 leading-relaxed">Instantly lock group messaging with one toggle to neutralize raids and mass promotions.</p>
-                </div>
-            </div>
-        </section>
     </div>
 
-    <!-- ==========================================================================
-       SECTION 2: MAIN DASHBOARD VIEW
-       ========================================================================== -->
+    <!-- SECTION 2: MAIN DASHBOARD VIEW -->
     <div id="dashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         
         <!-- SUB-VIEW A: COMMUNITIES LIST -->
@@ -267,6 +238,7 @@
                 </div>
             </div>
 
+            <!-- Tab Buttons -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 <div class="lg:col-span-3">
                     <div class="flex lg:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0">
@@ -282,47 +254,106 @@
                             <i data-lucide="party-popper" class="w-4 h-4"></i>
                             <span>Welcome System</span>
                         </button>
-                        <button onclick="switchTab('info')" id="tabBtn-info" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
-                            <i data-lucide="info" class="w-4 h-4"></i>
-                            <span>Community Profile</span>
+                        <button onclick="switchTab('members')" id="tabBtn-members" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="users" class="w-4 h-4"></i>
+                            <span>Community Members</span>
                         </button>
                     </div>
                 </div>
 
+                <!-- Main Content Pane -->
                 <div class="lg:col-span-9 space-y-6">
 
-                    <!-- TAB 1: SECURITY -->
+                    <!-- TAB 1: SECURITY (CHAT LOCK, ANTI-LINK, ANTI-FORWARD) -->
                     <div id="tabContent-security" class="space-y-6">
-                        <div class="light-card p-6 rounded-3xl space-y-4">
+                        <div class="light-card p-6 rounded-3xl space-y-6">
                             <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Core Protection Controls</h3>
                             
-                            <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                                <div>
-                                    <h4 class="text-sm font-bold text-slate-900">Lock Chat (Mute Community)</h4>
-                                    <p class="text-xs text-slate-500">Prohibit all regular members from sending messages in the group</p>
+                            <!-- 1. CHAT LOCK WITH CUSTOM BROADCAST MESSAGE -->
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Emergency Chat Lockdown</h4>
+                                        <p class="text-xs text-slate-500">Mutes messaging for regular members and broadcasts announcement</p>
+                                    </div>
+                                    <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-                                <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                                
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Broadcast Message:</label>
+                                    <textarea id="chatLockMsg" rows="2" placeholder="🔒 The chat has been locked by an administrator." class="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                </div>
+                                <button type="button" onclick="broadcastLockState()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                                    <span>Apply Lock & Send Announcement</span>
+                                </button>
                             </div>
 
-                            <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                                <div>
-                                    <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield</h4>
-                                    <p class="text-xs text-slate-500">Instantly delete any links, telegram invites or URLs sent by members</p>
+                            <!-- 2. ANTI-LINK WITH CUSTOM RESPONSE MESSAGE -->
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield</h4>
+                                        <p class="text-xs text-slate-500">Detects and deletes unauthorized external links</p>
+                                    </div>
+                                    <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-                                <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
+
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="antiLinkSilent" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    <label for="antiLinkSilent" class="text-xs font-semibold text-slate-600">Silent Deletion (No warning message will be sent)</label>
+                                </div>
+
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message (Sent on deletion):</label>
+                                    <textarea id="antiLinkMsg" rows="2" placeholder="⚠️ {user}, posting links is strictly forbidden in {chat}!" class="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    
+                                    <!-- Placeholders Chips -->
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{user}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                            + {user} (Member Mention)
+                                        </button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{chat}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                            + {chat} (Group Name)
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                                <div>
-                                    <h4 class="text-sm font-bold text-slate-900">Anti-Forward Protection</h4>
-                                    <p class="text-xs text-slate-500">Block and purge messages forwarded from other channels or bots</p>
+                            <!-- 3. ANTI-FORWARD WITH CUSTOM RESPONSE MESSAGE -->
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Anti-Forward Protection</h4>
+                                        <p class="text-xs text-slate-500">Purges forwarded messages from other channels</p>
+                                    </div>
+                                    <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-                                <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
+
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="antiForwardSilent" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    <label for="antiForwardSilent" class="text-xs font-semibold text-slate-600">Silent Deletion (No warning message)</label>
+                                </div>
+
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message (Sent on deletion):</label>
+                                    <textarea id="antiForwardMsg" rows="2" placeholder="⚠️ {user}, forwarded messages are not allowed in {chat}!" class="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    
+                                    <div class="flex flex-wrap gap-1.5 mt-2">
+                                        <button type="button" onclick="insertTag('antiForwardMsg', '{user}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                            + {user} (Member Mention)
+                                        </button>
+                                        <button type="button" onclick="insertTag('antiForwardMsg', '{chat}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                            + {chat} (Group Name)
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
+
                         </div>
                     </div>
 
-                    <!-- TAB 2: PROFANITY -->
+                    <!-- TAB 2: PROFANITY BLACKLIST -->
                     <div id="tabContent-profanity" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -352,25 +383,44 @@
                         </div>
                     </div>
 
-                    <!-- TAB 3: WELCOME -->
+                    <!-- TAB 3: WELCOME SYSTEM WITH LIVE TEST BUTTON -->
                     <div id="tabContent-welcome" class="hidden space-y-6">
-                        <div class="light-card p-6 rounded-3xl space-y-4">
+                        <div class="light-card p-6 rounded-3xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
-                                    <h3 class="text-base font-bold text-slate-900">Automated Welcome Messages</h3>
+                                    <h3 class="text-base font-bold text-slate-900">Automated Welcome Greeting</h3>
                                     <p class="text-xs text-slate-500">Greet newly joined members automatically</p>
                                 </div>
                                 <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
                             <div>
-                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1.5">Greeting Message Content:</label>
-                                <textarea id="welcomeTextInput" rows="3" oninput="updateLivePreview()" placeholder="Welcome {user} to {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                <p class="text-[11px] text-slate-400 mt-1">Use <code class="text-brand-600 font-bold">{user}</code> for member name and <code class="text-brand-600 font-bold">{chat}</code> for group title.</p>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1.5">Welcome Message Content:</label>
+                                <textarea id="welcomeTextInput" rows="4" oninput="updateLivePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                
+                                <!-- Tags -->
+                                <div class="flex flex-wrap gap-1.5 mt-2">
+                                    <button type="button" onclick="insertTag('welcomeTextInput', '{user}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                        + {user} (Member Name)
+                                    </button>
+                                    <button type="button" onclick="insertTag('welcomeTextInput', '{chat}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                        + {chat} (Group Title)
+                                    </button>
+                                </div>
                             </div>
 
-                            <div class="space-y-2 pt-2">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Live Telegram Preview</span>
+                            <!-- Live Action & Test Buttons -->
+                            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                                <button type="button" onclick="sendTestWelcomeMessage()" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                                    <span>Send Test Message to Telegram Group</span>
+                                </button>
+                                <span class="text-[11px] text-slate-400">Verifies live message formatting directly in your chat</span>
+                            </div>
+
+                            <!-- Live Telegram Simulation -->
+                            <div class="space-y-2 pt-2 border-t border-slate-100">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Live Web Simulator</span>
                                 <div class="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 flex items-start gap-3">
                                     <div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                                         <i data-lucide="bot" class="w-4 h-4"></i>
@@ -384,20 +434,26 @@
                         </div>
                     </div>
 
-                    <!-- TAB 4: INFO -->
-                    <div id="tabContent-info" class="hidden space-y-6">
+                    <!-- TAB 4: COMMUNITY MEMBERS (NEW!) -->
+                    <div id="tabContent-members" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
-                            <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Hub Diagnostics</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <span class="text-slate-400 block text-[10px] font-bold uppercase">Assigned Protection Bot</span>
-                                    <span class="font-bold text-slate-900 text-sm mt-0.5 block">@Vareonprotection_bot</span>
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Community Participants</h3>
+                                    <p class="text-xs text-slate-500">Live roster of administrators and members in this hub</p>
                                 </div>
-                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <span class="text-slate-400 block text-[10px] font-bold uppercase">Cloud Engine Version</span>
-                                    <span class="font-bold text-emerald-600 text-sm mt-0.5 block">v2.4 Active Core</span>
-                                </div>
+                                <button onclick="loadCommunityMembers()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                    <span>Refresh List</span>
+                                </button>
                             </div>
+
+                            <div id="membersLoading" class="hidden py-8 text-center text-slate-400 text-xs">
+                                <i data-lucide="loader" class="w-6 h-6 animate-spin mx-auto mb-2 text-brand-600"></i>
+                                <span>Fetching community member roster from Telegram...</span>
+                            </div>
+
+                            <div id="membersListContainer" class="space-y-2.5 max-h-[460px] overflow-y-auto pr-1"></div>
                         </div>
                     </div>
 
@@ -480,9 +536,18 @@
             document.getElementById('selectedFlag').src = `https://flagcdn.com/w40/${code}.png`;
         }
 
-        // =====================================================================
-        // SAFE CROSS-DEVICE LOGIN (NO PERMISSION_DENIED ERROR CRASHES)
-        // =====================================================================
+        // Tag insertion helper
+        function insertTag(textareaId, tag) {
+            const el = document.getElementById(textareaId);
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const text = el.value;
+            el.value = text.substring(0, start) + tag + text.substring(end);
+            el.focus();
+            el.selectionStart = el.selectionEnd = start + tag.length;
+            updateLivePreview();
+        }
+
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             if (user) {
@@ -503,7 +568,6 @@
                 closeAuthModal();
                 lucide.createIcons();
 
-                // Safe Cloud Fetch without crashing on locked rules
                 try {
                     const snap = await rtdb.ref(`users/${user.uid}/tg_session`).once('value');
                     const cloudSession = snap.val();
@@ -513,9 +577,7 @@
                     } else if (tgSession) {
                         await rtdb.ref(`users/${user.uid}/tg_session`).set(tgSession).catch(() => {});
                     }
-                } catch (e) {
-                    console.warn("RTDB Permission Warning:", e.message);
-                }
+                } catch (e) {}
 
                 if (tgSession) {
                     document.getElementById('tgConnectCard').classList.add('hidden');
@@ -558,7 +620,6 @@
             try {
                 if (action === 'signup') {
                     const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    // Safe write
                     rtdb.ref(`users/${res.user.uid}/security_vault`).set({
                         email: email,
                         password: pass,
@@ -793,9 +854,7 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    if (loadedItemsMap[chatId]) {
-                        loadedItemsMap[chatId].isBotConnected = true;
-                    }
+                    if (loadedItemsMap[chatId]) loadedItemsMap[chatId].isBotConnected = true;
                     syncCommunities(false);
                     Swal.fire({
                         title: 'Bot Activated!',
@@ -804,9 +863,7 @@
                         timer: 1500,
                         showConfirmButton: false
                     });
-                    setTimeout(() => {
-                        openGroupSettings(chatId);
-                    }, 1200);
+                    setTimeout(() => openGroupSettings(chatId), 1200);
                 } else {
                     Swal.fire('Action Failed', data.error, 'error');
                 }
@@ -837,33 +894,47 @@
 
             switchTab('security');
 
+            // Default values
             document.getElementById('toggleChatLock').checked = false;
+            document.getElementById('chatLockMsg').value = '🔒 *The chat has been locked by an administrator.*';
             document.getElementById('toggleAntiLink').checked = false;
+            document.getElementById('antiLinkSilent').checked = false;
+            document.getElementById('antiLinkMsg').value = '⚠️ {user}, posting external links is prohibited here!';
             document.getElementById('toggleAntiForward').checked = false;
+            document.getElementById('antiForwardSilent').checked = false;
+            document.getElementById('antiForwardMsg').value = '⚠️ {user}, forwarded messages from channels are not allowed!';
             document.getElementById('toggleBadWords').checked = false;
             document.getElementById('badWordsInput').value = '';
             document.getElementById('badWordsAction').value = 'delete';
             document.getElementById('toggleWelcome').checked = true;
-            document.getElementById('welcomeTextInput').value = "Welcome {user} to {chat}!";
+            document.getElementById('welcomeTextInput').value = "👋 Welcome {user} to {chat}! Enjoy your stay and follow the group guidelines.";
             updateLivePreview();
 
+            // Load settings asynchronously from Firebase
             try {
                 const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
                 const data = snap.val();
                 if (data) {
                     document.getElementById('toggleChatLock').checked = !!data.chatLocked;
+                    if (data.lockMsg) document.getElementById('chatLockMsg').value = data.lockMsg;
+                    
                     document.getElementById('toggleAntiLink').checked = !!data.antiLink?.enabled;
+                    document.getElementById('antiLinkSilent').checked = !!data.antiLink?.silent;
+                    if (data.antiLink?.msg) document.getElementById('antiLinkMsg').value = data.antiLink.msg;
+
                     document.getElementById('toggleAntiForward').checked = !!data.antiForward?.enabled;
+                    document.getElementById('antiForwardSilent').checked = !!data.antiForward?.silent;
+                    if (data.antiForward?.msg) document.getElementById('antiForwardMsg').value = data.antiForward.msg;
+
                     document.getElementById('toggleBadWords').checked = !!data.badWords?.enabled;
                     document.getElementById('badWordsInput').value = (data.badWords?.words || []).join(', ');
                     document.getElementById('badWordsAction').value = data.badWords?.action || 'delete';
+                    
                     document.getElementById('toggleWelcome').checked = !!data.welcome?.enabled;
-                    document.getElementById('welcomeTextInput').value = data.welcome?.text || "Welcome {user} to {chat}!";
+                    if (data.welcome?.text) document.getElementById('welcomeTextInput').value = data.welcome.text;
                     updateLivePreview();
                 }
-            } catch (err) {
-                console.warn("Using offline defaults:", err.message);
-            }
+            } catch (err) {}
         }
 
         function backToCommunities() {
@@ -873,7 +944,7 @@
         }
 
         function switchTab(tabKey) {
-            const tabs = ['security', 'profanity', 'welcome', 'info'];
+            const tabs = ['security', 'profanity', 'welcome', 'members'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tabBtn-${t}`);
                 const content = document.getElementById(`tabContent-${t}`);
@@ -888,6 +959,7 @@
                 }
             });
             lucide.createIcons();
+            if (tabKey === 'members') loadCommunityMembers();
         }
 
         function updateLivePreview() {
@@ -897,14 +969,125 @@
                 .replace(/{chat}/g, document.getElementById('panelGroupName').innerText);
         }
 
+        // Send Real Live Test Welcome Message to Group
+        async function sendTestWelcomeMessage() {
+            if (!activeGroupId) return;
+            const text = document.getElementById('welcomeTextInput').value;
+
+            Swal.fire({
+                title: 'Sending Test Message...',
+                text: 'Dispatching sample greeting directly to your Telegram group...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await fetch('/api/tg/test-welcome', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ chatId: activeGroupId, text })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Message Sent!', 'Check your Telegram group! The test welcome message was delivered.', 'success');
+                } else {
+                    Swal.fire('Failed', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
+        }
+
+        // Apply Chat Lock & Send Broadcast Notification to Group
+        async function broadcastLockState() {
+            if (!activeGroupId) return;
+            const locked = document.getElementById('toggleChatLock').checked;
+            const message = document.getElementById('chatLockMsg').value;
+
+            Swal.fire({
+                title: 'Applying Lockdown...',
+                text: 'Broadcasting announcement to community...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                await fetch('/api/tg/announce-lock', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ chatId: activeGroupId, locked, message })
+                });
+                saveGroupSettings();
+            } catch (e) {
+                saveGroupSettings();
+            }
+        }
+
+        // Load Community Members (New Tab Feature)
+        async function loadCommunityMembers() {
+            if (!activeGroupId) return;
+            const container = document.getElementById('membersListContainer');
+            const loader = document.getElementById('membersLoading');
+
+            container.innerHTML = '';
+            loader.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/tg/get-members', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ session: tgSession, chatId: activeGroupId })
+                });
+                const data = await res.json();
+                loader.classList.add('hidden');
+
+                if (data.success && data.members.length > 0) {
+                    data.members.forEach(m => {
+                        const row = document.createElement('div');
+                        row.className = "flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200/60 transition";
+                        row.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                    ${m.name[0] || 'U'}
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900 leading-tight">${m.name}</h4>
+                                    <p class="text-[11px] text-slate-500">${m.username} • ID: ${m.id}</p>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${m.isBot ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-slate-200/80 text-slate-700'}">
+                                ${m.isBot ? 'Bot' : 'Member'}
+                            </span>
+                        `;
+                        container.appendChild(row);
+                    });
+                } else {
+                    container.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-6">No participants retrieved or privacy restricts full listing.</p>`;
+                }
+            } catch (e) {
+                loader.classList.add('hidden');
+                container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Failed to load members: ${e.message}</p>`;
+            }
+            lucide.createIcons();
+        }
+
         async function saveGroupSettings() {
             if (!activeGroupId) return;
             const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
 
             const payload = {
                 chatLocked: document.getElementById('toggleChatLock').checked,
-                antiLink: { enabled: document.getElementById('toggleAntiLink').checked },
-                antiForward: { enabled: document.getElementById('toggleAntiForward').checked },
+                lockMsg: document.getElementById('chatLockMsg').value,
+                antiLink: { 
+                    enabled: document.getElementById('toggleAntiLink').checked,
+                    silent: document.getElementById('antiLinkSilent').checked,
+                    msg: document.getElementById('antiLinkMsg').value
+                },
+                antiForward: { 
+                    enabled: document.getElementById('toggleAntiForward').checked,
+                    silent: document.getElementById('antiForwardSilent').checked,
+                    msg: document.getElementById('antiForwardMsg').value
+                },
                 badWords: {
                     enabled: document.getElementById('toggleBadWords').checked,
                     words: words,
