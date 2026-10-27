@@ -104,7 +104,7 @@
                     <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">For High-Traffic Hubs</span>
                 </h1>
                 <p class="text-slate-600 text-base md:text-lg max-w-xl font-normal leading-relaxed">
-                    Granular security controls for Groups and Broadcast Channels. Real-time link purge, offensive language neutralization, and instant lockdowns.
+                    Granular security controls for Groups and Broadcast Channels. Real-time link purge, rich interactive welcome media, and instant lockdowns.
                 </p>
                 <div class="pt-2 flex flex-wrap items-center gap-4">
                     <button onclick="openAuthModal()" class="flex items-center gap-3 px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition">
@@ -264,12 +264,12 @@
                 <!-- Main Content Pane -->
                 <div class="lg:col-span-9 space-y-6">
 
-                    <!-- TAB 1: SECURITY (CHAT LOCK, ANTI-LINK, ANTI-FORWARD) -->
+                    <!-- TAB 1: SECURITY -->
                     <div id="tabContent-security" class="space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-6">
                             <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Core Protection Controls</h3>
                             
-                            <!-- 1. CHAT LOCK WITH CUSTOM BROADCAST MESSAGE -->
+                            <!-- 1. CHAT LOCK -->
                             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -289,7 +289,7 @@
                                 </button>
                             </div>
 
-                            <!-- 2. ANTI-LINK WITH CUSTOM RESPONSE MESSAGE -->
+                            <!-- 2. ANTI-LINK -->
                             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -308,7 +308,6 @@
                                     <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message (Sent on deletion):</label>
                                     <textarea id="antiLinkMsg" rows="2" placeholder="⚠️ {user}, posting links is strictly forbidden in {chat}!" class="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                     
-                                    <!-- Placeholders Chips -->
                                     <div class="flex flex-wrap gap-1.5 mt-2">
                                         <button type="button" onclick="insertTag('antiLinkMsg', '{user}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
                                             + {user} (Member Mention)
@@ -320,7 +319,7 @@
                                 </div>
                             </div>
 
-                            <!-- 3. ANTI-FORWARD WITH CUSTOM RESPONSE MESSAGE -->
+                            <!-- 3. ANTI-FORWARD -->
                             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -353,13 +352,13 @@
                         </div>
                     </div>
 
-                    <!-- TAB 2: PROFANITY BLACKLIST -->
+                    <!-- TAB 2: PROFANITY BLACKLIST (ENHANCED) -->
                     <div id="tabContent-profanity" class="hidden space-y-6">
-                        <div class="light-card p-6 rounded-3xl space-y-4">
+                        <div class="light-card p-6 rounded-3xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
                                     <h3 class="text-base font-bold text-slate-900">Profanity Blacklist & Enforcement</h3>
-                                    <p class="text-xs text-slate-500">Specify blacklisted keywords and choose what action the bot executes</p>
+                                    <p class="text-xs text-slate-500">Configure prohibited words, punishment action and custom warning notification</p>
                                 </div>
                                 <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
@@ -369,36 +368,69 @@
                                 <textarea id="badWordsInput" rows="3" placeholder="badword1, scam, abusive, porn, hack" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                             </div>
 
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                                <div>
-                                    <h4 class="text-xs font-bold text-slate-900">Enforcement Action</h4>
-                                    <p class="text-[11px] text-slate-500">What should the bot do upon detection?</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                    <label class="text-xs font-bold text-slate-900 block mb-1">Enforcement Action</label>
+                                    <select id="badWordsAction" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="delete">Delete Message Only</option>
+                                        <option value="warn">Delete Message + Issue Warning</option>
+                                        <option value="ban">Instant Permanent Ban</option>
+                                    </select>
                                 </div>
-                                <select id="badWordsAction" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
-                                    <option value="delete">Delete Message Only</option>
-                                    <option value="warn">Delete Message + Issue Warning</option>
-                                    <option value="ban">Instant Permanent Ban</option>
-                                </select>
+                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                    <label class="text-xs font-bold text-slate-900 block mb-1">Auto-Delete Warning Message</label>
+                                    <select id="badWordsAutoDelete" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="0">Never Delete Warning</option>
+                                        <option value="5">Auto-Delete after 5 Seconds</option>
+                                        <option value="10">Auto-Delete after 10 Seconds</option>
+                                        <option value="15">Auto-Delete after 15 Seconds</option>
+                                        <option value="30">Auto-Delete after 30 Seconds</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Custom Warning Notification (Sent upon violation):</label>
+                                <textarea id="badWordsCustomMsg" rows="2" placeholder="⚠️ {user}, prohibited words used! Warning count: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                
+                                <div class="flex flex-wrap gap-1.5 mt-2">
+                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{user}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                        + {user} (User Mention)
+                                    </button>
+                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{warns}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                        + {warns} (Current Warns)
+                                    </button>
+                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{warn_limit}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                        + {warn_limit} (Max Limit)
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB 3: WELCOME SYSTEM WITH LIVE TEST BUTTON -->
+                    <!-- TAB 3: WELCOME SYSTEM (RICH MEDIA, BUTTONS & TIMERS) -->
                     <div id="tabContent-welcome" class="hidden space-y-6">
-                        <div class="light-card p-6 rounded-3xl space-y-5">
+                        <div class="light-card p-6 rounded-3xl space-y-6">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
-                                    <h3 class="text-base font-bold text-slate-900">Automated Welcome Greeting</h3>
-                                    <p class="text-xs text-slate-500">Greet newly joined members automatically</p>
+                                    <h3 class="text-base font-bold text-slate-900">Rich Welcome Media & Greetings</h3>
+                                    <p class="text-xs text-slate-500">Configure welcome image banners, rich text, interactive URL buttons & auto-deletion</p>
                                 </div>
                                 <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
+                            <!-- 1. Image Banner URL -->
                             <div>
-                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1.5">Welcome Message Content:</label>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Header Image / Banner URL (Optional):</label>
+                                <input id="welcomePhotoUrl" type="url" oninput="updateLivePreview()" placeholder="https://example.com/banner.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
+                                <span class="text-[11px] text-slate-400 mt-1 block">Paste any public direct image link (JPG/PNG). Leave blank for text-only greeting.</span>
+                            </div>
+
+                            <!-- 2. Message Content -->
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Text Message:</label>
                                 <textarea id="welcomeTextInput" rows="4" oninput="updateLivePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                 
-                                <!-- Tags -->
                                 <div class="flex flex-wrap gap-1.5 mt-2">
                                     <button type="button" onclick="insertTag('welcomeTextInput', '{user}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
                                         + {user} (Member Name)
@@ -409,32 +441,72 @@
                                 </div>
                             </div>
 
-                            <!-- Live Action & Test Buttons -->
-                            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                            <!-- 3. Dynamic Inline URL Buttons System -->
+                            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="text-xs font-bold text-slate-900">Interactive URL Buttons</h4>
+                                        <p class="text-[11px] text-slate-500">Attach clickable link buttons below the greeting message</p>
+                                    </div>
+                                    <button type="button" onclick="addWelcomeButtonRow()" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                        <span>Add Button</span>
+                                    </button>
+                                </div>
+                                <div id="welcomeButtonsList" class="space-y-2.5 pt-1"></div>
+                            </div>
+
+                            <!-- 4. Auto-Delete Timer Dropdown -->
+                            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900">Auto-Delete Welcome Message</h4>
+                                    <p class="text-[11px] text-slate-500">Automatically purges the greeting message to keep group chat pristine</p>
+                                </div>
+                                <select id="welcomeAutoDelete" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                    <option value="0">Never Delete (Keep Forever)</option>
+                                    <option value="10">Auto-Delete after 10 Seconds</option>
+                                    <option value="30">Auto-Delete after 30 Seconds</option>
+                                    <option value="60">Auto-Delete after 1 Minute</option>
+                                    <option value="120">Auto-Delete after 2 Minutes</option>
+                                    <option value="300">Auto-Delete after 5 Minutes</option>
+                                </select>
+                            </div>
+
+                            <!-- 5. Test Message Button -->
+                            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
                                 <button type="button" onclick="sendTestWelcomeMessage()" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                                     <i data-lucide="send" class="w-3.5 h-3.5"></i>
                                     <span>Send Test Message to Telegram Group</span>
                                 </button>
-                                <span class="text-[11px] text-slate-400">Verifies live message formatting directly in your chat</span>
+                                <span class="text-[11px] text-slate-400">Verifies image, buttons and timers directly in Telegram</span>
                             </div>
 
-                            <!-- Live Telegram Simulation -->
+                            <!-- 6. Real-time Live Web Simulator -->
                             <div class="space-y-2 pt-2 border-t border-slate-100">
                                 <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Live Web Simulator</span>
                                 <div class="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 flex items-start gap-3">
                                     <div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
                                         <i data-lucide="bot" class="w-4 h-4"></i>
                                     </div>
-                                    <div class="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1">
+                                    <div class="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-2.5 max-w-[90%]">
                                         <span class="font-bold text-brand-600 block text-[11px]">VS Protection Guard</span>
+                                        
+                                        <!-- Preview Image -->
+                                        <div id="previewImageWrapper" class="hidden rounded-xl overflow-hidden max-h-48 border border-slate-100">
+                                            <img id="previewImage" src="" alt="Banner" class="w-full h-full object-cover">
+                                        </div>
+
                                         <p id="previewText" class="leading-relaxed text-xs">Welcome John Doe to Community!</p>
+                                        
+                                        <!-- Preview Buttons -->
+                                        <div id="previewButtonsWrapper" class="space-y-1.5 pt-1"></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB 4: COMMUNITY MEMBERS (NEW!) -->
+                    <!-- TAB 4: COMMUNITY MEMBERS -->
                     <div id="tabContent-members" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -536,7 +608,7 @@
             document.getElementById('selectedFlag').src = `https://flagcdn.com/w40/${code}.png`;
         }
 
-        // Tag insertion helper
+        // Tag helper
         function insertTag(textareaId, tag) {
             const el = document.getElementById(textareaId);
             const start = el.selectionStart;
@@ -548,6 +620,72 @@
             updateLivePreview();
         }
 
+        // =====================================================================
+        // DYNAMIC BUTTON SYSTEM (ADD / REMOVE / RENDER)
+        // =====================================================================
+        function addWelcomeButtonRow(btnText = '', btnUrl = '') {
+            const list = document.getElementById('welcomeButtonsList');
+            const row = document.createElement('div');
+            row.className = "welcome-btn-row flex items-center gap-2";
+            row.innerHTML = `
+                <input type="text" placeholder="Button Label (e.g. Join Channel)" value="${btnText}" oninput="updateLivePreview()" class="btn-label-input flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-brand-500">
+                <input type="url" placeholder="https://t.me/yourlink" value="${btnUrl}" oninput="updateLivePreview()" class="btn-url-input flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-brand-500">
+                <button type="button" onclick="this.parentElement.remove(); updateLivePreview();" class="w-8 h-8 rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-50 flex items-center justify-center shrink-0 transition">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            `;
+            list.appendChild(row);
+            lucide.createIcons();
+            updateLivePreview();
+        }
+
+        function getWelcomeButtonsData() {
+            const rows = document.querySelectorAll('.welcome-btn-row');
+            const buttons = [];
+            rows.forEach(r => {
+                const text = r.querySelector('.btn-label-input').value.trim();
+                const url = r.querySelector('.btn-url-input').value.trim();
+                if (text && url) {
+                    buttons.push({ text, url });
+                }
+            });
+            return buttons;
+        }
+
+        function updateLivePreview() {
+            // Text Preview
+            const raw = document.getElementById('welcomeTextInput').value;
+            document.getElementById('previewText').innerText = raw
+                .replace(/{user}/g, 'John Doe')
+                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText);
+
+            // Image Preview
+            const photoUrl = document.getElementById('welcomePhotoUrl').value.trim();
+            const imgWrap = document.getElementById('previewImageWrapper');
+            const img = document.getElementById('previewImage');
+            if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+                img.src = photoUrl;
+                imgWrap.classList.remove('hidden');
+            } else {
+                imgWrap.classList.add('hidden');
+            }
+
+            // Buttons Preview
+            const btnWrap = document.getElementById('previewButtonsWrapper');
+            btnWrap.innerHTML = '';
+            const buttons = getWelcomeButtonsData();
+            buttons.forEach(b => {
+                btnWrap.innerHTML += `
+                    <div class="w-full py-1.5 px-3 rounded-lg bg-indigo-50/80 border border-indigo-200/60 text-brand-600 font-bold text-center text-[11px] truncate shadow-sm">
+                        ${b.text} ↗
+                    </div>
+                `;
+            });
+        }
+
+        // =====================================================================
+        // AUTHENTICATION & MULTI-DEVICE PERSISTENCE
+        // =====================================================================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             if (user) {
@@ -894,7 +1032,7 @@
 
             switchTab('security');
 
-            // Default values
+            // Defaults
             document.getElementById('toggleChatLock').checked = false;
             document.getElementById('chatLockMsg').value = '🔒 *The chat has been locked by an administrator.*';
             document.getElementById('toggleAntiLink').checked = false;
@@ -906,9 +1044,15 @@
             document.getElementById('toggleBadWords').checked = false;
             document.getElementById('badWordsInput').value = '';
             document.getElementById('badWordsAction').value = 'delete';
+            document.getElementById('badWordsAutoDelete').value = '6';
+            document.getElementById('badWordsCustomMsg').value = '⚠️ {user}, abusive words are forbidden! ({warns}/{warn_limit})';
+            
+            // Rich Welcome Defaults
             document.getElementById('toggleWelcome').checked = true;
+            document.getElementById('welcomePhotoUrl').value = '';
             document.getElementById('welcomeTextInput').value = "👋 Welcome {user} to {chat}! Enjoy your stay and follow the group guidelines.";
-            updateLivePreview();
+            document.getElementById('welcomeAutoDelete').value = '0';
+            document.getElementById('welcomeButtonsList').innerHTML = '';
 
             // Load settings asynchronously from Firebase
             try {
@@ -929,12 +1073,22 @@
                     document.getElementById('toggleBadWords').checked = !!data.badWords?.enabled;
                     document.getElementById('badWordsInput').value = (data.badWords?.words || []).join(', ');
                     document.getElementById('badWordsAction').value = data.badWords?.action || 'delete';
-                    
+                    if (data.badWords?.autoDeleteSeconds !== undefined) document.getElementById('badWordsAutoDelete').value = data.badWords.autoDeleteSeconds;
+                    if (data.badWords?.customMsg) document.getElementById('badWordsCustomMsg').value = data.badWords.customMsg;
+
                     document.getElementById('toggleWelcome').checked = !!data.welcome?.enabled;
+                    if (data.welcome?.photoUrl) document.getElementById('welcomePhotoUrl').value = data.welcome.photoUrl;
                     if (data.welcome?.text) document.getElementById('welcomeTextInput').value = data.welcome.text;
-                    updateLivePreview();
+                    if (data.welcome?.autoDeleteSeconds !== undefined) document.getElementById('welcomeAutoDelete').value = data.welcome.autoDeleteSeconds;
+
+                    // Populate saved buttons
+                    if (Array.isArray(data.welcome?.buttons)) {
+                        data.welcome.buttons.forEach(b => addWelcomeButtonRow(b.text, b.url));
+                    }
                 }
             } catch (err) {}
+
+            updateLivePreview();
         }
 
         function backToCommunities() {
@@ -962,21 +1116,17 @@
             if (tabKey === 'members') loadCommunityMembers();
         }
 
-        function updateLivePreview() {
-            const raw = document.getElementById('welcomeTextInput').value;
-            document.getElementById('previewText').innerText = raw
-                .replace(/{user}/g, 'John Doe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText);
-        }
-
-        // Send Real Live Test Welcome Message to Group
+        // Send Rich Live Test Welcome Message (Image + Text + Buttons + Timer)
         async function sendTestWelcomeMessage() {
             if (!activeGroupId) return;
+            const photoUrl = document.getElementById('welcomePhotoUrl').value.trim();
             const text = document.getElementById('welcomeTextInput').value;
+            const buttons = getWelcomeButtonsData();
+            const autoDeleteSeconds = parseInt(document.getElementById('welcomeAutoDelete').value || 0);
 
             Swal.fire({
-                title: 'Sending Test Message...',
-                text: 'Dispatching sample greeting directly to your Telegram group...',
+                title: 'Sending Test Greeting...',
+                text: 'Dispatching rich media & buttons to your Telegram group...',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
@@ -985,11 +1135,17 @@
                 const res = await fetch('/api/tg/test-welcome', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ chatId: activeGroupId, text })
+                    body: JSON.stringify({ 
+                        chatId: activeGroupId, 
+                        photoUrl, 
+                        text, 
+                        buttons, 
+                        autoDeleteSeconds 
+                    })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire('Message Sent!', 'Check your Telegram group! The test welcome message was delivered.', 'success');
+                    Swal.fire('Message Sent!', data.message, 'success');
                 } else {
                     Swal.fire('Failed', data.error, 'error');
                 }
@@ -998,7 +1154,6 @@
             }
         }
 
-        // Apply Chat Lock & Send Broadcast Notification to Group
         async function broadcastLockState() {
             if (!activeGroupId) return;
             const locked = document.getElementById('toggleChatLock').checked;
@@ -1023,7 +1178,6 @@
             }
         }
 
-        // Load Community Members (New Tab Feature)
         async function loadCommunityMembers() {
             if (!activeGroupId) return;
             const container = document.getElementById('membersListContainer');
@@ -1074,6 +1228,7 @@
         async function saveGroupSettings() {
             if (!activeGroupId) return;
             const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
+            const welcomeButtons = getWelcomeButtonsData();
 
             const payload = {
                 chatLocked: document.getElementById('toggleChatLock').checked,
@@ -1091,11 +1246,16 @@
                 badWords: {
                     enabled: document.getElementById('toggleBadWords').checked,
                     words: words,
-                    action: document.getElementById('badWordsAction').value
+                    action: document.getElementById('badWordsAction').value,
+                    autoDeleteSeconds: parseInt(document.getElementById('badWordsAutoDelete').value || 0),
+                    customMsg: document.getElementById('badWordsCustomMsg').value
                 },
                 welcome: {
                     enabled: document.getElementById('toggleWelcome').checked,
-                    text: document.getElementById('welcomeTextInput').value
+                    photoUrl: document.getElementById('welcomePhotoUrl').value.trim(),
+                    text: document.getElementById('welcomeTextInput').value,
+                    buttons: welcomeButtons,
+                    autoDeleteSeconds: parseInt(document.getElementById('welcomeAutoDelete').value || 0)
                 }
             };
 
