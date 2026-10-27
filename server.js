@@ -6,6 +6,7 @@ const { StringSession } = require('telegram/sessions');
 const { computeCheck } = require('telegram/Password');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Firebase Node Setup
 const firebase = require('firebase/compat/app');
@@ -42,6 +43,44 @@ app.use(express.static(__dirname));
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
 // =============================================================================
+// SUBSCRIPTION & LICENSE VALIDATION ENGINE
+// =============================================================================
+let subscriptionCache = {};
+
+async function isChatSubscriptionActive(chatId) {
+    const now = Date.now();
+    if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 60000)) {
+        return subscriptionCache[chatId].isActive;
+    }
+
+    try {
+        const ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
+        const ownerTgId = ownerSnap.val();
+        if (!ownerTgId) {
+            subscriptionCache[chatId] = { isActive: true, cachedAt: now };
+            return true;
+        }
+
+        const userSubSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
+        const sub = userSubSnap.val();
+
+        if (!sub) {
+            subscriptionCache[chatId] = { isActive: false, cachedAt: now };
+            return false;
+        }
+
+        // 30 days active + 7 days grace period = 37 days total
+        const graceEndsAt = sub.graceEndsAt || (sub.expiresAt + (7 * 24 * 60 * 60 * 1000));
+        const isActive = now <= graceEndsAt;
+
+        subscriptionCache[chatId] = { isActive, cachedAt: now };
+        return isActive;
+    } catch (e) {
+        return true;
+    }
+}
+
+// =============================================================================
 // TELEGRAF BOT ENGINE
 // =============================================================================
 const bot = new Telegraf(BOT_TOKEN);
@@ -55,7 +94,6 @@ bot.telegram.getMe().then(info => {
     console.error("[VS Protection] Bot Token Error:", err.message);
 });
 
-// Cache Settings
 async function getChatSettings(chatId) {
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
     try {
@@ -112,6 +150,9 @@ function countEmojis(str) {
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
+        const isSubActive = await isChatSubscriptionActive(chatId);
+        if (!isSubActive) return; // Protection OFF if license completely expired
+
         const settings = await getChatSettings(chatId);
         if (!settings.welcome?.enabled) return;
 
@@ -154,7 +195,7 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// 2. MEMBER LEFT TRACKER (SAVE LOG & SEND PUBLIC GOODBYE MESSAGE WITH NAME MENTION)
+// 2. MEMBER LEFT TRACKER
 bot.on('left_chat_member', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
@@ -172,12 +213,13 @@ bot.on('left_chat_member', async (ctx) => {
             timestamp: Date.now()
         };
 
-        // 1. Save Log for Dashboard
         await db.ref(`groups/${chatId}/left_members/${user.id}`).set(leftData);
+
+        const isSubActive = await isChatSubscriptionActive(chatId);
+        if (!isSubActive) return;
 
         const settings = await getChatSettings(chatId);
 
-        // 2. Send Public Farewell / Goodbye Message in Group
         if (settings.goodbye?.enabled !== false && settings.goodbye?.text) {
             const goodbyeMsg = settings.goodbye.text
                 .replace(/{mention}/g, userMention)
@@ -191,23 +233,6 @@ bot.on('left_chat_member', async (ctx) => {
             if (delSec > 0 && sentGoodbye && sentGoodbye.message_id) {
                 setTimeout(() => ctx.deleteMessage(sentGoodbye.message_id).catch(() => {}), delSec * 1000);
             }
-        }
-
-        // 3. Notify Merged Owner Privately
-        const ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
-        const ownerTelegramId = ownerSnap.val();
-        if (ownerTelegramId) {
-            try {
-                await bot.telegram.sendMessage(
-                    ownerTelegramId,
-                    `🚪 *[MEMBER DEPARTURE ALERT]*\n\n` +
-                    `• *Community:* ${ctx.chat.title}\n` +
-                    `• *Member:* ${leftData.name} (${leftData.username})\n` +
-                    `• *User ID:* \`${leftData.id}\`\n` +
-                    `• *Event Time:* ${new Date().toLocaleString()}`,
-                    { parse_mode: 'Markdown' }
-                );
-            } catch (err) {}
         }
     } catch (e) {}
 });
@@ -229,6 +254,9 @@ bot.on('message', async (ctx, next) => {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
 
         const chatId = ctx.chat.id;
+        const isSubActive = await isChatSubscriptionActive(chatId);
+        if (!isSubActive) return next(); // All protection OFF if subscription is totally expired
+
         const userId = ctx.from?.id;
         const text = ctx.message.text || ctx.message.caption || "";
         const settings = await getChatSettings(chatId);
@@ -256,7 +284,7 @@ bot.on('message', async (ctx, next) => {
             await userHistoryRef.set(fullName);
         }
 
-        // Scammer Tagging
+        // Scammer Alert
         const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
         if (scammerSnap.val()) {
             const scamNotice = settings.scammerAlert?.msg || "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*";
@@ -538,6 +566,144 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
+// LICENSE, PRICING & SUPER ADMIN REST APIS
+// =============================================================================
+
+// Helper: Generate Random License Key
+function generateLicenseKey() {
+    const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const p3 = crypto.randomBytes(2).toString('hex').toUpperCase();
+    return `VS-${p1}-${p2}-${p3}`;
+}
+
+// 1. Super Admin: Generate License Keys
+app.post('/api/admin/generate-license', async (req, res) => {
+    const { planId, customDurationDays } = req.body;
+    try {
+        const planConfigs = {
+            starter: { name: "Starter (1 Channel / Group)", maxCommunities: 1, bdt: 50 },
+            growth: { name: "Growth (5 Channels / Groups)", maxCommunities: 5, bdt: 200 },
+            pro: { name: "Pro (15 Channels / Groups)", maxCommunities: 15, bdt: 450 },
+            unlimited: { name: "Unlimited Enterprise Hub", maxCommunities: 999999, bdt: 750 }
+        };
+
+        const plan = planConfigs[planId] || planConfigs.starter;
+        const key = generateLicenseKey();
+        const durationDays = parseInt(customDurationDays) || 30;
+
+        const licenseData = {
+            key,
+            planId,
+            planName: plan.name,
+            maxCommunities: plan.maxCommunities,
+            bdt: plan.bdt,
+            usdt: (plan.bdt / 127).toFixed(2),
+            durationDays,
+            graceDays: 7,
+            status: "active", // active, claimed, expired, revoked
+            createdAt: Date.now()
+        };
+
+        await db.ref(`licenses/${key}`).set(licenseData);
+        res.json({ success: true, license: licenseData });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. Super Admin: List All Licenses
+app.get('/api/admin/list-licenses', async (req, res) => {
+    try {
+        const snap = await db.ref('licenses').once('value');
+        const data = snap.val() || {};
+        const list = Object.keys(data).map(k => data[k]).sort((a,b) => b.createdAt - a.createdAt);
+        res.json({ success: true, licenses: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 3. User: Claim License Key
+app.post('/api/license/claim', async (req, res) => {
+    const { licenseKey, ownerTelegramId, userEmail } = req.body;
+    try {
+        if (!licenseKey || !ownerTelegramId) throw new Error("License key and Telegram ID are required.");
+
+        const cleanKey = licenseKey.trim().toUpperCase();
+        const snap = await db.ref(`licenses/${cleanKey}`).once('value');
+        const license = snap.val();
+
+        if (!license) throw new Error("Invalid license key. Please check and try again.");
+        if (license.status === "claimed") throw new Error("This license key has already been claimed.");
+        if (license.status === "revoked") throw new Error("This license key has been revoked by admin.");
+
+        const now = Date.now();
+        const expiresAt = now + (license.durationDays * 24 * 60 * 60 * 1000);
+        const graceEndsAt = expiresAt + (license.graceDays * 24 * 60 * 60 * 1000);
+
+        // Update license status
+        await db.ref(`licenses/${cleanKey}`).update({
+            status: "claimed",
+            claimedBy: userEmail || "Anonymous",
+            ownerTelegramId,
+            claimedAt: now,
+            expiresAt,
+            graceEndsAt
+        });
+
+        // Set User/Owner subscription
+        const subData = {
+            licenseKey: cleanKey,
+            planId: license.planId,
+            planName: license.planName,
+            maxCommunities: license.maxCommunities,
+            claimedAt: now,
+            expiresAt,
+            graceEndsAt
+        };
+
+        await db.ref(`subscriptions/${ownerTelegramId}`).set(subData);
+        subscriptionCache = {}; // clear cache
+
+        res.json({ success: true, message: `License claimed successfully! Plan: ${license.planName}`, subscription: subData });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 4. User: Get Subscription Status
+app.post('/api/license/status', async (req, res) => {
+    const { ownerTelegramId } = req.body;
+    try {
+        if (!ownerTelegramId) throw new Error("Telegram ID required");
+        const snap = await db.ref(`subscriptions/${ownerTelegramId}`).once('value');
+        const sub = snap.val();
+
+        if (!sub) {
+            return res.json({ hasSubscription: false });
+        }
+
+        const now = Date.now();
+        const isExpired = now > sub.expiresAt;
+        const isGracePeriod = isExpired && now <= sub.graceEndsAt;
+        const isTotallyShutDown = now > sub.graceEndsAt;
+
+        res.json({
+            hasSubscription: true,
+            subscription: sub,
+            isExpired,
+            isGracePeriod,
+            isTotallyShutDown,
+            remainingDays: Math.max(0, Math.ceil((sub.expiresAt - now) / (1000 * 60 * 60 * 24))),
+            graceDaysLeft: Math.max(0, Math.ceil((sub.graceEndsAt - now) / (1000 * 60 * 60 * 24)))
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// =============================================================================
 // GRAMJS MTPROTO & REST APIS
 // =============================================================================
 const tempAuthClients = {};
@@ -651,10 +817,12 @@ app.post('/api/tg/verify-code', async (req, res) => {
             }
         }
 
+        let myTelegramId = null;
         try {
             const me = await client.getMe();
             if (me && me.id) {
-                await db.ref(`telegram_users/${phone.replace(/[^0-9]/g, '')}`).set(me.id.toString());
+                myTelegramId = me.id.toString();
+                await db.ref(`telegram_users/${phone.replace(/[^0-9]/g, '')}`).set(myTelegramId);
             }
         } catch (mErr) {}
 
@@ -662,7 +830,7 @@ app.post('/api/tg/verify-code', async (req, res) => {
         const { groups, channels } = await extractCommunities(client);
 
         delete tempAuthClients[phone];
-        res.json({ success: true, session: stringSession, groups, channels });
+        res.json({ success: true, session: stringSession, telegramId: myTelegramId, groups, channels });
     } catch (e) {
         res.status(500).json({ error: e.message || "Invalid Telegram OTP code." });
     }
@@ -777,7 +945,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
     }
 });
 
-// Live Community Broadcast with Buttons
+// Broadcast
 app.post('/api/tg/broadcast', async (req, res) => {
     const { chatId, text, photoUrl, buttons } = req.body;
     try {
@@ -800,7 +968,7 @@ app.post('/api/tg/broadcast', async (req, res) => {
     }
 });
 
-// Section Save Endpoint
+// Section Save
 app.post('/api/tg/save-section', async (req, res) => {
     const { chatId, sectionKey, data } = req.body;
     try {
