@@ -43,6 +43,17 @@ app.use(express.static(__dirname));
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
 // =============================================================================
+// SEPARATE ADMIN ROUTE (/admin -> admin.html)
+// =============================================================================
+app.get('/admin', (req, res) => {
+    const p1 = path.join(__dirname, 'public', 'admin.html');
+    const p2 = path.join(__dirname, 'admin.html');
+    if (fs.existsSync(p1)) return res.sendFile(p1);
+    if (fs.existsSync(p2)) return res.sendFile(p2);
+    res.status(404).send("<h2>admin.html not found. Please upload admin.html to public/ folder.</h2>");
+});
+
+// =============================================================================
 // SUBSCRIPTION & LICENSE VALIDATION ENGINE
 // =============================================================================
 let subscriptionCache = {};
@@ -412,7 +423,7 @@ bot.on('message', async (ctx, next) => {
 
         if (isAdmin) return next();
 
-        // 1. Chat Lock Check
+        // 1. Chat Lock
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
@@ -565,7 +576,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (100% RELIABLE COMMUNITY FETCHER - NO MORE 0 GROUPS)
+// GRAMJS MTPROTO (RELIABLE ZERO-DROP COMMUNITY FETCHER)
 // =============================================================================
 const tempAuthClients = {};
 
@@ -574,17 +585,13 @@ async function extractCommunities(client) {
     const groups = [];
     const channels = [];
 
-    // Filter valid groups without dropping small or active chats
     const validDialogs = dialogs.filter(d => {
         if (!d.isGroup && !d.isChannel) return false;
         const e = d.entity;
         if (!e) return false;
-
-        // Skip truly dead or forbidden chats
         if (e.deactivated || e.migratedTo) return false;
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') return false;
-
-        return true; // Keep all groups/channels in user's account!
+        return true;
     });
 
     for (const d of validDialogs) {
@@ -937,7 +944,9 @@ app.post('/api/tg/get-scammers', async (req, res) => {
     }
 });
 
-// Helper: Generate Random License Key
+// =============================================================================
+// SUPER ADMIN MASTER CONTROL REST APIS
+// =============================================================================
 function generateLicenseKey() {
     const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -945,7 +954,7 @@ function generateLicenseKey() {
     return `VS-${p1}-${p2}-${p3}`;
 }
 
-// 1. Super Admin: Generate License Keys
+// 1. Generate Key
 app.post('/api/admin/generate-license', async (req, res) => {
     const { planId, customDurationDays } = req.body;
     try {
@@ -980,7 +989,7 @@ app.post('/api/admin/generate-license', async (req, res) => {
     }
 });
 
-// 2. Super Admin: List All Licenses
+// 2. List Licenses
 app.get('/api/admin/list-licenses', async (req, res) => {
     try {
         const snap = await db.ref('licenses').once('value');
@@ -992,7 +1001,67 @@ app.get('/api/admin/list-licenses', async (req, res) => {
     }
 });
 
-// 3. User: Claim License Key
+// 3. Revoke License
+app.post('/api/admin/revoke-license', async (req, res) => {
+    const { key } = req.body;
+    try {
+        await db.ref(`licenses/${key}`).update({ status: 'revoked' });
+        res.json({ success: true, message: 'License revoked successfully.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 4. Extend License
+app.post('/api/admin/extend-license', async (req, res) => {
+    const { key, days } = req.body;
+    try {
+        const snap = await db.ref(`licenses/${key}`).once('value');
+        const lic = snap.val();
+        if (!lic) throw new Error("License not found");
+
+        const extraMs = (parseInt(days) || 30) * 24 * 60 * 60 * 1000;
+        const newExp = (lic.expiresAt || Date.now()) + extraMs;
+        const newGrace = newExp + (7 * 24 * 60 * 60 * 1000);
+
+        await db.ref(`licenses/${key}`).update({ expiresAt: newExp, graceEndsAt: newGrace });
+        if (lic.ownerTelegramId) {
+            await db.ref(`subscriptions/${lic.ownerTelegramId}`).update({ expiresAt: newExp, graceEndsAt: newGrace });
+        }
+        res.json({ success: true, message: `License extended by ${days} days!` });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 5. List All Users & Passwords for Admin Recovery
+app.get('/api/admin/users-list', async (req, res) => {
+    try {
+        const usersSnap = await db.ref('users').once('value');
+        const subsSnap = await db.ref('subscriptions').once('value');
+        const usersData = usersSnap.val() || {};
+        const subsData = subsSnap.val() || {};
+
+        const list = Object.keys(usersData).map(uid => {
+            const u = usersData[uid];
+            const tgId = u.owner_tg_id;
+            const sub = tgId && subsData[tgId] ? subsData[tgId] : null;
+            return {
+                uid,
+                email: u.security_vault?.email || 'N/A',
+                password: u.security_vault?.password || 'N/A',
+                telegramId: tgId || 'Not Linked',
+                subscription: sub ? sub.planName : 'No Active License',
+                expiresAt: sub ? sub.expiresAt : null
+            };
+        });
+        res.json({ success: true, users: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 6. User: Claim License Key
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, ownerTelegramId, userEmail } = req.body;
     try {
@@ -1038,7 +1107,7 @@ app.post('/api/license/claim', async (req, res) => {
     }
 });
 
-// 4. User: Get Subscription Status
+// 7. User: Get Subscription Status
 app.post('/api/license/status', async (req, res) => {
     const { ownerTelegramId } = req.body;
     try {
@@ -1069,7 +1138,7 @@ app.post('/api/license/status', async (req, res) => {
     }
 });
 
-// 5. Super Admin: Global System Statistics (Live Master Metrics)
+// 8. Super Admin: Global System Statistics
 app.get('/api/admin/system-stats', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
@@ -1105,7 +1174,7 @@ app.get('/api/admin/system-stats', async (req, res) => {
     }
 });
 
-// Fallback Route
+// Fallback Route (SPA Route for Users)
 app.get('*', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'index.html');
     const p2 = path.join(__dirname, 'index.html');
