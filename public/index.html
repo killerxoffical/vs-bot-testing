@@ -31,7 +31,7 @@
         }
     </script>
 
-    <!-- Vector Icons, 3D Engine & Modern Alerts -->
+    <!-- Icons & Animation Engines -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -165,7 +165,7 @@
                 <i data-lucide="send" class="w-6 h-6"></i>
             </div>
             <h3 class="text-lg font-bold text-slate-900 mb-1">Link Your Telegram Account</h3>
-            <p class="text-xs text-slate-500 mb-6">Authorize via official MTProto to fetch your admin communities.</p>
+            <p class="text-xs text-slate-500 mb-6">Authorize via official MTProto to fetch communities where you are Owner/Admin.</p>
 
             <div class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
                 <input id="tgPhone" type="text" placeholder="+1234567890" class="flex-1 bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
@@ -231,16 +231,14 @@
     </div>
 
     <!-- ==========================================================================
-       MODAL 2: GROUP ADVANCED CONTROL PANEL
+       MODAL 2: GROUP ADVANCED CONTROL PANEL (WITH GROUP PHOTO HEADER)
        ========================================================================== -->
     <div id="groupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
         <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
             
             <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
-                        <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
-                    </div>
+                    <div id="modalGroupAvatarContainer" class="w-12 h-12 rounded-2xl overflow-hidden shrink-0"></div>
                     <div>
                         <h3 id="modalGroupName" class="text-base font-bold text-slate-900 leading-tight">-</h3>
                         <p id="modalGroupMeta" class="text-[11px] text-slate-500">ID: -</p>
@@ -326,7 +324,7 @@
 
             <div class="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
                 <button onclick="closeGroupModal()" class="px-4 py-2 rounded-xl border border-slate-300 font-semibold text-xs text-slate-700">Cancel</button>
-                <button onclick="saveGroupSettings()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 font-bold text-xs text-white shadow-md transition">Save Configuration</button>
+                <button onclick="saveGroupSettings()" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 font-bold text-xs text-white shadow-md transition">Save Configuration</button>
             </div>
         </div>
     </div>
@@ -363,6 +361,7 @@
         let tgSession = localStorage.getItem('tg_session') || null;
         let activeGroupId = null;
         let phoneCodeHash = null;
+        let loadedGroupsMap = {};
 
         // Firebase Auth State
         auth.onAuthStateChanged(user => {
@@ -460,7 +459,7 @@
 
             Swal.fire({
                 title: 'Verifying...',
-                text: 'Authenticating with Telegram MTProto Servers',
+                text: 'Authenticating and loading your admin communities...',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
@@ -495,7 +494,7 @@
                     document.getElementById('tgConnectCard').classList.add('hidden');
                     document.getElementById('groupsSection').classList.remove('hidden');
                     renderGroups(data.groups);
-                    Swal.fire('Connected!', 'Telegram account linked successfully!', 'success');
+                    Swal.fire('Connected!', 'Found ' + data.groups.length + ' community where you are Owner/Admin!', 'success');
                 } else {
                     Swal.fire('Verification Failed', data.error || 'Invalid code', 'error');
                 }
@@ -504,26 +503,54 @@
             }
         }
 
+        // Render Groups with Actual Telegram Photo & Role Badges
         function renderGroups(groups) {
             const grid = document.getElementById('groupsGrid');
             grid.innerHTML = '';
+            loadedGroupsMap = {};
+
+            if (groups.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-3 text-center py-12 text-slate-400">
+                        <i data-lucide="shield-alert" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-sm">No community found where your account has Owner or Admin privileges.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
             groups.forEach(g => {
+                loadedGroupsMap[g.id] = g;
+                
+                // Photo rendering with fallback initials
+                const avatarHtml = g.photo 
+                    ? `<img src="${g.photo}" alt="${g.title}" class="w-12 h-12 rounded-2xl object-cover shadow-sm border border-slate-100">`
+                    : `<div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-base shadow-sm">${g.title ? g.title[0].toUpperCase() : 'C'}</div>`;
+
+                const roleBadgeClass = g.role === 'Owner' 
+                    ? 'bg-amber-50 text-amber-600 border-amber-200/60' 
+                    : 'bg-indigo-50 text-brand-600 border-indigo-200/60';
+
                 const card = document.createElement('div');
                 card.className = "light-card p-6 rounded-3xl flex flex-col justify-between";
                 card.innerHTML = `
                     <div>
                         <div class="flex items-center justify-between mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-brand-600 flex items-center justify-center font-bold">
-                                <i data-lucide="users" class="w-5 h-5"></i>
-                            </div>
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">ID: ${g.id}</span>
+                            ${avatarHtml}
+                            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full border ${roleBadgeClass}">
+                                ${g.role}
+                            </span>
                         </div>
-                        <h4 class="font-bold text-sm text-slate-900 mb-1">${g.title}</h4>
-                        <p class="text-xs text-slate-500 mb-6">${g.membersCount} active members</p>
+                        <h4 class="font-bold text-sm text-slate-900 mb-1 truncate">${g.title}</h4>
+                        <p class="text-xs text-slate-500 mb-6">${g.membersCount} members • ID: ${g.id}</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="connectBot('${g.id}')" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition">Connect Bot</button>
-                        <button onclick="openGroupSettings('${g.id}', '${g.title.replace(/'/g, "\\'")}')" class="px-3 py-2.5 border border-slate-300 hover:bg-slate-100 rounded-xl text-slate-700 text-xs">
+                        <button onclick="connectBot('${g.id}')" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5">
+                            <i data-lucide="bot" class="w-3.5 h-3.5"></i>
+                            <span>Connect Bot</span>
+                        </button>
+                        <button onclick="openGroupSettings('${g.id}')" class="px-3.5 py-2.5 border border-slate-300 hover:bg-slate-100 rounded-xl text-slate-700 text-xs transition">
                             <i data-lucide="sliders" class="w-4 h-4"></i>
                         </button>
                     </div>
@@ -536,7 +563,7 @@
         async function connectBot(chatId) {
             Swal.fire({
                 title: 'Deploying Bot...',
-                text: 'Promoting bot to Administrator via Telegram API...',
+                text: 'Inviting and promoting bot to Administrator...',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
@@ -558,10 +585,20 @@
             }
         }
 
-        async function openGroupSettings(chatId, title) {
+        async function openGroupSettings(chatId) {
+            const group = loadedGroupsMap[chatId] || { title: "Community", photo: null };
             activeGroupId = chatId;
-            document.getElementById('modalGroupName').innerText = title;
-            document.getElementById('modalGroupMeta').innerText = `ID: ${chatId}`;
+
+            document.getElementById('modalGroupName').innerText = group.title;
+            document.getElementById('modalGroupMeta').innerText = `ID: ${chatId} • Role: ${group.role || 'Admin'}`;
+
+            // Modal Avatar Rendering
+            const avatarContainer = document.getElementById('modalGroupAvatarContainer');
+            if (group.photo) {
+                avatarContainer.innerHTML = `<img src="${group.photo}" class="w-full h-full object-cover">`;
+            } else {
+                avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-sm">${group.title[0]}</div>`;
+            }
 
             const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
             const data = snap.val() || {};
@@ -612,7 +649,7 @@
             closeGroupModal();
         }
 
-        // 3D Canvas
+        // 3D Canvas Visual Engine
         (function() {
             const canvas = document.getElementById('threeCanvas');
             if (!canvas) return;
