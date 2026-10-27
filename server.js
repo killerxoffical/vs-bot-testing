@@ -169,11 +169,10 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (ACCURATE DIALOG RESOLUTION & BOT SETUP)
+// GRAMJS MTPROTO (UNIVERSAL BOT PROMOTION ENGINE)
 // =============================================================================
 const tempAuthClients = {};
 
-// Helper: Fetch Communities & Classify
 async function extractCommunities(client) {
     const dialogs = await client.getDialogs({ limit: 100 });
     const groups = [];
@@ -294,82 +293,100 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// 4. Auto-Add Bot to Group/Channel (PERFECTLY RESOLVES ACCESS_HASH)
+// 4. Auto-Add Bot to Group/Channel (AUTO-MIGRATES BASIC CHATS TO SUPERGROUPS)
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
 
-        // ডায়ালগ লোড করে ক্লায়েন্ট ক্যাশে access_hash বাধ্যতামূলকভাবে আপডেট করা হচ্ছে
+        // ডায়ালগ লোড করে ক্যাশ সমৃদ্ধ করা
         const dialogs = await client.getDialogs({ limit: 100 });
         
-        // নির্দিষ্ট গ্রুপ/চ্যানেল বের করা
+        // টার্গেট ডায়ালগটি খুঁজে বের করা
         const targetDialog = dialogs.find(d => 
             d.id.toString() === chatId.toString() ||
-            `-100${d.entity?.id}` === chatId.toString() ||
-            `-${d.entity?.id}` === chatId.toString() ||
-            d.entity?.id?.toString() === chatId.toString()
+            String(d.entity?.id) === chatId.replace('-100', '').replace('-', '')
         );
 
         if (!targetDialog) {
-            throw new Error("Community not found in your Telegram dialogs. Try clicking 'Sync Communities'.");
+            throw new Error("Community not found in dialogs. Please click 'Sync Communities'.");
         }
 
         const botEntity = await client.getInputEntity(BOT_USERNAME);
-        const inputPeer = await client.getInputEntity(targetDialog.entity);
+        let targetChannelPeer = null;
 
-        // যেকোনো -100 ওয়ালা আইডি অথবা channel/megagroup
-        const isSupergroupOrChannel = targetDialog.isChannel || chatId.toString().startsWith('-100');
-
-        if (isSupergroupOrChannel) {
-            // ১. চ্যানেলে বটকে ইনভাইট পাঠানো (না থাকলে অটো অ্যাড হবে)
-            try {
-                await client.invoke(new Api.channels.InviteToChannel({
-                    channel: inputPeer,
-                    users: [botEntity]
-                }));
-            } catch (invErr) {
-                // অলরেডি গ্রুপে থাকলে বা চ্যানেল ডাইরেক্ট প্রমোশনে ইরর ইগনোর হবে
-            }
-
-            // ২. অ্যাডমিন পারমিশন ও র‍্যাঙ্ক দেওয়া
-            await client.invoke(new Api.channels.EditAdmin({
-                channel: inputPeer,
-                userId: botEntity,
-                adminRights: new Api.ChatAdminRights({
-                    changeInfo: true,
-                    postMessages: true,
-                    editMessages: true,
-                    deleteMessages: true,
-                    banUsers: true,
-                    inviteUsers: true,
-                    pinMessages: true,
-                    addAdmins: false,
-                    anonymous: false,
-                    manageCall: true,
-                    other: true
-                }),
-                rank: 'VS Guardian'
-            }));
-
+        // চেক করা: এটি কি সুপারগ্রুপ বা চ্যানেল?
+        if (targetDialog.isChannel || targetDialog.entity.className === 'Channel' || String(chatId).startsWith('-100')) {
+            targetChannelPeer = await client.getInputEntity(targetDialog.entity);
         } else {
-            // সাধারণ লিগ্যাসি গ্রুপ (Basic Group)
-            const basicChatId = targetDialog.entity.id;
+            // যদি এটি সাধারণ বেসিক গ্রুপ (Basic Group) হয়, তবে টেলিগ্রাম নিয়মে সুপারগ্রুপে রূপান্তর করতে হবে
+            const rawBasicId = targetDialog.entity.id;
+
+            // ১. বেসিক গ্রুপে আগে বটকে অ্যাড করা
             try {
                 await client.invoke(new Api.messages.AddChatUser({
-                    chatId: basicChatId,
+                    chatId: rawBasicId,
                     userId: botEntity,
                     fwdLimit: 0
                 }));
-            } catch (e) {}
+            } catch (err) {}
 
-            await client.invoke(new Api.messages.EditChatAdmin({
-                chatId: basicChatId,
-                userId: botEntity,
-                isAdministrator: true
-            }));
+            // ২. বেসিক গ্রুপকে সুপারগ্রুপে মাইগ্রেট করা
+            try {
+                const migrateRes = await client.invoke(new Api.messages.MigrateChat({
+                    chatId: rawBasicId
+                }));
+
+                if (migrateRes.chats && migrateRes.chats.length > 0) {
+                    targetChannelPeer = await client.getInputEntity(migrateRes.chats[0]);
+                }
+            } catch (migErr) {
+                // অলরেডি কনভার্ট হয়ে থাকলে এন্টারপ্রাইজ হ্যান্ডলার
+                console.log("Migration state:", migErr.message);
+            }
+
+            // যদি মাইগ্রেশন শেষে সরাসরি চ্যানেল পিয়ার না পাওয়া যায়
+            if (!targetChannelPeer) {
+                const freshDialogs = await client.getDialogs({ limit: 20 });
+                const freshTarget = freshDialogs.find(d => d.title === targetDialog.title && (d.isChannel || d.isGroup));
+                if (freshTarget) {
+                    targetChannelPeer = await client.getInputEntity(freshTarget.entity);
+                }
+            }
         }
+
+        if (!targetChannelPeer) {
+            throw new Error("Failed to resolve channel peer for admin promotion.");
+        }
+
+        // ইনভাইট করার চেষ্টা (যদি বট এখনো মেম্বার না হয়ে থাকে)
+        try {
+            await client.invoke(new Api.channels.InviteToChannel({
+                channel: targetChannelPeer,
+                users: [botEntity]
+            }));
+        } catch (e) {}
+
+        // সুপারগ্রুপে বটকে পূর্ণ অ্যাডমিন ক্ষমতা দেওয়া
+        await client.invoke(new Api.channels.EditAdmin({
+            channel: targetChannelPeer,
+            userId: botEntity,
+            adminRights: new Api.ChatAdminRights({
+                changeInfo: true,
+                postMessages: true,
+                editMessages: true,
+                deleteMessages: true,
+                banUsers: true,
+                inviteUsers: true,
+                pinMessages: true,
+                addAdmins: false,
+                anonymous: false,
+                manageCall: true,
+                other: true
+            }),
+            rank: 'VS Guardian'
+        }));
 
         res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers!` });
     } catch (e) {
