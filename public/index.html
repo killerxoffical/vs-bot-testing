@@ -58,6 +58,13 @@
             backdrop-filter: blur(16px);
             border-bottom: 1px solid rgba(226, 232, 240, 0.8);
         }
+        .tab-btn.active {
+            background-color: #4F46E5;
+            color: #FFFFFF;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
@@ -84,7 +91,9 @@
         </div>
     </header>
 
-    <!-- SECTION 1: LANDING VIEW -->
+    <!-- ==========================================================================
+       SECTION 1: LANDING PAGE
+       ========================================================================== -->
     <div id="landingView">
         <section class="max-w-7xl mx-auto px-6 pt-12 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div class="lg:col-span-7 space-y-6 text-left">
@@ -145,90 +154,279 @@
         </section>
     </div>
 
-    <!-- SECTION 2: DASHBOARD VIEW -->
-    <div id="dashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto px-6 py-10 space-y-10">
+    <!-- ==========================================================================
+       SECTION 2: MAIN DASHBOARD VIEW
+       ========================================================================== -->
+    <div id="dashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
-            <div>
-                <h2 class="text-2xl font-extrabold text-slate-900">Security Command Center</h2>
-                <p class="text-slate-500 text-xs mt-1">Manage communities with automated administrative policies.</p>
+        <!-- ======================================================================
+             SUB-VIEW A: COMMUNITIES OVERVIEW (LIST OF GROUPS & CHANNELS)
+             ====================================================================== -->
+        <div id="communitiesOverviewView" class="space-y-8">
+            <!-- Header -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-900">Security Command Center</h2>
+                    <p class="text-slate-500 text-xs mt-1">Manage communities with automated administrative policies.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="syncCommunities()" id="btnSync" class="hidden flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Sync Communities</span>
+                    </button>
+                    <div id="userBadge" class="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm"></div>
+                </div>
             </div>
-            <div class="flex items-center gap-3">
-                <button onclick="syncCommunities()" id="btnSync" class="hidden flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition">
-                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                    <span>Sync Communities</span>
-                </button>
-                <div id="userBadge" class="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm"></div>
+
+            <!-- Telegram Connect Card (Only shown if NOT connected on any device) -->
+            <div id="tgConnectCard" class="light-card rounded-3xl p-8 border-dashed border-2 border-brand-200 bg-brand-50/20 text-center max-w-xl mx-auto">
+                <div class="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="send" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 mb-1">Connect Your Telegram Account</h3>
+                <p class="text-xs text-slate-500 mb-6">Select your country code and enter your phone number to load your managed hubs.</p>
+
+                <div class="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+                    <div class="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 shrink-0">
+                        <img id="selectedFlag" src="https://flagcdn.com/w40/bd.png" alt="Country Flag" class="w-5 h-3.5 rounded-sm object-cover mr-2">
+                        <select id="countrySelect" onchange="onCountryChange(this)" class="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer">
+                            <option value="+880" data-code="bd">BD (+880)</option>
+                            <option value="+1" data-code="us">US (+1)</option>
+                            <option value="+91" data-code="in">IN (+91)</option>
+                            <option value="+44" data-code="gb">UK (+44)</option>
+                            <option value="+92" data-code="pk">PK (+92)</option>
+                            <option value="+971" data-code="ae">AE (+971)</option>
+                            <option value="+966" data-code="sa">SA (+966)</option>
+                            <option value="+7" data-code="ru">RU (+7)</option>
+                            <option value="+49" data-code="de">DE (+49)</option>
+                        </select>
+                    </div>
+                    <input id="tgPhoneInput" type="text" placeholder="17XXXXXXXX" class="flex-1 bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
+                    <button onclick="sendTgCode()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 shrink-0">
+                        <span>Send Code</span>
+                    </button>
+                </div>
+
+                <div id="otpInputArea" class="hidden mt-4 pt-4 border-t border-slate-200/60 max-w-md mx-auto flex gap-3">
+                    <input id="tgOtp" type="text" placeholder="Telegram Login OTP" class="flex-1 bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
+                    <button onclick="verifyTgCode()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition">
+                        Verify Code
+                    </button>
+                </div>
+            </div>
+
+            <!-- Communities Lists -->
+            <div id="communitiesContainer" class="hidden space-y-12">
+                <!-- GROUPS -->
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="users" class="w-5 h-5 text-brand-600"></i>
+                            <span>Managed Groups (Communities)</span>
+                        </h3>
+                        <span id="groupCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">0 Groups</span>
+                    </div>
+                    <div id="groupsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </div>
+
+                <!-- CHANNELS -->
+                <div class="space-y-4 pt-6 border-t border-slate-200/80">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="megaphone" class="w-5 h-5 text-indigo-600"></i>
+                            <span>Broadcast Channels</span>
+                        </h3>
+                        <span id="channelCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">0 Channels</span>
+                    </div>
+                    <div id="channelsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Telegram Connection Card -->
-        <div id="tgConnectCard" class="light-card rounded-3xl p-8 border-dashed border-2 border-brand-200 bg-brand-50/20 text-center max-w-xl mx-auto">
-            <div class="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto mb-4">
-                <i data-lucide="send" class="w-6 h-6"></i>
-            </div>
-            <h3 class="text-lg font-bold text-slate-900 mb-1">Connect Your Telegram Account</h3>
-            <p class="text-xs text-slate-500 mb-6">Select your country code and enter your phone number to load your managed hubs.</p>
-
-            <div class="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-                <div class="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2 shrink-0">
-                    <img id="selectedFlag" src="https://flagcdn.com/w40/bd.png" alt="Country Flag" class="w-5 h-3.5 rounded-sm object-cover mr-2">
-                    <select id="countrySelect" onchange="onCountryChange(this)" class="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer">
-                        <option value="+880" data-code="bd">BD (+880)</option>
-                        <option value="+1" data-code="us">US (+1)</option>
-                        <option value="+91" data-code="in">IN (+91)</option>
-                        <option value="+44" data-code="gb">UK (+44)</option>
-                        <option value="+92" data-code="pk">PK (+92)</option>
-                        <option value="+971" data-code="ae">AE (+971)</option>
-                        <option value="+966" data-code="sa">SA (+966)</option>
-                        <option value="+7" data-code="ru">RU (+7)</option>
-                        <option value="+49" data-code="de">DE (+49)</option>
-                    </select>
+        <!-- ======================================================================
+             SUB-VIEW B: FULL DEDICATED GROUP MANAGEMENT PANEL (NO POPUPS!)
+             ====================================================================== -->
+        <div id="dedicatedGroupPanelView" class="hidden space-y-6">
+            
+            <!-- Top Control Bar (Back Button + Group Info + Save Button) -->
+            <div class="light-card p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <button onclick="backToCommunities()" class="w-11 h-11 rounded-2xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition shrink-0">
+                        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    </button>
+                    <div id="panelGroupAvatarContainer" class="w-12 h-12 rounded-2xl overflow-hidden shrink-0"></div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 id="panelGroupName" class="text-xl font-bold text-slate-900 leading-tight truncate">Group Name</h2>
+                            <span id="panelGroupRoleBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-100">Owner</span>
+                        </div>
+                        <p id="panelGroupMeta" class="text-xs text-slate-500 mt-0.5">ID: -</p>
+                    </div>
                 </div>
-                <input id="tgPhoneInput" type="text" placeholder="17XXXXXXXX" class="flex-1 bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
-                <button onclick="sendTgCode()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 shrink-0">
-                    <span>Send Code</span>
-                </button>
-            </div>
 
-            <div id="otpInputArea" class="hidden mt-4 pt-4 border-t border-slate-200/60 max-w-md mx-auto flex gap-3">
-                <input id="tgOtp" type="text" placeholder="Telegram Login OTP" class="flex-1 bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
-                <button onclick="verifyTgCode()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition">
-                    Verify Code
-                </button>
-            </div>
-        </div>
-
-        <!-- COMMUNITIES CONTAINER -->
-        <div id="communitiesContainer" class="hidden space-y-12">
-            <!-- GROUPS -->
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                        <i data-lucide="users" class="w-5 h-5 text-brand-600"></i>
-                        <span>Managed Groups (Communities)</span>
-                    </h3>
-                    <span id="groupCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">0 Groups</span>
+                <div class="flex items-center gap-3">
+                    <button onclick="backToCommunities()" class="px-5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-semibold text-xs text-slate-700 transition">
+                        Back to Hub
+                    </button>
+                    <button onclick="saveGroupSettings()" class="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-md shadow-brand-500/20 transition">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span>Save All Changes</span>
+                    </button>
                 </div>
-                <div id="groupsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             </div>
 
-            <!-- CHANNELS -->
-            <div class="space-y-4 pt-6 border-t border-slate-200/80">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                        <i data-lucide="megaphone" class="w-5 h-5 text-indigo-600"></i>
-                        <span>Broadcast Channels</span>
-                    </h3>
-                    <span id="channelCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">0 Channels</span>
+            <!-- Navigation Tabs (Mobile Horizontal Scrollable / Desktop Vertical Sidebar) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Sidebar / Tab Buttons -->
+                <div class="lg:col-span-3">
+                    <!-- Mobile Scrollable Bar / Desktop Column -->
+                    <div class="flex lg:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0">
+                        <button onclick="switchTab('security')" id="tabBtn-security" class="tab-btn active flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition">
+                            <i data-lucide="shield" class="w-4 h-4"></i>
+                            <span>Security & Defense</span>
+                        </button>
+                        <button onclick="switchTab('profanity')" id="tabBtn-profanity" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="message-square-x" class="w-4 h-4"></i>
+                            <span>Profanity Blacklist</span>
+                        </button>
+                        <button onclick="switchTab('welcome')" id="tabBtn-welcome" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="party-popper" class="w-4 h-4"></i>
+                            <span>Welcome System</span>
+                        </button>
+                        <button onclick="switchTab('info')" id="tabBtn-info" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="info" class="w-4 h-4"></i>
+                            <span>Community Profile</span>
+                        </button>
+                    </div>
                 </div>
-                <div id="channelsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+                <!-- Main Content Pane -->
+                <div class="lg:col-span-9 space-y-6">
+
+                    <!-- TAB 1: SECURITY & DEFENSE -->
+                    <div id="tabContent-security" class="space-y-6">
+                        <div class="light-card p-6 rounded-3xl space-y-4">
+                            <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Core Protection Controls</h3>
+                            
+                            <!-- Lock Chat -->
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">Lock Chat (Mute Community)</h4>
+                                    <p class="text-xs text-slate-500">Prohibit all regular members from sending messages in the group</p>
+                                </div>
+                                <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <!-- Anti-Link -->
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield</h4>
+                                    <p class="text-xs text-slate-500">Instantly delete any links, telegram invites or URLs sent by members</p>
+                                </div>
+                                <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <!-- Anti-Forward -->
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">Anti-Forward Protection</h4>
+                                    <p class="text-xs text-slate-500">Block and purge messages forwarded from other channels or bots</p>
+                                </div>
+                                <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: PROFANITY BLACKLIST -->
+                    <div id="tabContent-profanity" class="hidden space-y-6">
+                        <div class="light-card p-6 rounded-3xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Profanity Blacklist & Enforcement</h3>
+                                    <p class="text-xs text-slate-500">Specify blacklisted keywords and choose what action the bot executes</p>
+                                </div>
+                                <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1.5">Blacklisted Words (Separated by commas):</label>
+                                <textarea id="badWordsInput" rows="3" placeholder="badword1, scam, abusive, porn, hack" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900">Enforcement Action</h4>
+                                    <p class="text-[11px] text-slate-500">What should the bot do upon detection?</p>
+                                </div>
+                                <select id="badWordsAction" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                    <option value="delete">Delete Message Only</option>
+                                    <option value="warn">Delete Message + Issue Warning</option>
+                                    <option value="ban">Instant Permanent Ban</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: WELCOME SYSTEM -->
+                    <div id="tabContent-welcome" class="hidden space-y-6">
+                        <div class="light-card p-6 rounded-3xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Automated Welcome Messages</h3>
+                                    <p class="text-xs text-slate-500">Greet newly joined members automatically</p>
+                                </div>
+                                <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1.5">Greeting Message Content:</label>
+                                <textarea id="welcomeTextInput" rows="3" oninput="updateLivePreview()" placeholder="Welcome {user} to {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                <p class="text-[11px] text-slate-400 mt-1">Use <code class="text-brand-600 font-bold">{user}</code> for member name and <code class="text-brand-600 font-bold">{chat}</code> for group title.</p>
+                            </div>
+
+                            <!-- Realistic Telegram Bubble Simulation -->
+                            <div class="space-y-2 pt-2">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Live Telegram Preview</span>
+                                <div class="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-[11px] font-bold shrink-0">
+                                        <i data-lucide="bot" class="w-4 h-4"></i>
+                                    </div>
+                                    <div class="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1">
+                                        <span class="font-bold text-brand-600 block text-[11px]">VS Protection Guard</span>
+                                        <p id="previewText" class="leading-relaxed text-xs">Welcome John Doe to Community!</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: COMMUNITY INFO -->
+                    <div id="tabContent-info" class="hidden space-y-6">
+                        <div class="light-card p-6 rounded-3xl space-y-4">
+                            <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Hub Diagnostics</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="text-slate-400 block text-[10px] font-bold uppercase">Assigned Protection Bot</span>
+                                    <span class="font-bold text-slate-900 text-sm mt-0.5 block">@Vareonprotection_bot</span>
+                                </div>
+                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="text-slate-400 block text-[10px] font-bold uppercase">Cloud Engine Version</span>
+                                    <span class="font-bold text-emerald-600 text-sm mt-0.5 block">v2.4 Active Core</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
+
         </div>
 
     </div>
 
-    <!-- MODAL 1: AUTH -->
+    <!-- MODAL: ACCOUNT AUTH (EMAIL & PASSWORD ONLY) -->
     <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-200 relative">
             <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
@@ -240,7 +438,7 @@
             </div>
 
             <h3 class="text-xl font-bold text-slate-900 text-center mb-1">VS Protection Cloud</h3>
-            <p class="text-xs text-slate-500 text-center mb-6">Enter your registered email and password to access the panel</p>
+            <p class="text-xs text-slate-500 text-center mb-6">Enter your email and password to access your dashboard</p>
 
             <form onsubmit="handleEmailAuth(event)" class="space-y-4">
                 <div>
@@ -257,99 +455,6 @@
                     <button type="submit" name="action" value="signup" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs transition">Create Account</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- MODAL 2: GROUP CONTROL -->
-    <div id="groupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
-            
-            <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <div class="flex items-center gap-3">
-                    <div id="modalGroupAvatarContainer" class="w-12 h-12 rounded-2xl overflow-hidden shrink-0"></div>
-                    <div>
-                        <h3 id="modalGroupName" class="text-base font-bold text-slate-900 leading-tight">-</h3>
-                        <p id="modalGroupMeta" class="text-[11px] text-slate-500">ID: -</p>
-                    </div>
-                </div>
-                <button onclick="closeGroupModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <div class="p-8 overflow-y-auto space-y-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <!-- Settings Left -->
-                <div class="lg:col-span-7 space-y-4">
-                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-900">Lock Chat (Mute Community)</h4>
-                            <p class="text-[11px] text-slate-500">Prohibit regular members from sending messages</p>
-                        </div>
-                        <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                    </div>
-
-                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-900">Anti-Link Protection</h4>
-                            <p class="text-[11px] text-slate-500">Silently delete all external links & invites</p>
-                        </div>
-                        <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                    </div>
-
-                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-900">Anti-Forward Protection</h4>
-                            <p class="text-[11px] text-slate-500">Block messages forwarded from external channels</p>
-                        </div>
-                        <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                    </div>
-
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <h4 class="text-xs font-bold text-slate-900">Profanity Blacklist & Action</h4>
-                            <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                        </div>
-                        <input id="badWordsInput" type="text" placeholder="badword1, scam, abusive" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none">
-                        <div class="flex items-center justify-between text-xs font-medium">
-                            <span class="text-slate-500 text-[11px]">Enforcement Action:</span>
-                            <select id="badWordsAction" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs">
-                                <option value="delete">Delete Message Only</option>
-                                <option value="warn">Delete + Issue Warning</option>
-                                <option value="ban">Instant Permanent Ban</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right Live Preview -->
-                <div class="lg:col-span-5 space-y-4">
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-                        <div class="flex items-center justify-between">
-                            <h4 class="text-xs font-bold text-slate-900">Welcome Message</h4>
-                            <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                        </div>
-                        <textarea id="welcomeTextInput" rows="3" oninput="updateLivePreview()" placeholder="Welcome {user} to {chat}!" class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs outline-none"></textarea>
-                    </div>
-
-                    <div>
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Live Telegram Simulation</span>
-                        <div class="bg-sky-50/60 p-3.5 rounded-2xl border border-sky-100 flex items-start gap-2.5">
-                            <div class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                                <i data-lucide="bot" class="w-3.5 h-3.5"></i>
-                            </div>
-                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1">
-                                <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                <p id="previewText" class="leading-relaxed text-[11px]">Welcome John Doe to Community!</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button onclick="closeGroupModal()" class="px-4 py-2 rounded-xl border border-slate-300 font-semibold text-xs text-slate-700">Cancel</button>
-                <button onclick="saveGroupSettings()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 font-bold text-xs text-white shadow-md transition">Save Configuration</button>
-            </div>
         </div>
     </div>
 
@@ -387,12 +492,16 @@
         let tgSession = localStorage.getItem('vs_tg_session') || null;
         let phoneCodeHash = null;
         let loadedItemsMap = {};
+        let activeGroupId = null;
 
         function onCountryChange(select) {
             const code = select.options[select.selectedIndex].getAttribute('data-code');
             document.getElementById('selectedFlag').src = `https://flagcdn.com/w40/${code}.png`;
         }
 
+        // =====================================================================
+        // MULTI-DEVICE AUTO CLOUD SYNC (NO OTP NEEDED ON NEW DEVICES!)
+        // =====================================================================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             if (user) {
@@ -413,19 +522,30 @@
                 closeAuthModal();
                 lucide.createIcons();
 
-                if (!tgSession) {
+                // 1. Fetch Cloud Session from Firebase Realtime Database
+                try {
                     const snap = await rtdb.ref(`users/${user.uid}/tg_session`).once('value');
-                    if (snap.val()) {
-                        tgSession = snap.val();
+                    const cloudSession = snap.val();
+                    if (cloudSession) {
+                        tgSession = cloudSession;
                         localStorage.setItem('vs_tg_session', tgSession);
+                    } else if (tgSession) {
+                        // Push local session to cloud for future cross-device logins
+                        await rtdb.ref(`users/${user.uid}/tg_session`).set(tgSession);
                     }
+                } catch (e) {
+                    console.log("Firebase sync fallback:", e.message);
                 }
 
+                // 2. If Session Exists, Auto-Display Communities Immediately
                 if (tgSession) {
                     document.getElementById('tgConnectCard').classList.add('hidden');
                     document.getElementById('communitiesContainer').classList.remove('hidden');
                     document.getElementById('btnSync').classList.remove('hidden');
                     syncCommunities(false);
+                } else {
+                    document.getElementById('tgConnectCard').classList.remove('hidden');
+                    document.getElementById('communitiesContainer').classList.add('hidden');
                 }
             } else {
                 document.getElementById('landingView').classList.remove('hidden');
@@ -446,7 +566,6 @@
         function signOutUser() {
             auth.signOut();
             localStorage.removeItem('vs_tg_session');
-            localStorage.removeItem('vs_cached_communities');
             tgSession = null;
             location.reload();
         }
@@ -547,8 +666,9 @@
                     tgSession = data.session;
                     localStorage.setItem('vs_tg_session', tgSession);
 
+                    // SAVE PERMANENTLY IN FIREBASE CLOUD DATABASE
                     if (currentUser) {
-                        rtdb.ref(`users/${currentUser.uid}/tg_session`).set(tgSession);
+                        await rtdb.ref(`users/${currentUser.uid}/tg_session`).set(tgSession);
                     }
 
                     document.getElementById('tgConnectCard').classList.add('hidden');
@@ -637,14 +757,12 @@
                 ? `${item.subscribersCount} subscribers` 
                 : `${item.membersCount} members`;
 
-            // REAL BOT STATUS BADGE
             const botBadgeHtml = item.isBotConnected
                 ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60"><i data-lucide="shield-check" class="w-3 h-3"></i> Active Admin</span>`
                 : (item.canAddBot 
                     ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"><i data-lucide="plus-circle" class="w-3 h-3"></i> Ready to Add</span>`
                     : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 border border-rose-200"><i data-lucide="shield-x" class="w-3 h-3"></i> Missing Rights</span>`);
 
-            // DYNAMIC BUTTON
             const actionBtnHtml = item.isBotConnected
                 ? `<button onclick="openGroupSettings('${item.id}')" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
                         <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
@@ -699,7 +817,6 @@
                     if (loadedItemsMap[chatId]) {
                         loadedItemsMap[chatId].isBotConnected = true;
                     }
-                    // Re-sync with verified status
                     syncCommunities(false);
                     Swal.fire({
                         title: 'Bot Activated!',
@@ -719,21 +836,34 @@
             }
         }
 
+        // =====================================================================
+        // FULL-SCREEN DEDICATED GROUP DASHBOARD (NO POPUPS!)
+        // =====================================================================
         async function openGroupSettings(chatId) {
             const item = loadedItemsMap[chatId] || { title: "Community", role: "Admin", photo: null };
             activeGroupId = chatId;
 
-            document.getElementById('modalGroupName').innerText = item.title;
-            document.getElementById('modalGroupMeta').innerText = `ID: ${chatId} • ${item.role}`;
+            // 1. Hide communities list completely and show full dedicated panel view
+            document.getElementById('communitiesOverviewView').classList.add('hidden');
+            document.getElementById('dedicatedGroupPanelView').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
 
-            const avatarContainer = document.getElementById('modalGroupAvatarContainer');
+            // 2. Set Header Information
+            document.getElementById('panelGroupName').innerText = item.title;
+            document.getElementById('panelGroupRoleBadge').innerText = item.role || 'Admin';
+            document.getElementById('panelGroupMeta').innerText = `Community ID: ${chatId} • ${item.isBotConnected ? 'Bot Active' : 'Action Required'}`;
+
+            const avatarContainer = document.getElementById('panelGroupAvatarContainer');
             if (item.photo) {
                 avatarContainer.innerHTML = `<img src="${item.photo}" class="w-full h-full object-cover">`;
             } else {
-                avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-sm">${item.title[0]}</div>`;
+                avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-base">${item.title ? item.title[0].toUpperCase() : 'C'}</div>`;
             }
 
-            // Defaults
+            // 3. Reset to Security Tab
+            switchTab('security');
+
+            // 4. Default State
             document.getElementById('toggleChatLock').checked = false;
             document.getElementById('toggleAntiLink').checked = false;
             document.getElementById('toggleAntiForward').checked = false;
@@ -742,12 +872,9 @@
             document.getElementById('badWordsAction').value = 'delete';
             document.getElementById('toggleWelcome').checked = true;
             document.getElementById('welcomeTextInput').value = "Welcome {user} to {chat}!";
-
-            // Reveal modal instantly
-            document.getElementById('groupModal').classList.remove('hidden');
             updateLivePreview();
 
-            // Load real-time settings from Firebase
+            // 5. Asynchronously load settings from Firebase
             try {
                 const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
                 const data = snap.val();
@@ -767,13 +894,35 @@
             }
         }
 
-        function closeGroupModal() { document.getElementById('groupModal').classList.add('hidden'); }
+        function backToCommunities() {
+            document.getElementById('dedicatedGroupPanelView').classList.add('hidden');
+            document.getElementById('communitiesOverviewView').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function switchTab(tabKey) {
+            const tabs = ['security', 'profanity', 'welcome', 'info'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tabBtn-${t}`);
+                const content = document.getElementById(`tabContent-${t}`);
+                if (t === tabKey) {
+                    btn.classList.add('active', 'bg-brand-600', 'text-white');
+                    btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                    content.classList.remove('hidden');
+                } else {
+                    btn.classList.remove('active', 'bg-brand-600', 'text-white');
+                    btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+                    content.classList.add('hidden');
+                }
+            });
+            lucide.createIcons();
+        }
 
         function updateLivePreview() {
             const raw = document.getElementById('welcomeTextInput').value;
             document.getElementById('previewText').innerText = raw
                 .replace(/{user}/g, 'John Doe')
-                .replace(/{chat}/g, document.getElementById('modalGroupName').innerText);
+                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText);
         }
 
         async function saveGroupSettings() {
@@ -795,9 +944,15 @@
                 }
             };
 
+            Swal.fire({
+                title: 'Saving Policies...',
+                text: 'Synchronizing real-time configuration with VS Protection engine...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
             await rtdb.ref(`groups/${activeGroupId}/settings`).set(payload);
-            Swal.fire('Saved!', 'Policy configuration synchronized to Firebase.', 'success');
-            closeGroupModal();
+            Swal.fire('Saved Successfully!', 'Group security policies updated in real-time.', 'success');
         }
 
         // 3D Canvas
