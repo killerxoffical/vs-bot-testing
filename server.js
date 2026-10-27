@@ -55,19 +55,21 @@ bot.telegram.getMe().then(info => {
     console.error("[VS Protection] Bot Token Error:", err.message);
 });
 
+// Cache Settings
 async function getChatSettings(chatId) {
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
     try {
         const snap = await db.ref(`groups/${chatId}/settings`).once('value');
         const settings = snap.val() || {
-            welcome: { enabled: true, photoUrl: "", text: "👋 Welcome {user} to {chat}! Please adhere to our guidelines.", buttons: [], autoDeleteSeconds: 0 },
-            banSystem: { enabled: true, msg: "⛔ {user} has been permanently removed from {chat}." },
-            antiLink: { enabled: false, silent: false, msg: "⚠️ {user}, external links are restricted in this community!" },
-            antiForward: { enabled: false, silent: false, msg: "⚠️ {user}, forwarded messages from foreign channels are not permitted!" },
-            antiButton: { enabled: false, msg: "⚠️ {user}, messages with embedded url buttons are prohibited!" },
-            emojiSpam: { enabled: false, maxCount: 2, silent: false, msg: "⚠️ {user}, excessive emojis are prohibited!", autoDeleteSeconds: 5 },
-            badWords: { enabled: false, words: [], action: 'delete', customMsg: "⚠️ {user}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
-            scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators! Do not conduct business with them.*" },
+            welcome: { enabled: true, photoUrl: "", text: "👋 Welcome {mention} to {chat}! Please adhere to our guidelines.", buttons: [], autoDeleteSeconds: 0 },
+            goodbye: { enabled: true, text: "👋 Goodbye {mention}! We hope to see you again soon in {chat}.", autoDeleteSeconds: 10 },
+            banSystem: { enabled: true, silent: false, msg: "⛔ {name} has been permanently removed from {chat}." },
+            antiLink: { enabled: false, silent: false, msg: "⚠️ {mention}, external links are restricted in this community!" },
+            antiForward: { enabled: false, silent: false, msg: "⚠️ {mention}, forwarded messages are not permitted!" },
+            antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!" },
+            emojiSpam: { enabled: false, maxCount: 2, silent: false, msg: "⚠️ {mention}, excessive emojis are prohibited!", autoDeleteSeconds: 5 },
+            badWords: { enabled: false, words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
+            scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*" },
             nameTracker: { enabled: true },
             leaveTracker: { enabled: true },
             commands: { bio: { enabled: true, role: 'all' } },
@@ -99,7 +101,6 @@ function buildInlineButtons(buttonsArray) {
     return inlineRows.length > 0 ? Markup.inlineKeyboard(inlineRows) : null;
 }
 
-// Regex to detect Unicode & Extended Emojis
 function countEmojis(str) {
     if (!str) return 0;
     const emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F926}-\u{1F939}\u{1F1E6}-\u{1F1FF}]/gu;
@@ -117,9 +118,15 @@ bot.on('new_chat_members', async (ctx) => {
         for (const member of ctx.message.new_chat_members) {
             if (member.is_bot) continue;
 
-            const userMention = `[${member.first_name}](tg://user?id=${member.id})`;
-            const msg = (settings.welcome.text || "Welcome {user} to {chat}!")
+            const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.first_name;
+            const userMention = `[${fullName}](tg://user?id=${member.id})`;
+            const usernameTag = member.username ? `@${member.username}` : fullName;
+
+            const msg = (settings.welcome.text || "Welcome {mention} to {chat}!")
+                .replace(/{mention}/g, userMention)
                 .replace(/{user}/g, userMention)
+                .replace(/{name}/g, fullName)
+                .replace(/{username}/g, usernameTag)
                 .replace(/{chat}/g, ctx.chat.title || "Community");
 
             const keyboard = buildInlineButtons(settings.welcome.buttons);
@@ -147,22 +154,46 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// 2. MEMBER LEFT TRACKER
+// 2. MEMBER LEFT TRACKER (SAVE LOG & SEND PUBLIC GOODBYE MESSAGE WITH NAME MENTION)
 bot.on('left_chat_member', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
         const user = ctx.message.left_chat_member;
         if (!user || user.is_bot) return;
 
+        const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.first_name;
+        const userMention = `[${fullName}](tg://user?id=${user.id})`;
+        const usernameTag = user.username ? `@${user.username}` : fullName;
+
         const leftData = {
             id: user.id.toString(),
-            name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User',
+            name: fullName,
             username: user.username ? `@${user.username}` : 'No username',
             timestamp: Date.now()
         };
 
+        // 1. Save Log for Dashboard
         await db.ref(`groups/${chatId}/left_members/${user.id}`).set(leftData);
 
+        const settings = await getChatSettings(chatId);
+
+        // 2. Send Public Farewell / Goodbye Message in Group
+        if (settings.goodbye?.enabled !== false && settings.goodbye?.text) {
+            const goodbyeMsg = settings.goodbye.text
+                .replace(/{mention}/g, userMention)
+                .replace(/{user}/g, userMention)
+                .replace(/{name}/g, fullName)
+                .replace(/{username}/g, usernameTag)
+                .replace(/{chat}/g, ctx.chat.title || "Community");
+
+            const sentGoodbye = await ctx.replyWithMarkdown(goodbyeMsg).catch(() => {});
+            const delSec = parseInt(settings.goodbye.autoDeleteSeconds || 0);
+            if (delSec > 0 && sentGoodbye && sentGoodbye.message_id) {
+                setTimeout(() => ctx.deleteMessage(sentGoodbye.message_id).catch(() => {}), delSec * 1000);
+            }
+        }
+
+        // 3. Notify Merged Owner Privately
         const ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
         const ownerTelegramId = ownerSnap.val();
         if (ownerTelegramId) {
@@ -204,23 +235,25 @@ bot.on('message', async (ctx, next) => {
         const userRole = await getUserRole(ctx, userId);
         const isAdmin = ['owner', 'admin'].includes(userRole);
 
+        const fullName = `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim() || (ctx.from ? ctx.from.first_name : 'Member');
+        const userMention = `[${fullName}](tg://user?id=${userId})`;
+        const usernameTag = ctx.from?.username ? `@${ctx.from.username}` : fullName;
+
         // Name Change Tracker
         if (settings.nameTracker?.enabled !== false && ctx.from) {
-            const currentFullName = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim() || ctx.from.first_name;
             const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
-            
             const snap = await userHistoryRef.once('value');
             const storedName = snap.val();
 
-            if (storedName && storedName !== currentFullName) {
+            if (storedName && storedName !== fullName) {
                 ctx.replyWithMarkdown(
                     `📝 *[SECURITY: NAME CHANGE DETECTED]*\n` +
-                    `Member: [${currentFullName}](tg://user?id=${userId})\n` +
+                    `Member: [${fullName}](tg://user?id=${userId})\n` +
                     `🔄 *Previous Name:* \`${storedName}\`\n` +
-                    `✨ *Updated Name:* \`${currentFullName}\``
+                    `✨ *Updated Name:* \`${fullName}\``
                 ).catch(() => {});
             }
-            await userHistoryRef.set(currentFullName);
+            await userHistoryRef.set(fullName);
         }
 
         // Scammer Tagging
@@ -230,7 +263,7 @@ bot.on('message', async (ctx, next) => {
             ctx.replyWithMarkdown(scamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
         }
 
-        // Auto-Reply Engine with Inline Button Support
+        // Auto-Reply Engine
         if (text && settings.autoReplies && typeof settings.autoReplies === 'object') {
             const cleanText = text.trim().toLowerCase();
             const replyKeys = Object.keys(settings.autoReplies);
@@ -249,9 +282,11 @@ bot.on('message', async (ctx, next) => {
                     else if (target === 'owner_only' && userRole === 'owner') allowed = true;
 
                     if (allowed) {
-                        const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
                         const formattedReply = rule.response
+                            .replace(/{mention}/g, userMention)
                             .replace(/{user}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
                             .replace(/{chat}/g, ctx.chat.title || "Community");
 
                         const keyboard = buildInlineButtons(rule.buttons);
@@ -277,12 +312,22 @@ bot.on('message', async (ctx, next) => {
                 if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/ban` to execute removal.");
 
                 await ctx.banChatMember(targetUser.id).catch(() => {});
-                const banNotice = (settings.banSystem?.msg || "⛔ {user} has been permanently removed from {chat}.")
-                    .replace(/{user}/g, `[${targetUser.first_name}](tg://user?id=${targetUser.id})`)
-                    .replace(/{chat}/g, ctx.chat.title)
-                    .replace(/{admin}/g, ctx.from.first_name);
+                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
+                const tMention = `[${tName}](tg://user?id=${targetUser.id})`;
+                const tUsername = targetUser.username ? `@${targetUser.username}` : tName;
 
-                return ctx.replyWithMarkdown(banNotice);
+                if (!settings.banSystem?.silent && settings.banSystem?.msg) {
+                    const banNotice = settings.banSystem.msg
+                        .replace(/{mention}/g, tMention)
+                        .replace(/{user}/g, tMention)
+                        .replace(/{name}/g, tName)
+                        .replace(/{username}/g, tUsername)
+                        .replace(/{chat}/g, ctx.chat.title)
+                        .replace(/{admin}/g, fullName);
+
+                    return ctx.replyWithMarkdown(banNotice);
+                }
+                return;
             }
 
             if (cmd === '/bio') {
@@ -340,28 +385,31 @@ bot.on('message', async (ctx, next) => {
 
         if (isAdmin) return next();
 
-        const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
-
-        // Chat Lock Check
+        // 1. Chat Lock Check
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // Anti-Bot / Anti-Inline Button Messages Block (New Feature)
+        // 2. Anti-Button Messages Block
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
                 await ctx.deleteMessage().catch(() => {});
-                if (settings.antiButton.msg) {
-                    const response = settings.antiButton.msg.replace(/{user}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                if (!settings.antiButton.silent && settings.antiButton.msg) {
+                    const response = settings.antiButton.msg
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title);
                     ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
             }
         }
 
-        // Emoji Spam Guard (New Feature)
+        // 3. Emoji Spam Guard
         if (settings.emojiSpam?.enabled) {
             const emojiCount = countEmojis(text);
             const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
@@ -370,7 +418,10 @@ bot.on('message', async (ctx, next) => {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.emojiSpam.silent && settings.emojiSpam.msg) {
                     const response = settings.emojiSpam.msg
+                        .replace(/{mention}/g, userMention)
                         .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
                         .replace(/{chat}/g, ctx.chat.title)
                         .replace(/{count}/g, emojiCount)
                         .replace(/{limit}/g, maxAllowed);
@@ -385,30 +436,40 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // Anti-Forward Check
+        // 4. Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             if (!settings.antiForward.silent && settings.antiForward.msg) {
-                const response = settings.antiForward.msg.replace(/{user}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                const response = settings.antiForward.msg
+                    .replace(/{mention}/g, userMention)
+                    .replace(/{user}/g, userMention)
+                    .replace(/{name}/g, fullName)
+                    .replace(/{username}/g, usernameTag)
+                    .replace(/{chat}/g, ctx.chat.title);
                 ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
             }
             return;
         }
 
-        // Anti-Link Check
+        // 5. Anti-Link Check
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.antiLink.silent && settings.antiLink.msg) {
-                    const response = settings.antiLink.msg.replace(/{user}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                    const response = settings.antiLink.msg
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title);
                     ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
             }
         }
 
-        // Bad Words Filter
+        // 6. Bad Words Filter
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -429,14 +490,22 @@ bot.on('message', async (ctx, next) => {
                     if (warns >= warnLimit) {
                         await ctx.banChatMember(userId).catch(() => {});
                         await warnRef.remove();
-                        const banMsg = (settings.banSystem?.msg || "⛔ {user} has been permanently removed from {chat}.")
-                            .replace(/{user}/g, `@${ctx.from.username || ctx.from.first_name}`)
-                            .replace(/{chat}/g, ctx.chat.title);
-                        warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
-                    } else {
-                        const template = settings.badWords.customMsg || "⚠️ {user}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})";
+                        if (!settings.banSystem?.silent) {
+                            const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
+                                .replace(/{mention}/g, `@${ctx.from.username || fullName}`)
+                                .replace(/{user}/g, `@${ctx.from.username || fullName}`)
+                                .replace(/{name}/g, fullName)
+                                .replace(/{username}/g, usernameTag)
+                                .replace(/{chat}/g, ctx.chat.title);
+                            warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
+                        }
+                    } else if (!settings.badWords.silent) {
+                        const template = settings.badWords.customMsg || "⚠️ {mention}, prohibited words used! Warnings: ({warns}/{warn_limit})";
                         const customNotice = template
+                            .replace(/{mention}/g, userMention)
                             .replace(/{user}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
                             .replace(/{chat}/g, ctx.chat.title)
                             .replace(/{warns}/g, warns)
                             .replace(/{warn_limit}/g, warnLimit);
@@ -444,10 +513,15 @@ bot.on('message', async (ctx, next) => {
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
-                    const banMsg = (settings.banSystem?.msg || "⛔ {user} has been permanently removed from {chat}.")
-                        .replace(/{user}/g, userMention)
-                        .replace(/{chat}/g, ctx.chat.title);
-                    warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
+                    if (!settings.banSystem?.silent) {
+                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
+                            .replace(/{mention}/g, userMention)
+                            .replace(/{user}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
+                            .replace(/{chat}/g, ctx.chat.title);
+                        warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
+                    }
                 }
 
                 const deleteSec = parseInt(settings.badWords.autoDeleteSeconds || 0);
@@ -726,7 +800,7 @@ app.post('/api/tg/broadcast', async (req, res) => {
     }
 });
 
-// Individual Section Save
+// Section Save Endpoint
 app.post('/api/tg/save-section', async (req, res) => {
     const { chatId, sectionKey, data } = req.body;
     try {
@@ -747,8 +821,11 @@ app.post('/api/tg/test-welcome', async (req, res) => {
     try {
         const testUser = `[Admin (Test)](tg://user?id=${botId || 0})`;
         const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
-        const formatted = (text || "Welcome {user} to {chat}!")
+        const formatted = (text || "Welcome {mention} to {chat}!")
+            .replace(/{mention}/g, testUser)
             .replace(/{user}/g, testUser)
+            .replace(/{name}/g, "Admin User")
+            .replace(/{username}/g, "@AdminUser")
             .replace(/{chat}/g, chatInfo.title);
 
         const keyboard = buildInlineButtons(buttons);
