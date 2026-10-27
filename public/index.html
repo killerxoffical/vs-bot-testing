@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoseX Guard — Enterprise Telegram Management Cloud</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#EEF2FF',
+                            100: '#E0E7FF',
+                            500: '#6366F1',
+                            600: '#4F46E5',
+                            700: '#4338CA',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Icons & Animation Engines -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Firebase Web SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        body { background-color: #F8FAFC; color: #0F172A; }
+        .light-card {
+            background: #FFFFFF;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            transition: all 0.25s ease;
+        }
+        .light-card:hover {
+            box-shadow: 0 20px 30px -10px rgba(79, 70, 229, 0.08);
+            transform: translateY(-2px);
+        }
+        .frosted-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <!-- NAVBAR -->
+    <header class="frosted-nav sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i data-lucide="shield-check" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-xl tracking-tight text-slate-900 block leading-tight">RoseX<span class="text-brand-600">.</span></span>
+                    <span class="text-[10px] font-bold tracking-wider uppercase text-slate-400">Telegram Cloud Guard</span>
+                </div>
+            </div>
+
+            <div id="navActionArea" class="flex items-center gap-4">
+                <button onclick="openAuthModal()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm">
+                    <i data-lucide="user" class="w-4 h-4"></i>
+                    <span>Sign In</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================================================
+       SECTION 1: LANDING PAGE
+       ========================================================================== -->
+    <div id="landingView">
+        <section class="max-w-7xl mx-auto px-6 pt-12 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div class="lg:col-span-7 space-y-6 text-left">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-600 font-semibold text-xs">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>Next-Gen Telegram Group Management Architecture</span>
+                </div>
+                <h1 class="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
+                    Safeguard Your Communities with <br>
+                    <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">Total Cloud Control</span>
+                </h1>
+                <p class="text-slate-600 text-base md:text-lg max-w-xl font-normal leading-relaxed">
+                    Anti-link shield, bad words filtering, automatic ban systems, and instant chat lock. Eliminate spam without typing complex terminal commands.
+                </p>
+                <div class="pt-2 flex flex-wrap items-center gap-4">
+                    <button onclick="openAuthModal()" class="flex items-center gap-3 px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition">
+                        <span>Get Started Free</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3D Canvas -->
+            <div class="lg:col-span-5 h-[420px] w-full rounded-3xl relative overflow-hidden flex items-center justify-center light-card border-none bg-gradient-to-br from-indigo-50/50 to-white">
+                <canvas id="threeCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                <div class="absolute bottom-4 left-6 text-xs font-semibold text-slate-400 flex items-center gap-2 pointer-events-none">
+                    <i data-lucide="move-3d" class="w-4 h-4"></i>
+                    <span>Interactive 3D Engine Core</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Grid -->
+        <section class="max-w-7xl mx-auto px-6 pb-28">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center mb-6">
+                        <i data-lucide="link-2-off" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Anti-Link Shield</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Instantly detects and purges Telegram, HTTP, and phishing links sent by non-admin members.</p>
+                </div>
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-6">
+                        <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Profanity Engine</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Set custom blacklisted words. Choose automated punishments: silent delete, warn limit, or instant ban.</p>
+                </div>
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
+                        <i data-lucide="lock" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Emergency Chat Lock</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Lock down entire chat conversations in real-time during raids or mass advertisement attacks.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ==========================================================================
+       SECTION 2: DASHBOARD VIEW (AUTHENTICATED)
+       ========================================================================== -->
+    <div id="dashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto px-6 py-10 space-y-10">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+            <div>
+                <h2 class="text-2xl font-extrabold text-slate-900">Control Dashboard</h2>
+                <p class="text-slate-500 text-xs mt-1">Manage connected communities and security policies.</p>
+            </div>
+            <div id="userBadge" class="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm"></div>
+        </div>
+
+        <!-- MTProto Connect Flow -->
+        <div id="tgConnectCard" class="light-card rounded-3xl p-8 border-dashed border-2 border-brand-200 bg-brand-50/20 text-center max-w-xl mx-auto">
+            <div class="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="send" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Link Your Telegram Account</h3>
+            <p class="text-xs text-slate-500 mb-6">Authorize via official MTProto to fetch your admin communities.</p>
+
+            <div class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                <input id="tgPhone" type="text" placeholder="+1234567890" class="flex-1 bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
+                <button onclick="sendTgCode()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs transition flex items-center justify-center gap-2">
+                    <span>Send Code</span>
+                </button>
+            </div>
+
+            <!-- OTP Input -->
+            <div id="otpInputArea" class="hidden mt-4 pt-4 border-t border-slate-200/60 max-w-md mx-auto flex gap-3">
+                <input id="tgOtp" type="text" placeholder="Telegram Login OTP" class="flex-1 bg-white border border-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
+                <button onclick="verifyTgCode()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition">
+                    Verify Code
+                </button>
+            </div>
+        </div>
+
+        <!-- Groups Grid -->
+        <div id="groupsSection" class="hidden space-y-6">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="layout-grid" class="w-5 h-5 text-brand-600"></i>
+                <span>Your Managed Communities</span>
+            </h3>
+            <div id="groupsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+       MODAL 1: AUTHENTICATION MODAL (GOOGLE + EMAIL/PASS)
+       ========================================================================== -->
+    <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-200 relative">
+            <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <h3 class="text-xl font-bold text-slate-900 text-center mb-1">Welcome to RoseX</h3>
+            <p class="text-xs text-slate-500 text-center mb-6">Sign in to manage your Telegram security cloud</p>
+
+            <!-- Google SSO Button -->
+            <button onclick="loginGoogle()" class="w-full flex items-center justify-center gap-3 py-2.5 border border-slate-300 rounded-xl hover:bg-slate-50 font-bold text-xs text-slate-700 transition mb-4">
+                <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                <span>Continue with Google</span>
+            </button>
+
+            <div class="flex items-center my-4">
+                <div class="flex-grow border-t border-slate-200"></div>
+                <span class="px-3 text-[11px] text-slate-400 uppercase font-semibold">or email</span>
+                <div class="flex-grow border-t border-slate-200"></div>
+            </div>
+
+            <!-- Email & Pass Form -->
+            <form onsubmit="handleEmailAuth(event)" class="space-y-3">
+                <input id="authEmail" type="email" required placeholder="name@company.com" class="w-full bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500">
+                <input id="authPassword" type="password" required placeholder="Password (min. 6 characters)" class="w-full bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500">
+                
+                <div class="flex gap-2 pt-2">
+                    <button type="submit" name="action" value="signin" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition">Sign In</button>
+                    <button type="submit" name="action" value="signup" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs transition">Sign Up</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+       MODAL 2: GROUP ADVANCED CONTROL PANEL
+       ========================================================================== -->
+    <div id="groupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
+            
+            <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                        <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalGroupName" class="text-base font-bold text-slate-900 leading-tight">-</h3>
+                        <p id="modalGroupMeta" class="text-[11px] text-slate-500">ID: -</p>
+                    </div>
+                </div>
+                <button onclick="closeGroupModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-8 overflow-y-auto space-y-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Settings Left -->
+                <div class="lg:col-span-7 space-y-4">
+                    <!-- Chat Lock -->
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-900">Lock Chat (Mute Community)</h4>
+                            <p class="text-[11px] text-slate-500">Prohibit regular members from sending messages</p>
+                        </div>
+                        <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                    </div>
+
+                    <!-- Anti-Link -->
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-900">Anti-Link Protection</h4>
+                            <p class="text-[11px] text-slate-500">Silently delete all external links & invites</p>
+                        </div>
+                        <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                    </div>
+
+                    <!-- Anti-Forward -->
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-900">Anti-Forward Protection</h4>
+                            <p class="text-[11px] text-slate-500">Block messages forwarded from external channels</p>
+                        </div>
+                        <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                    </div>
+
+                    <!-- Bad Words -->
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-slate-900">Profanity Blacklist & Action</h4>
+                            <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                        </div>
+                        <input id="badWordsInput" type="text" placeholder="badword1, scam, abusive" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none">
+                        <div class="flex items-center justify-between text-xs font-medium">
+                            <span class="text-slate-500 text-[11px]">Enforcement Action:</span>
+                            <select id="badWordsAction" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                <option value="delete">Delete Message Only</option>
+                                <option value="warn">Delete + Issue Warning</option>
+                                <option value="ban">Instant Permanent Ban</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Live Preview -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-xs font-bold text-slate-900">Welcome Message</h4>
+                            <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                        </div>
+                        <textarea id="welcomeTextInput" rows="3" oninput="updateLivePreview()" placeholder="Welcome {user} to {chat}!" class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs outline-none"></textarea>
+                    </div>
+
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Live Telegram Simulation</span>
+                        <div class="bg-sky-50/60 p-3.5 rounded-2xl border border-sky-100 flex items-start gap-2.5">
+                            <div class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+                                <i data-lucide="bot" class="w-3.5 h-3.5"></i>
+                            </div>
+                            <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1">
+                                <span class="font-bold text-brand-600 block text-[10px]">RoseX Guard</span>
+                                <p id="previewText" class="leading-relaxed text-[11px]">Welcome John Doe to Community!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button onclick="closeGroupModal()" class="px-4 py-2 rounded-xl border border-slate-300 font-semibold text-xs text-slate-700">Cancel</button>
+                <button onclick="saveGroupSettings()" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 font-bold text-xs text-white shadow-md transition">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-200 bg-white py-5">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+            <span>&copy; 2025 RoseX Cloud Ecosystem. All rights reserved.</span>
+            <span class="inline-flex items-center gap-1.5 text-emerald-600 font-bold">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Cloud Engine Operational
+            </span>
+        </div>
+    </footer>
+
+    <!-- CLIENT SCRIPT -->
+    <script>
+        lucide.createIcons();
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkL3ObqERCiDBuyXz4lr3Y7PYxzxt4hqA",
+            authDomain: "vsprotection1.firebaseapp.com",
+            databaseURL: "https://vsprotection1-default-rtdb.firebaseio.com",
+            projectId: "vsprotection1",
+            storageBucket: "vsprotection1.firebasestorage.app",
+            messagingSenderId: "635122514754",
+            appId: "1:635122514754:web:893417281989495d9066db"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const rtdb = firebase.database();
+
+        let currentUser = null;
+        let tgSession = localStorage.getItem('tg_session') || null;
+        let activeGroupId = null;
+        let phoneCodeHash = null;
+
+        // Auth Listener
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('landingView').classList.add('hidden');
+                document.getElementById('dashboardView').classList.remove('hidden');
+                document.getElementById('userBadge').innerHTML = `
+                    <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center font-bold text-[10px] text-slate-700">
+                        ${user.email ? user.email[0].toUpperCase() : 'U'}
+                    </div>
+                    <span class="text-xs font-bold text-slate-800">${user.email}</span>
+                `;
+                document.getElementById('navActionArea').innerHTML = `
+                    <button onclick="auth.signOut()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 font-bold text-xs transition">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span>Sign Out</span>
+                    </button>
+                `;
+                closeAuthModal();
+                lucide.createIcons();
+            } else {
+                document.getElementById('landingView').classList.remove('hidden');
+                document.getElementById('dashboardView').classList.add('hidden');
+                document.getElementById('navActionArea').innerHTML = `
+                    <button onclick="openAuthModal()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm">
+                        <i data-lucide="user" class="w-4 h-4"></i>
+                        <span>Sign In</span>
+                    </button>
+                `;
+                lucide.createIcons();
+            }
+        });
+
+        function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
+        function closeAuthModal() { document.getElementById('authModal').classList.add('hidden'); }
+
+        function loginGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(e => Swal.fire('Error', e.message, 'error'));
+        }
+
+        async function handleEmailAuth(e) {
+            e.preventDefault();
+            const action = e.submitter.value;
+            const email = document.getElementById('authEmail').value;
+            const pass = document.getElementById('authPassword').value;
+
+            try {
+                if (action === 'signup') {
+                    await auth.createUserWithEmailAndPassword(email, pass);
+                    Swal.fire('Success', 'Account created successfully!', 'success');
+                } else {
+                    await auth.signInWithEmailAndPassword(email, pass);
+                }
+            } catch (err) {
+                Swal.fire('Authentication Failed', err.message, 'error');
+            }
+        }
+
+        // Telegram Auth (MTProto)
+        async function sendTgCode() {
+            const phone = document.getElementById('tgPhone').value.trim();
+            if (!phone) return Swal.fire('Required', 'Please enter your phone number with country code.', 'warning');
+
+            Swal.showLoading();
+            try {
+                const res = await fetch('/api/tg/send-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    phoneCodeHash = data.phoneCodeHash;
+                    document.getElementById('otpInputArea').classList.remove('hidden');
+                    Swal.fire('Code Sent', 'Please check your Telegram app for the verification code.', 'success');
+                } else {
+                    Swal.fire('Error', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
+        }
+
+        async function verifyTgCode() {
+            const phone = document.getElementById('tgPhone').value.trim();
+            const code = document.getElementById('tgOtp').value.trim();
+
+            Swal.showLoading();
+            try {
+                const res = await fetch('/api/tg/verify-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone, code, phoneCodeHash })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    tgSession = data.session;
+                    localStorage.setItem('tg_session', tgSession);
+                    document.getElementById('tgConnectCard').classList.add('hidden');
+                    document.getElementById('groupsSection').classList.remove('hidden');
+                    renderGroups(data.groups);
+                } else {
+                    Swal.fire('Verification Failed', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
+        }
+
+        function renderGroups(groups) {
+            const grid = document.getElementById('groupsGrid');
+            grid.innerHTML = '';
+            groups.forEach(g => {
+                const card = document.createElement('div');
+                card.className = "light-card p-6 rounded-3xl flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-brand-600 flex items-center justify-center font-bold">
+                                <i data-lucide="users" class="w-5 h-5"></i>
+                            </div>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">ID: ${g.id}</span>
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-900 mb-1">${g.title}</h4>
+                        <p class="text-xs text-slate-500 mb-6">${g.membersCount} active members</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="connectBot('${g.id}')" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition">Connect Bot</button>
+                        <button onclick="openGroupSettings('${g.id}', '${g.title.replace(/'/g, "\\'")}')" class="px-3 py-2.5 border border-slate-300 hover:bg-slate-100 rounded-xl text-slate-700 text-xs">
+                            <i data-lucide="sliders" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        async function connectBot(chatId) {
+            Swal.fire({
+                title: 'Deploying Bot...',
+                text: 'Promoting bot to Admin role via Telegram API...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await fetch('/api/tg/connect-group', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ session: tgSession, chatId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('Connected!', data.message, 'success');
+                } else {
+                    Swal.fire('Error', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
+        }
+
+        async function openGroupSettings(chatId, title) {
+            activeGroupId = chatId;
+            document.getElementById('modalGroupName').innerText = title;
+            document.getElementById('modalGroupMeta').innerText = `ID: ${chatId}`;
+
+            const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
+            const data = snap.val() || {};
+
+            document.getElementById('toggleChatLock').checked = !!data.chatLocked;
+            document.getElementById('toggleAntiLink').checked = !!data.antiLink?.enabled;
+            document.getElementById('toggleAntiForward').checked = !!data.antiForward?.enabled;
+            document.getElementById('toggleBadWords').checked = !!data.badWords?.enabled;
+            document.getElementById('badWordsInput').value = (data.badWords?.words || []).join(', ');
+            document.getElementById('badWordsAction').value = data.badWords?.action || 'delete';
+            document.getElementById('toggleWelcome').checked = !!data.welcome?.enabled;
+            document.getElementById('welcomeTextInput').value = data.welcome?.text || "Welcome {user} to {chat}!";
+
+            updateLivePreview();
+            document.getElementById('groupModal').classList.remove('hidden');
+        }
+
+        function closeGroupModal() { document.getElementById('groupModal').classList.add('hidden'); }
+
+        function updateLivePreview() {
+            const raw = document.getElementById('welcomeTextInput').value;
+            document.getElementById('previewText').innerText = raw
+                .replace('{user}', 'John Doe')
+                .replace('{chat}', document.getElementById('modalGroupName').innerText);
+        }
+
+        async function saveGroupSettings() {
+            if (!activeGroupId) return;
+            const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
+
+            const payload = {
+                chatLocked: document.getElementById('toggleChatLock').checked,
+                antiLink: { enabled: document.getElementById('toggleAntiLink').checked },
+                antiForward: { enabled: document.getElementById('toggleAntiForward').checked },
+                badWords: {
+                    enabled: document.getElementById('toggleBadWords').checked,
+                    words: words,
+                    action: document.getElementById('badWordsAction').value
+                },
+                welcome: {
+                    enabled: document.getElementById('toggleWelcome').checked,
+                    text: document.getElementById('welcomeTextInput').value
+                }
+            };
+
+            await rtdb.ref(`groups/${activeGroupId}/settings`).set(payload);
+            Swal.fire('Saved!', 'Group configuration synchronized in real-time.', 'success');
+            closeGroupModal();
+        }
+
+        // 3D Canvas
+        (function() {
+            const canvas = document.getElementById('threeCanvas');
+            if (!canvas) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const geometry = new THREE.TorusKnotGeometry(9, 2.5, 120, 24);
+            const material = new THREE.MeshStandardMaterial({ color: 0x4F46E5, roughness: 0.2, metalness: 0.8, wireframe: true });
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1.2);
+            light.position.set(10, 20, 15);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+            camera.position.z = 28;
+
+            let mouseX = 0, mouseY = 0;
+            window.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX / window.innerWidth) - 0.5;
+                mouseY = (e.clientY / window.innerHeight) - 0.5;
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                mesh.rotation.x += 0.005 + mouseY * 0.03;
+                mesh.rotation.y += 0.008 + mouseX * 0.03;
+                renderer.render(scene, camera);
+            }
+            animate();
+        })();
+    </script>
+</body>
+</html>
