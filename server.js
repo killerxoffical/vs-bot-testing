@@ -26,7 +26,6 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
-// Environment & Keys
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFezVtaNE6D0QF0ss26k2SHj5tW7hCiSN8";
 const BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
@@ -40,7 +39,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
-app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Active"));
+app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
 // =============================================================================
 // TELEGRAF BOT ENGINE
@@ -61,12 +60,13 @@ async function getChatSettings(chatId) {
     try {
         const snap = await db.ref(`groups/${chatId}/settings`).once('value');
         const settings = snap.val() || {
-            welcome: { enabled: true, text: "Welcome {user} to {chat}!" },
-            antiLink: { enabled: false },
-            antiForward: { enabled: false },
+            welcome: { enabled: true, text: "👋 Welcome {user} to {chat}! Enjoy your stay and follow the rules." },
+            antiLink: { enabled: false, silent: false, msg: "⚠️ {user}, posting external links is prohibited here!" },
+            antiForward: { enabled: false, silent: false, msg: "⚠️ {user}, forwarded messages from channels are not allowed!" },
             badWords: { enabled: false, words: [], action: 'delete' },
             warnLimit: 3,
-            chatLocked: false
+            chatLocked: false,
+            lockMsg: "🔒 *The chat has been locked by an administrator.*"
         };
         chatSettingsCache[chatId] = settings;
         return settings;
@@ -89,10 +89,11 @@ bot.on('new_chat_members', async (ctx) => {
 
         for (const member of ctx.message.new_chat_members) {
             if (member.is_bot) continue;
+            const userMention = `[${member.first_name}](tg://user?id=${member.id})`;
             const msg = (settings.welcome.text || "Welcome {user} to {chat}!")
-                .replace(/{user}/g, member.first_name || "Member")
+                .replace(/{user}/g, userMention)
                 .replace(/{chat}/g, ctx.chat.title || "Community");
-            ctx.reply(msg).catch(() => {});
+            ctx.replyWithMarkdown(msg).catch(() => {});
         }
     } catch (err) {}
 });
@@ -107,6 +108,7 @@ bot.on('message', async (ctx, next) => {
         const text = ctx.message.text || ctx.message.caption || "";
         const settings = await getChatSettings(chatId);
 
+        // Bypass for Group Administrators
         try {
             const member = await ctx.getChatMember(userId);
             if (['creator', 'administrator'].includes(member.status)) return next();
@@ -114,24 +116,42 @@ bot.on('message', async (ctx, next) => {
             return next();
         }
 
+        const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
+
+        // 1. Chat Lock Enforcement
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
+        // 2. Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
+            if (!settings.antiForward.silent && settings.antiForward.msg) {
+                const response = settings.antiForward.msg
+                    .replace(/{user}/g, userMention)
+                    .replace(/{chat}/g, ctx.chat.title);
+                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 6000));
+            }
             return;
         }
 
+        // 3. Anti-Link Check
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
                 await ctx.deleteMessage().catch(() => {});
+                if (!settings.antiLink.silent && settings.antiLink.msg) {
+                    const response = settings.antiLink.msg
+                        .replace(/{user}/g, userMention)
+                        .replace(/{chat}/g, ctx.chat.title);
+                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 6000));
+                }
                 return;
             }
         }
 
+        // 4. Bad Words Filter
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -152,7 +172,7 @@ bot.on('message', async (ctx, next) => {
                         await warnRef.remove();
                         ctx.reply(`🚨 User @${ctx.from.username || ctx.from.first_name} has been banned for reaching warning limit!`);
                     } else {
-                        ctx.reply(`⚠️ Warning [${ctx.from.first_name}]! Blacklisted words detected. (${warns}/${settings.warnLimit || 3})`);
+                        ctx.replyWithMarkdown(`⚠️ Warning ${userMention}! Blacklisted words detected. (${warns}/${settings.warnLimit || 3})`);
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
@@ -165,23 +185,19 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (100% ACCURATE REAL-TIME BOT ADD & STATUS CHECK)
+// GRAMJS MTPROTO & ADVANCED COMMUNITY MANAGEMENT
 // =============================================================================
 const tempAuthClients = {};
 
-// Helper: Extract Communities & Clean Ghost/Migrated Chats + Live Bot Verification
 async function extractCommunities(client) {
     const dialogs = await client.getDialogs({ limit: 100 });
     const groups = [];
     const channels = [];
 
-    // 1. Filter out all obsolete / ghost / deactivated chats
     const validDialogs = dialogs.filter(d => {
         if (!d.isGroup && !d.isChannel) return false;
         const e = d.entity;
         if (!e) return false;
-        
-        // Remove migrated, deactivated, left or forbidden chats
         if (e.deactivated || e.migratedTo || e.left || e.kicked) return false;
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') return false;
         if (d.isGroup && !d.isChannel && (!e.participantsCount || e.participantsCount <= 0)) return false;
@@ -191,7 +207,6 @@ async function extractCommunities(client) {
         return isCreator || isAdmin;
     });
 
-    // 2. Process each valid community and check Live Bot Admin Status
     for (const d of validDialogs) {
         const entity = d.entity;
         const isCreator = entity.creator === true;
@@ -206,14 +221,11 @@ async function extractCommunities(client) {
                     photoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
                 }
             }
-        } catch (e) {
-            photoBase64 = null;
-        }
+        } catch (e) {}
 
         const isBroadcastChannel = d.isChannel && !entity.megagroup;
         const chatIdStr = d.id.toString();
 
-        // LIVE BOT API CHECK (Zero guessing! Asks Telegram directly)
         let isBotConnected = false;
         if (botId) {
             try {
@@ -221,9 +233,7 @@ async function extractCommunities(client) {
                 if (botMember && ['administrator', 'creator'].includes(botMember.status)) {
                     isBotConnected = true;
                 }
-            } catch (err) {
-                isBotConnected = false;
-            }
+            } catch (err) {}
         }
 
         const itemData = {
@@ -247,7 +257,7 @@ async function extractCommunities(client) {
     return { groups, channels };
 }
 
-// 1. Send OTP
+// Telegram Auth Endpoints
 app.post('/api/tg/send-code', async (req, res) => {
     const { phone } = req.body;
     try {
@@ -261,7 +271,6 @@ app.post('/api/tg/send-code', async (req, res) => {
     }
 });
 
-// 2. Verify OTP
 app.post('/api/tg/verify-code', async (req, res) => {
     const { phone, code, phoneCodeHash, password } = req.body;
     try {
@@ -300,7 +309,6 @@ app.post('/api/tg/verify-code', async (req, res) => {
     }
 });
 
-// 3. Re-Fetch Communities
 app.post('/api/tg/fetch-communities', async (req, res) => {
     const { session } = req.body;
     if (!session) return res.status(400).json({ error: "Session missing" });
@@ -314,7 +322,7 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// 4. Auto-Add Bot to Group/Channel with Exact Right Schema
+// Auto-Add Bot to Group/Channel
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
@@ -327,9 +335,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             String(d.entity?.id) === chatId.replace('-100', '').replace('-', '')
         );
 
-        if (!targetDialog) {
-            throw new Error("Community not found in dialogs. Please click 'Sync Communities'.");
-        }
+        if (!targetDialog) throw new Error("Community not found in dialogs.");
 
         const botEntity = await client.getInputEntity(BOT_USERNAME);
         const entity = targetDialog.entity;
@@ -341,14 +347,9 @@ app.post('/api/tg/connect-group', async (req, res) => {
         if (isChannel) {
             channelPeer = await client.getInputEntity(entity);
         } else {
-            // Basic chat migration to supergroup
             const basicChatId = entity.id;
             try {
-                await client.invoke(new Api.messages.AddChatUser({
-                    chatId: basicChatId,
-                    userId: botEntity,
-                    fwdLimit: 0
-                }));
+                await client.invoke(new Api.messages.AddChatUser({ chatId: basicChatId, userId: botEntity, fwdLimit: 0 }));
             } catch (e) {}
 
             try {
@@ -365,19 +366,12 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }
         }
 
-        if (!channelPeer) {
-            throw new Error("Unable to resolve channel peer for admin appointment.");
-        }
+        if (!channelPeer) throw new Error("Unable to resolve channel peer for admin appointment.");
 
-        // Invite Bot (if needed)
         try {
-            await client.invoke(new Api.channels.InviteToChannel({
-                channel: channelPeer,
-                users: [botEntity]
-            }));
+            await client.invoke(new Api.channels.InviteToChannel({ channel: channelPeer, users: [botEntity] }));
         } catch (e) {}
 
-        // Set EXACT Rights: Megagroups CANNOT have postMessages/editMessages (causes ADMIN_RIGHTS_INVALID)
         let adminRights;
         if (isBroadcast) {
             adminRights = new Api.ChatAdminRights({
@@ -390,7 +384,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 manageCall: true
             });
         } else {
-            // Supergroup / Megagroup rights
             adminRights = new Api.ChatAdminRights({
                 changeInfo: true,
                 deleteMessages: true,
@@ -415,6 +408,76 @@ app.post('/api/tg/connect-group', async (req, res) => {
     } catch (e) {
         console.error("Connect Group Error:", e);
         res.status(500).json({ error: e.message || "Failed to add bot as admin" });
+    }
+});
+
+// =============================================================================
+// NEW FEATURES: TEST WELCOME, LOCK BROADCAST & FETCH COMMUNITY MEMBERS
+// =============================================================================
+
+// 1. Send Live Test Welcome Message to Group
+app.post('/api/tg/test-welcome', async (req, res) => {
+    const { chatId, text } = req.body;
+    try {
+        const testUser = `[Admin (Test)](tg://user?id=${botId || 0})`;
+        const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
+        const formatted = (text || "Welcome {user} to {chat}!")
+            .replace(/{user}/g, testUser)
+            .replace(/{chat}/g, chatInfo.title);
+
+        await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, { parse_mode: 'Markdown' });
+        res.json({ success: true, message: "Test welcome message sent to your group successfully!" });
+    } catch (e) {
+        res.status(500).json({ error: e.message || "Bot cannot send message to group. Make sure it is an administrator." });
+    }
+});
+
+// 2. Announce Chat Lock / Unlock in Group
+app.post('/api/tg/announce-lock', async (req, res) => {
+    const { chatId, locked, message } = req.body;
+    try {
+        const defaultMsg = locked 
+            ? "🔒 *The chat has been locked by an administrator. Members cannot send messages.*" 
+            : "🔓 *The chat has been unlocked. Members can now send messages.*";
+        const broadcast = message && message.trim() ? message.trim() : defaultMsg;
+
+        await bot.telegram.sendMessage(chatId, broadcast, { parse_mode: 'Markdown' });
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 3. Fetch Real Community Members (Administrators & Participants)
+app.post('/api/tg/get-members', async (req, res) => {
+    const { session, chatId } = req.body;
+    try {
+        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
+        await client.connect();
+
+        const participants = await client.getParticipants(chatId, { limit: 50 });
+        const membersList = participants.map(p => ({
+            id: p.id.toString(),
+            name: `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Telegram User',
+            username: p.username ? `@${p.username}` : 'No username',
+            isBot: !!p.bot
+        }));
+
+        res.json({ success: true, members: membersList });
+    } catch (e) {
+        // Fallback to Telegram Bot API Administrators if MTProto participants restricted
+        try {
+            const admins = await bot.telegram.getChatAdministrators(chatId);
+            const fallbackList = admins.map(a => ({
+                id: a.user.id.toString(),
+                name: `${a.user.first_name || ''} ${a.user.last_name || ''}`.trim() || 'Admin',
+                username: a.user.username ? `@${a.user.username}` : 'No username',
+                isBot: !!a.user.is_bot
+            }));
+            res.json({ success: true, members: fallbackList });
+        } catch (botErr) {
+            res.status(500).json({ error: e.message });
+        }
     }
 });
 
