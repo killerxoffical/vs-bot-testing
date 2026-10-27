@@ -90,7 +90,7 @@
         </div>
     </div>
 
-    <!-- MAIN NAVBAR (COMPACT SLEEK HEIGHT: h-16, AUTO-HIDES IN GROUP PANEL) -->
+    <!-- MAIN NAVBAR -->
     <header id="mainTopNavbar" class="frosted-nav sticky top-0 z-40 shrink-0 h-16">
         <div class="w-full px-5 md:px-8 h-full flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -145,10 +145,10 @@
         </section>
     </div>
 
-    <!-- SECTION 2: MAIN DASHBOARD VIEW (FULL SCREEN WORKSPACE) -->
+    <!-- SECTION 2: MAIN DASHBOARD VIEW -->
     <div id="dashboardView" class="hidden flex-1 w-full h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
         
-        <!-- SUB-VIEW A: COMMUNITIES LIST (WITH COMPACT TOP HEADER) -->
+        <!-- SUB-VIEW A: COMMUNITIES LIST -->
         <div id="communitiesOverviewView" class="flex-1 w-full overflow-y-auto pane-scroll px-6 md:px-10 py-6 space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                 <div>
@@ -227,10 +227,10 @@
             </div>
         </div>
 
-        <!-- SUB-VIEW B: FULL GROUP PANEL (TAKES OVER FULL SCREEN AS HEADER!) -->
+        <!-- SUB-VIEW B: FULL GROUP PANEL -->
         <div id="dedicatedGroupPanelView" class="hidden flex-1 w-full h-full overflow-hidden flex flex-col">
             
-            <!-- GROUP PANEL TOP HEADER (BECOMES THE ONLY TOP BAR) -->
+            <!-- GROUP PANEL TOP HEADER -->
             <div class="frosted-nav px-5 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-30 shadow-sm">
                 <div class="flex items-center gap-3.5">
                     <button onclick="backToCommunities()" class="w-9 h-9 rounded-xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition shrink-0 shadow-sm">
@@ -254,7 +254,7 @@
                 </div>
             </div>
 
-            <!-- Workspace Body (Sidebar Fixed + Middle Pane Scrollable) -->
+            <!-- Workspace Body -->
             <div class="flex-1 w-full flex flex-col lg:flex-row overflow-hidden">
                 
                 <!-- Fixed Left Sidebar Tabs -->
@@ -281,7 +281,7 @@
                     </button>
                     <button onclick="switchTab('welcome')" id="tabBtn-welcome" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="party-popper" class="w-4 h-4"></i>
-                        <span>Welcome System</span>
+                        <span>Welcome & Farewell</span>
                     </button>
                     <button onclick="switchTab('commands')" id="tabBtn-commands" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
@@ -313,10 +313,15 @@
                                         </div>
                                         <div>
                                             <h4 class="text-sm font-bold text-slate-900">Emoji Spam Protection</h4>
-                                            <p class="text-xs text-slate-500">Purges messages with excessive emojis (e.g. 0 allows no emojis)</p>
+                                            <p class="text-xs text-slate-500">Purges messages with excessive emojis (0 allows no emojis)</p>
                                         </div>
                                     </div>
                                     <input type="checkbox" id="toggleEmojiSpam" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                                </div>
+
+                                <div class="flex items-center gap-2 pt-1">
+                                    <input type="checkbox" id="emojiSpamSilent" onchange="updateEmojiPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    <label for="emojiSpamSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without sending warning)</label>
                                 </div>
 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -337,8 +342,23 @@
                                 </div>
 
                                 <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message (Leave blank for silent delete):</label>
-                                    <textarea id="emojiWarningMsg" rows="2" placeholder="⚠️ {user}, excessive emojis are prohibited in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notification Message:</label>
+                                    <textarea id="emojiWarningMsg" rows="2" oninput="updateEmojiPreview()" placeholder="⚠️ {mention}, excessive emojis are prohibited in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <div class="flex flex-wrap gap-1 mt-1.5">
+                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
+                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
+                                    </div>
+                                </div>
+
+                                <!-- REAL TELEGRAM BUBBLE PREVIEW -->
+                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                        <p id="emojiPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, excessive emojis are prohibited in Community!</p>
+                                    </div>
                                 </div>
 
                                 <div class="flex justify-end">
@@ -346,7 +366,7 @@
                                 </div>
                             </div>
 
-                            <!-- 2. Anti-Button Spammer Messages -->
+                            <!-- 2. Anti-Button Messages Block -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -360,10 +380,30 @@
                                     </div>
                                     <input type="checkbox" id="toggleAntiButton" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
+
+                                <div class="flex items-center gap-2 pt-1">
+                                    <input type="checkbox" id="antiButtonSilent" onchange="updateAntiButtonPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    <label for="antiButtonSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
+                                </div>
+
                                 <div>
                                     <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message:</label>
-                                    <textarea id="antiButtonMsg" rows="2" placeholder="⚠️ {user}, messages with embedded url buttons are restricted!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <textarea id="antiButtonMsg" rows="2" oninput="updateAntiButtonPreview()" placeholder="⚠️ {mention}, messages with embedded url buttons are restricted!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <div class="flex flex-wrap gap-1 mt-1.5">
+                                        <button type="button" onclick="insertTag('antiButtonMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                        <button type="button" onclick="insertTag('antiButtonMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('antiButtonMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
+                                    </div>
                                 </div>
+
+                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                        <p id="antiButtonPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, messages with embedded url buttons are restricted!</p>
+                                    </div>
+                                </div>
+
                                 <div class="flex justify-end">
                                     <button type="button" onclick="saveAntiButtonSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Button Policy</button>
                                 </div>
@@ -406,9 +446,12 @@
                                     <textarea id="chatLockMsg" rows="2" oninput="updateChatLockPreview()" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                 </div>
 
-                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Live Output Preview:</span>
-                                    <p id="chatLockPreviewText" class="text-xs text-slate-700 italic">🔒 This conversation has been temporarily muted by community administrators.</p>
+                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                        <p id="chatLockPreviewText" class="leading-relaxed text-xs">🔒 This conversation has been temporarily muted by community administrators.</p>
+                                    </div>
                                 </div>
 
                                 <div class="flex justify-end gap-2">
@@ -436,22 +479,27 @@
                                 </div>
 
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="antiLinkSilent" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                    <label for="antiLinkSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Delete without sending warning message)</label>
+                                    <input type="checkbox" id="antiLinkSilent" onchange="updateAntiLinkPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    <label for="antiLinkSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
                                 </div>
 
                                 <div>
                                     <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notification Message:</label>
-                                    <textarea id="antiLinkMsg" rows="2" oninput="updateAntiLinkPreview()" placeholder="⚠️ {user}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <textarea id="antiLinkMsg" rows="2" oninput="updateAntiLinkPreview()" placeholder="⚠️ {mention}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                     <div class="flex flex-wrap gap-1 mt-1.5">
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{user}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {user}</button>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
                                     </div>
                                 </div>
 
-                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Live Output Preview:</span>
-                                    <p id="antiLinkPreviewText" class="text-xs text-slate-700 italic">⚠️ John Doe, external links are restricted in Community!</p>
+                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                        <p id="antiLinkPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, external links are restricted in Community!</p>
+                                    </div>
                                 </div>
 
                                 <div class="flex justify-end">
@@ -475,22 +523,27 @@
                                 </div>
 
                                 <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="antiForwardSilent" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                    <label for="antiForwardSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Delete without sending warning)</label>
+                                    <input type="checkbox" id="antiForwardSilent" onchange="updateAntiForwardPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    <label for="antiForwardSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
                                 </div>
 
                                 <div>
                                     <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notification Message:</label>
-                                    <textarea id="antiForwardMsg" rows="2" oninput="updateAntiForwardPreview()" placeholder="⚠️ {user}, forwarded messages are not permitted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <textarea id="antiForwardMsg" rows="2" oninput="updateAntiForwardPreview()" placeholder="⚠️ {mention}, forwarded messages are not permitted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                     <div class="flex flex-wrap gap-1 mt-1.5">
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{user}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {user}</button>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
+                                        <button type="button" onclick="insertTag('antiForwardMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                        <button type="button" onclick="insertTag('antiForwardMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('antiForwardMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
+                                        <button type="button" onclick="insertTag('antiForwardMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
                                     </div>
                                 </div>
 
-                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Live Output Preview:</span>
-                                    <p id="antiForwardPreviewText" class="text-xs text-slate-700 italic">⚠️ John Doe, forwarded messages are not permitted in Community!</p>
+                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                        <p id="antiForwardPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, forwarded messages are not permitted in Community!</p>
+                                    </div>
                                 </div>
 
                                 <div class="flex justify-end">
@@ -524,7 +577,6 @@
                                 <textarea id="broadcastText" rows="3" oninput="updateBroadcastPreview()" placeholder="📢 Attention Members! We have an important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                             </div>
 
-                            <!-- Dynamic Buttons for Broadcast -->
                             <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -539,13 +591,10 @@
                                 <div id="broadcastButtonsList" class="space-y-2 pt-1"></div>
                             </div>
 
-                            <!-- Live Broadcast Simulation Preview -->
                             <div class="space-y-1.5 pt-2 border-t border-slate-100">
-                                <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Live Telegram Bubble Preview:</span>
+                                <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Live Broadcast Preview (Telegram Bubble):</span>
                                 <div class="bg-sky-50/60 p-3.5 rounded-2xl border border-sky-100 flex items-start gap-2.5">
-                                    <div class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                                        <i data-lucide="bot" class="w-3.5 h-3.5"></i>
-                                    </div>
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
                                     <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-2 max-w-[90%]">
                                         <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
                                         <div id="broadcastPreviewImgWrap" class="hidden rounded-lg overflow-hidden max-h-40 border border-slate-100">
@@ -582,20 +631,29 @@
                                 <input type="checkbox" id="toggleBanSystem" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
+                            <div class="flex items-center gap-2 pt-1">
+                                <input type="checkbox" id="banSystemSilent" onchange="updateBanPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                <label for="banSystemSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Ban without sending message in group)</label>
+                            </div>
+
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Ban Notification Content:</label>
-                                <textarea id="banSystemMsg" rows="3" oninput="updateBanPreview()" placeholder="⛔ {user} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                
+                                <textarea id="banSystemMsg" rows="3" oninput="updateBanPreview()" placeholder="⛔ {name} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                 <div class="flex flex-wrap gap-1 mt-1.5">
-                                    <button type="button" onclick="insertTag('banSystemMsg', '{user}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {user}</button>
+                                    <button type="button" onclick="insertTag('banSystemMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                    <button type="button" onclick="insertTag('banSystemMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('banSystemMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
                                     <button type="button" onclick="insertTag('banSystemMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
                                     <button type="button" onclick="insertTag('banSystemMsg', '{admin}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {admin}</button>
                                 </div>
                             </div>
 
-                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Live Output Preview:</span>
-                                <p id="banPreviewText" class="text-xs text-slate-700 italic">⛔ John Doe has been permanently removed from Community.</p>
+                            <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                    <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                    <p id="banPreviewText" class="leading-relaxed text-xs">⛔ John Doe has been permanently removed from Community.</p>
+                                </div>
                             </div>
 
                             <div class="flex justify-end">
@@ -641,10 +699,14 @@
                                 </div>
                                 <div>
                                     <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot's Response Message</label>
-                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {user}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
+                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
+                                    </div>
                                 </div>
 
-                                <!-- Dynamic Buttons for Auto Reply -->
                                 <div class="pt-1">
                                     <div class="flex items-center justify-between mb-1.5">
                                         <span class="text-[10px] font-bold text-slate-600 uppercase">Attach URL Buttons (Optional)</span>
@@ -683,6 +745,11 @@
                                 <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
+                            <div class="flex items-center gap-2 pt-1">
+                                <input type="checkbox" id="badWordsSilent" onchange="updateBadWordsPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                <label for="badWordsSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
+                            </div>
+
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Blacklisted Words (Comma separated):</label>
                                 <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive, hack" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
@@ -710,17 +777,21 @@
 
                             <div>
                                 <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Custom Warning Notification:</label>
-                                <textarea id="badWordsCustomMsg" rows="2" oninput="updateBadWordsPreview()" placeholder="⚠️ {user}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                <textarea id="badWordsCustomMsg" rows="2" oninput="updateBadWordsPreview()" placeholder="⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                 <div class="flex flex-wrap gap-1 mt-1.5">
-                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{user}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {user}</button>
+                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
                                     <button type="button" onclick="insertTag('badWordsCustomMsg', '{warns}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {warns}</button>
                                     <button type="button" onclick="insertTag('badWordsCustomMsg', '{warn_limit}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {warn_limit}</button>
                                 </div>
                             </div>
 
-                            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Live Output Preview:</span>
-                                <p id="badWordsPreviewText" class="text-xs text-slate-700 italic">⚠️ John Doe, inappropriate language is prohibited! Warnings: (1/3)</p>
+                            <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                    <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                    <p id="badWordsPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, inappropriate language is prohibited! Warnings: (1/3)</p>
+                                </div>
                             </div>
 
                             <div class="flex justify-end">
@@ -729,8 +800,10 @@
                         </div>
                     </div>
 
-                    <!-- TAB 6: WELCOME SYSTEM -->
+                    <!-- TAB 6: WELCOME & FAREWELL (GOODBYE) SYSTEM -->
                     <div id="tabContent-welcome" class="hidden space-y-6 max-w-5xl">
+                        
+                        <!-- 1. WELCOME GREETING -->
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div class="flex items-center gap-2.5">
@@ -739,7 +812,7 @@
                                     </div>
                                     <div>
                                         <h3 class="text-base font-bold text-slate-900">Rich Welcome Media & Greetings</h3>
-                                        <p class="text-xs text-slate-500">Configure welcome image banners, rich text, interactive URL buttons & auto-deletion</p>
+                                        <p class="text-xs text-slate-500">Greet newly joined members automatically with photos, buttons & timers</p>
                                     </div>
                                 </div>
                                 <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
@@ -754,7 +827,9 @@
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Text Message:</label>
                                 <textarea id="welcomeTextInput" rows="3" oninput="updateLivePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                 <div class="flex flex-wrap gap-1 mt-1.5">
-                                    <button type="button" onclick="insertTag('welcomeTextInput', '{user}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {user}</button>
+                                    <button type="button" onclick="insertTag('welcomeTextInput', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                    <button type="button" onclick="insertTag('welcomeTextInput', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('welcomeTextInput', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
                                     <button type="button" onclick="insertTag('welcomeTextInput', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
                                 </div>
                             </div>
@@ -786,13 +861,10 @@
                                 </select>
                             </div>
 
-                            <!-- Live Simulation -->
                             <div class="space-y-1.5 pt-2 border-t border-slate-100">
                                 <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Live Web Simulator:</span>
                                 <div class="bg-sky-50/60 p-3.5 rounded-2xl border border-sky-100 flex items-start gap-2.5">
-                                    <div class="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-                                        <i data-lucide="bot" class="w-3.5 h-3.5"></i>
-                                    </div>
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
                                     <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-2 max-w-[90%]">
                                         <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
                                         <div id="previewImageWrapper" class="hidden rounded-lg overflow-hidden max-h-40 border border-slate-100">
@@ -812,6 +884,56 @@
                                 <button type="button" onclick="saveWelcomeSection()" class="w-full sm:w-auto px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Welcome Policy</button>
                             </div>
                         </div>
+
+                        <!-- 2. FAREWELL / LEAVE GREETING (GOODBYE) -->
+                        <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                                        <i data-lucide="hand" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-slate-900">Community Farewell (Leave Message)</h3>
+                                        <p class="text-xs text-slate-500">Send an automatic departure notice when a member exits the group</p>
+                                    </div>
+                                </div>
+                                <input type="checkbox" id="toggleGoodbye" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Departure Message Body:</label>
+                                <textarea id="goodbyeTextInput" rows="2" oninput="updateGoodbyePreview()" placeholder="👋 Goodbye {mention}! We hope to see you again soon in {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                <div class="flex flex-wrap gap-1 mt-1.5">
+                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
+                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-700">Auto-Delete Farewell Message:</span>
+                                <select id="goodbyeAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 outline-none">
+                                    <option value="0">Never Delete</option>
+                                    <option value="5">5 Seconds</option>
+                                    <option value="10" selected>10 Seconds</option>
+                                    <option value="30">30 Seconds</option>
+                                </select>
+                            </div>
+
+                            <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                    <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                    <p id="goodbyePreviewText" class="leading-relaxed text-xs">👋 Goodbye John Doe! We hope to see you again soon in Community.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveGoodbyeSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Farewell Policy</button>
+                            </div>
+                        </div>
+
                     </div>
 
                     <!-- TAB 7: SLASH COMMANDS -->
@@ -827,7 +949,6 @@
                                 </div>
                             </div>
 
-                            <!-- Built-In /bio Command Box -->
                             <div class="p-4 rounded-xl bg-brand-50/50 border border-brand-100 space-y-2">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
@@ -845,7 +966,6 @@
                                 </div>
                             </div>
 
-                            <!-- Add New Custom Slash Command -->
                             <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <h4 class="text-xs font-bold text-slate-900">Create New Custom Slash Command</h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
@@ -873,7 +993,7 @@
                                 </div>
                                 <div>
                                     <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Command Response Text</label>
-                                    <textarea id="newCmdResponse" rows="2" placeholder="Hi {user}, here are our community rules: ..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
+                                    <textarea id="newCmdResponse" rows="2" placeholder="Hi {name}, here are our community rules: ..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
                             </div>
 
@@ -922,7 +1042,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 9: LEFT MEMBERS LOG (SMOOTH EMPTY STATE) -->
+                    <!-- TAB 9: LEFT MEMBERS LOG -->
                     <div id="tabContent-leftmembers" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -935,7 +1055,7 @@
                                         <p class="text-xs text-slate-500">Real-time log of users who exited the group</p>
                                     </div>
                                 </div>
-                                <button onclick="loadLeftMembers()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                                <button onclick="loadLeftMembers()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
                                     <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                                     <span>Refresh Logs</span>
                                 </button>
@@ -1031,6 +1151,9 @@
             updateAntiForwardPreview();
             updateBanPreview();
             updateBadWordsPreview();
+            updateEmojiPreview();
+            updateAntiButtonPreview();
+            updateGoodbyePreview();
         }
 
         function hideSplashScreen() {
@@ -1041,40 +1164,106 @@
             }
         }
 
-        // Live Preview Updaters
+        // =====================================================================
+        // LIVE PREVIEW UPDATERS WITH REALISTIC BOT BUBBLE
+        // =====================================================================
         function updateChatLockPreview() {
             const val = document.getElementById('chatLockMsg').value || "🔒 This conversation has been temporarily muted by community administrators.";
             document.getElementById('chatLockPreviewText').innerText = val;
         }
 
         function updateAntiLinkPreview() {
-            const val = document.getElementById('antiLinkMsg').value || "⚠️ {user}, external links are restricted in {chat}!";
+            const silent = document.getElementById('antiLinkSilent').checked;
+            if (silent) {
+                document.getElementById('antiLinkPreviewText').innerText = "[Silent Mode: Link purged instantly without sending any message]";
+                return;
+            }
+            const val = document.getElementById('antiLinkMsg').value || "⚠️ {mention}, external links are restricted in {chat}!";
             document.getElementById('antiLinkPreviewText').innerText = val
-                .replace(/{user}/g, 'John Doe')
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
+                .replace(/{username}/g, '@JohnDoe')
                 .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
         }
 
         function updateAntiForwardPreview() {
-            const val = document.getElementById('antiForwardMsg').value || "⚠️ {user}, forwarded messages from foreign channels are not permitted in {chat}!";
+            const silent = document.getElementById('antiForwardSilent').checked;
+            if (silent) {
+                document.getElementById('antiForwardPreviewText').innerText = "[Silent Mode: Forwarded message purged without notification]";
+                return;
+            }
+            const val = document.getElementById('antiForwardMsg').value || "⚠️ {mention}, forwarded messages are not permitted in {chat}!";
             document.getElementById('antiForwardPreviewText').innerText = val
-                .replace(/{user}/g, 'John Doe')
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
+                .replace(/{username}/g, '@JohnDoe')
+                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
+        }
+
+        function updateEmojiPreview() {
+            const silent = document.getElementById('emojiSpamSilent').checked;
+            if (silent) {
+                document.getElementById('emojiPreviewText').innerText = "[Silent Mode: Message with excessive emojis purged silently]";
+                return;
+            }
+            const val = document.getElementById('emojiWarningMsg').value || "⚠️ {mention}, excessive emojis are prohibited in {chat}!";
+            document.getElementById('emojiPreviewText').innerText = val
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
+                .replace(/{username}/g, '@JohnDoe')
+                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
+        }
+
+        function updateAntiButtonPreview() {
+            const silent = document.getElementById('antiButtonSilent').checked;
+            if (silent) {
+                document.getElementById('antiButtonPreviewText').innerText = "[Silent Mode: Embedded button message deleted silently]";
+                return;
+            }
+            const val = document.getElementById('antiButtonMsg').value || "⚠️ {mention}, messages with embedded url buttons are restricted!";
+            document.getElementById('antiButtonPreviewText').innerText = val
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
+                .replace(/{username}/g, '@JohnDoe')
                 .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
         }
 
         function updateBanPreview() {
-            const val = document.getElementById('banSystemMsg').value || "⛔ {user} has been permanently removed from {chat}.";
+            const silent = document.getElementById('banSystemSilent').checked;
+            if (silent) {
+                document.getElementById('banPreviewText').innerText = "[Silent Mode: Member removed without sending message in group]";
+                return;
+            }
+            const val = document.getElementById('banSystemMsg').value || "⛔ {name} has been permanently removed from {chat}.";
             document.getElementById('banPreviewText').innerText = val
-                .replace(/{user}/g, 'John Doe')
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
+                .replace(/{username}/g, '@JohnDoe')
                 .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community')
                 .replace(/{admin}/g, 'AdminUser');
         }
 
         function updateBadWordsPreview() {
-            const val = document.getElementById('badWordsCustomMsg').value || "⚠️ {user}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})";
+            const silent = document.getElementById('badWordsSilent').checked;
+            if (silent) {
+                document.getElementById('badWordsPreviewText').innerText = "[Silent Mode: Offensive message deleted without warning notice]";
+                return;
+            }
+            const val = document.getElementById('badWordsCustomMsg').value || "⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})";
             document.getElementById('badWordsPreviewText').innerText = val
-                .replace(/{user}/g, 'John Doe')
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
                 .replace(/{warns}/g, '1')
                 .replace(/{warn_limit}/g, '3');
+        }
+
+        function updateGoodbyePreview() {
+            const val = document.getElementById('goodbyeTextInput').value || "👋 Goodbye {mention}! We hope to see you again soon in {chat}.";
+            document.getElementById('goodbyePreviewText').innerText = val
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
+                .replace(/{username}/g, '@JohnDoe')
+                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
         }
 
         function updateBroadcastPreview() {
@@ -1124,6 +1313,7 @@
         function saveEmojiSection() {
             saveSection('emojiSpam', {
                 enabled: document.getElementById('toggleEmojiSpam').checked,
+                silent: document.getElementById('emojiSpamSilent').checked,
                 maxCount: parseInt(document.getElementById('emojiMaxCount').value || 0),
                 autoDeleteSeconds: parseInt(document.getElementById('emojiAutoDelete').value || 5),
                 msg: document.getElementById('emojiWarningMsg').value
@@ -1133,6 +1323,7 @@
         function saveAntiButtonSection() {
             saveSection('antiButton', {
                 enabled: document.getElementById('toggleAntiButton').checked,
+                silent: document.getElementById('antiButtonSilent').checked,
                 msg: document.getElementById('antiButtonMsg').value
             }, 'Anti-Button Message Blocker');
         }
@@ -1165,6 +1356,7 @@
         function saveBanSection() {
             saveSection('banSystem', {
                 enabled: document.getElementById('toggleBanSystem').checked,
+                silent: document.getElementById('banSystemSilent').checked,
                 msg: document.getElementById('banSystemMsg').value
             }, 'Ban Notification Policy');
         }
@@ -1177,6 +1369,7 @@
             const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
             saveSection('badWords', {
                 enabled: document.getElementById('toggleBadWords').checked,
+                silent: document.getElementById('badWordsSilent').checked,
                 words: words,
                 action: document.getElementById('badWordsAction').value,
                 autoDeleteSeconds: parseInt(document.getElementById('badWordsAutoDelete').value || 0),
@@ -1192,6 +1385,14 @@
                 buttons: getWelcomeButtonsData(),
                 autoDeleteSeconds: parseInt(document.getElementById('welcomeAutoDelete').value || 0)
             }, 'Welcome Greeting Policy');
+        }
+
+        function saveGoodbyeSection() {
+            saveSection('goodbye', {
+                enabled: document.getElementById('toggleGoodbye').checked,
+                text: document.getElementById('goodbyeTextInput').value,
+                autoDeleteSeconds: parseInt(document.getElementById('goodbyeAutoDelete').value || 0)
+            }, 'Farewell Leave Policy');
         }
 
         function saveCommandsSection() {
@@ -1240,7 +1441,6 @@
             }
         }
 
-        // Broadcast Button Rows
         function addBroadcastButtonRow(btnText = '', btnUrl = '') {
             const list = document.getElementById('broadcastButtonsList');
             const row = document.createElement('div');
@@ -1268,7 +1468,6 @@
             return buttons;
         }
 
-        // Auto Reply Button Rows
         function addAutoReplyButtonRow(btnText = '', btnUrl = '') {
             const list = document.getElementById('newReplyButtonsList');
             const row = document.createElement('div');
@@ -1356,7 +1555,6 @@
             lucide.createIcons();
         }
 
-        // Welcome Buttons
         function addWelcomeButtonRow(btnText = '', btnUrl = '') {
             const list = document.getElementById('welcomeButtonsList');
             const row = document.createElement('div');
@@ -1387,7 +1585,9 @@
         function updateLivePreview() {
             const raw = document.getElementById('welcomeTextInput').value;
             document.getElementById('previewText').innerText = raw
-                .replace(/{user}/g, 'John Doe')
+                .replace(/{mention}/g, 'John Doe')
+                .replace(/{name}/g, 'John Doe')
+                .replace(/{username}/g, '@JohnDoe')
                 .replace(/{chat}/g, document.getElementById('panelGroupName').innerText);
 
             const photoUrl = document.getElementById('welcomePhotoUrl').value.trim();
@@ -1408,7 +1608,6 @@
             });
         }
 
-        // Custom Commands
         function addCustomCommandRow() {
             const name = document.getElementById('newCmdName').value.trim().toLowerCase().replace('/', '');
             const role = document.getElementById('newCmdRole').value;
@@ -1783,16 +1982,14 @@
             }
         }
 
-        // FULL SCREEN DEDICATED PANEL (AUTO-HIDES TOP NAVBAR!)
+        // FULL SCREEN DEDICATED PANEL
         async function openGroupSettings(chatId) {
             const item = loadedItemsMap[chatId] || { title: "Community", role: "Admin", photo: null };
             activeGroupId = chatId;
 
-            // Hide Main Top Navbar & Hide Communities Overview
             document.getElementById('mainTopNavbar').classList.add('hidden');
             document.getElementById('communitiesOverviewView').classList.add('hidden');
             
-            // Adjust full screen height & reveal panel
             document.getElementById('dashboardView').classList.remove('h-[calc(100vh-4rem)]');
             document.getElementById('dashboardView').classList.add('h-screen');
             document.getElementById('dedicatedGroupPanelView').classList.remove('hidden');
@@ -1812,39 +2009,49 @@
 
             // Defaults
             document.getElementById('toggleEmojiSpam').checked = false;
+            document.getElementById('emojiSpamSilent').checked = false;
             document.getElementById('emojiMaxCount').value = '2';
             document.getElementById('emojiAutoDelete').value = '5';
-            document.getElementById('emojiWarningMsg').value = '⚠️ {user}, excessive emojis are prohibited in {chat}!';
+            document.getElementById('emojiWarningMsg').value = '⚠️ {mention}, excessive emojis are prohibited in {chat}!';
 
             document.getElementById('toggleAntiButton').checked = false;
-            document.getElementById('antiButtonMsg').value = '⚠️ {user}, messages with embedded url buttons are restricted!';
+            document.getElementById('antiButtonSilent').checked = false;
+            document.getElementById('antiButtonMsg').value = '⚠️ {mention}, messages with embedded url buttons are restricted!';
 
             document.getElementById('toggleNameTracker').checked = true;
             document.getElementById('toggleChatLock').checked = false;
             document.getElementById('chatLockMsg').value = '🔒 This conversation has been temporarily muted by community administrators.';
             document.getElementById('toggleAntiLink').checked = false;
             document.getElementById('antiLinkSilent').checked = false;
-            document.getElementById('antiLinkMsg').value = '⚠️ {user}, external links are restricted in {chat}!';
+            document.getElementById('antiLinkMsg').value = '⚠️ {mention}, external links are restricted in {chat}!';
             document.getElementById('toggleAntiForward').checked = false;
             document.getElementById('antiForwardSilent').checked = false;
-            document.getElementById('antiForwardMsg').value = '⚠️ {user}, forwarded messages are not permitted in {chat}!';
+            document.getElementById('antiForwardMsg').value = '⚠️ {mention}, forwarded messages are not permitted in {chat}!';
+            
             document.getElementById('toggleBadWords').checked = false;
+            document.getElementById('badWordsSilent').checked = false;
             document.getElementById('badWordsInput').value = '';
             document.getElementById('badWordsAction').value = 'delete';
             document.getElementById('badWordsAutoDelete').value = '6';
-            document.getElementById('badWordsCustomMsg').value = '⚠️ {user}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})';
+            document.getElementById('badWordsCustomMsg').value = '⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})';
             
             document.getElementById('toggleBanSystem').checked = true;
-            document.getElementById('banSystemMsg').value = '⛔ {user} has been permanently removed from {chat}.';
+            document.getElementById('banSystemSilent').checked = false;
+            document.getElementById('banSystemMsg').value = '⛔ {name} has been permanently removed from {chat}.';
 
             document.getElementById('cmdBioRole').value = 'all';
             document.getElementById('scammerCustomNotice').value = '🚨 SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!';
             
             document.getElementById('toggleWelcome').checked = true;
             document.getElementById('welcomePhotoUrl').value = '';
-            document.getElementById('welcomeTextInput').value = "👋 Welcome {user} to {chat}! Please adhere to our community guidelines.";
+            document.getElementById('welcomeTextInput').value = "👋 Welcome {mention} to {chat}! Please adhere to our community guidelines.";
             document.getElementById('welcomeAutoDelete').value = '0';
             document.getElementById('welcomeButtonsList').innerHTML = '';
+
+            document.getElementById('toggleGoodbye').checked = true;
+            document.getElementById('goodbyeTextInput').value = "👋 Goodbye {mention}! We hope to see you again soon in {chat}.";
+            document.getElementById('goodbyeAutoDelete').value = '10';
+
             document.getElementById('broadcastButtonsList').innerHTML = '';
             customCommandsMap = {};
             autoRepliesMap = {};
@@ -1856,6 +2063,7 @@
                 if (data) {
                     if (data.emojiSpam) {
                         document.getElementById('toggleEmojiSpam').checked = !!data.emojiSpam.enabled;
+                        document.getElementById('emojiSpamSilent').checked = !!data.emojiSpam.silent;
                         if (data.emojiSpam.maxCount !== undefined) document.getElementById('emojiMaxCount').value = data.emojiSpam.maxCount;
                         if (data.emojiSpam.autoDeleteSeconds !== undefined) document.getElementById('emojiAutoDelete').value = data.emojiSpam.autoDeleteSeconds;
                         if (data.emojiSpam.msg) document.getElementById('emojiWarningMsg').value = data.emojiSpam.msg;
@@ -1863,6 +2071,7 @@
 
                     if (data.antiButton) {
                         document.getElementById('toggleAntiButton').checked = !!data.antiButton.enabled;
+                        document.getElementById('antiButtonSilent').checked = !!data.antiButton.silent;
                         if (data.antiButton.msg) document.getElementById('antiButtonMsg').value = data.antiButton.msg;
                     }
 
@@ -1879,12 +2088,14 @@
                     if (data.antiForward?.msg) document.getElementById('antiForwardMsg').value = data.antiForward.msg;
 
                     document.getElementById('toggleBadWords').checked = !!data.badWords?.enabled;
+                    document.getElementById('badWordsSilent').checked = !!data.badWords?.silent;
                     document.getElementById('badWordsInput').value = (data.badWords?.words || []).join(', ');
                     document.getElementById('badWordsAction').value = data.badWords?.action || 'delete';
                     if (data.badWords?.autoDeleteSeconds !== undefined) document.getElementById('badWordsAutoDelete').value = data.badWords.autoDeleteSeconds;
                     if (data.badWords?.customMsg) document.getElementById('badWordsCustomMsg').value = data.badWords.customMsg;
 
                     if (data.banSystem?.enabled !== undefined) document.getElementById('toggleBanSystem').checked = !!data.banSystem.enabled;
+                    document.getElementById('banSystemSilent').checked = !!data.banSystem?.silent;
                     if (data.banSystem?.msg) document.getElementById('banSystemMsg').value = data.banSystem.msg;
 
                     if (data.commands?.bio?.role) document.getElementById('cmdBioRole').value = data.commands.bio.role;
@@ -1896,6 +2107,12 @@
                     if (data.welcome?.photoUrl) document.getElementById('welcomePhotoUrl').value = data.welcome.photoUrl;
                     if (data.welcome?.text) document.getElementById('welcomeTextInput').value = data.welcome.text;
                     if (data.welcome?.autoDeleteSeconds !== undefined) document.getElementById('welcomeAutoDelete').value = data.welcome.autoDeleteSeconds;
+
+                    if (data.goodbye) {
+                        document.getElementById('toggleGoodbye').checked = !!data.goodbye.enabled;
+                        if (data.goodbye.text) document.getElementById('goodbyeTextInput').value = data.goodbye.text;
+                        if (data.goodbye.autoDeleteSeconds !== undefined) document.getElementById('goodbyeAutoDelete').value = data.goodbye.autoDeleteSeconds;
+                    }
 
                     if (Array.isArray(data.welcome?.buttons)) {
                         data.welcome.buttons.forEach(b => addWelcomeButtonRow(b.text, b.url));
@@ -1912,10 +2129,12 @@
             updateBanPreview();
             updateBadWordsPreview();
             updateBroadcastPreview();
+            updateEmojiPreview();
+            updateAntiButtonPreview();
+            updateGoodbyePreview();
         }
 
         function backToCommunities() {
-            // Restore Main Top Navbar
             document.getElementById('mainTopNavbar').classList.remove('hidden');
             document.getElementById('dashboardView').classList.remove('h-screen');
             document.getElementById('dashboardView').classList.add('h-[calc(100vh-4rem)]');
@@ -2132,4 +2351,3 @@
     </script>
 </body>
 </html>
-4. **ইমোজি স্প্যাম গার্ড ও অ্যান্টি-বাটন ব্লকার:** স্প্যামিং রুখতে ইমোজি লিমিট ও বাটনে ক্লিক করা মেসেজ প্রতিরোধ ব্যবস্থা সম্পূর্ণ কার্যকর।
