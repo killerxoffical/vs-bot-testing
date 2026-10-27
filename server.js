@@ -28,7 +28,7 @@ const db = firebase.database();
 
 // Environment & Keys
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFezVtaNE6D0QF0ss26k2SHj5tW7hCiSN8";
-const BOT_USERNAME = "Vareonprotection_bot"; // Your Verified Bot Username
+const BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
 const PORT = process.env.PORT || 3000;
@@ -169,7 +169,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (HANDLES CHAT VS CHANNEL & BOT PROMOTION)
+// GRAMJS MTPROTO (ACCURATE DIALOG RESOLUTION & BOT SETUP)
 // =============================================================================
 const tempAuthClients = {};
 
@@ -189,10 +189,8 @@ async function extractCommunities(client) {
 
         if (!isCreator && !isAdmin) continue;
 
-        // Check if user can add bot / invite
         const canAddBot = isCreator || (adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo)) || entity.admin === true;
 
-        // Fetch Thumbnail
         let photoBase64 = null;
         try {
             if (entity.photo) {
@@ -296,31 +294,48 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// 4. Auto-Add Bot to Group/Channel (FIXED: Supports both Channel & Basic Chat!)
+// 4. Auto-Add Bot to Group/Channel (PERFECTLY RESOLVES ACCESS_HASH)
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
-        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, {});
+        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
 
-        const peer = await client.getEntity(chatId);
-        const botEntity = await client.getEntity(BOT_USERNAME);
+        // ডায়ালগ লোড করে ক্লায়েন্ট ক্যাশে access_hash বাধ্যতামূলকভাবে আপডেট করা হচ্ছে
+        const dialogs = await client.getDialogs({ limit: 100 });
+        
+        // নির্দিষ্ট গ্রুপ/চ্যানেল বের করা
+        const targetDialog = dialogs.find(d => 
+            d.id.toString() === chatId.toString() ||
+            `-100${d.entity?.id}` === chatId.toString() ||
+            `-${d.entity?.id}` === chatId.toString() ||
+            d.entity?.id?.toString() === chatId.toString()
+        );
 
-        if (peer.className === 'Channel') {
-            // CASE 1: Supergroup or Broadcast Channel (InputChannel)
+        if (!targetDialog) {
+            throw new Error("Community not found in your Telegram dialogs. Try clicking 'Sync Communities'.");
+        }
+
+        const botEntity = await client.getInputEntity(BOT_USERNAME);
+        const inputPeer = await client.getInputEntity(targetDialog.entity);
+
+        // যেকোনো -100 ওয়ালা আইডি অথবা channel/megagroup
+        const isSupergroupOrChannel = targetDialog.isChannel || chatId.toString().startsWith('-100');
+
+        if (isSupergroupOrChannel) {
+            // ১. চ্যানেলে বটকে ইনভাইট পাঠানো (না থাকলে অটো অ্যাড হবে)
             try {
-                // Try to invite bot first
                 await client.invoke(new Api.channels.InviteToChannel({
-                    channel: peer,
+                    channel: inputPeer,
                     users: [botEntity]
                 }));
-            } catch (inviteErr) {
-                // Already in channel or direct promote supported
+            } catch (invErr) {
+                // অলরেডি গ্রুপে থাকলে বা চ্যানেল ডাইরেক্ট প্রমোশনে ইরর ইগনোর হবে
             }
 
-            // Promote to Admin
+            // ২. অ্যাডমিন পারমিশন ও র‍্যাঙ্ক দেওয়া
             await client.invoke(new Api.channels.EditAdmin({
-                channel: peer,
+                channel: inputPeer,
                 userId: botEntity,
                 adminRights: new Api.ChatAdminRights({
                     changeInfo: true,
@@ -331,32 +346,35 @@ app.post('/api/tg/connect-group', async (req, res) => {
                     inviteUsers: true,
                     pinMessages: true,
                     addAdmins: false,
-                    manageCall: true
+                    anonymous: false,
+                    manageCall: true,
+                    other: true
                 }),
                 rank: 'VS Guardian'
             }));
 
-        } else if (peer.className === 'Chat') {
-            // CASE 2: Basic Legacy Group (InputPeerChat - Fixes the Cast Error!)
+        } else {
+            // সাধারণ লিগ্যাসি গ্রুপ (Basic Group)
+            const basicChatId = targetDialog.entity.id;
             try {
                 await client.invoke(new Api.messages.AddChatUser({
-                    chatId: peer.id,
+                    chatId: basicChatId,
                     userId: botEntity,
                     fwdLimit: 0
                 }));
-            } catch (addErr) {}
+            } catch (e) {}
 
             await client.invoke(new Api.messages.EditChatAdmin({
-                chatId: peer.id,
+                chatId: basicChatId,
                 userId: botEntity,
                 isAdministrator: true
             }));
         }
 
-        res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator rights!` });
+        res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers!` });
     } catch (e) {
-        console.error("Connect Bot Error:", e);
-        res.status(500).json({ error: e.message });
+        console.error("Connect Group Error:", e);
+        res.status(500).json({ error: e.message || "Failed to add bot as admin" });
     }
 });
 
