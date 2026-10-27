@@ -7,7 +7,7 @@ const { computeCheck } = require('telegram/Password');
 const path = require('path');
 const fs = require('fs');
 
-// Firebase Node Client Setup
+// Firebase Node Setup
 const firebase = require('firebase/compat/app');
 require('firebase/compat/database');
 
@@ -37,21 +37,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve Static Assets
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
-// Keep-Alive Ping
-app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
+app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Active"));
 
 // =============================================================================
-// TELEGRAF MODERATION & SECURITY BOT ENGINE
+// TELEGRAF BOT ENGINE
 // =============================================================================
 const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
+let botId = null;
 
 bot.telegram.getMe().then(info => {
-    console.log(`[VS Protection] Telegraf Bot Online: @${info.username}`);
+    botId = info.id;
+    console.log(`[VS Protection] Telegraf Online: @${info.username} (ID: ${botId})`);
 }).catch(err => {
     console.error("[VS Protection] Bot Token Error:", err.message);
 });
@@ -114,19 +114,16 @@ bot.on('message', async (ctx, next) => {
             return next();
         }
 
-        // Chat Lock
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // Anti-Forward
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // Anti-Link
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
@@ -135,7 +132,6 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // Profanity Filter
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -169,40 +165,39 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (GHOST CHAT FILTERING & REAL STATUS CHECK)
+// GRAMJS MTPROTO (100% ACCURATE REAL-TIME BOT ADD & STATUS CHECK)
 // =============================================================================
 const tempAuthClients = {};
 
-// Helper: Extract Communities & Clean Ghost/Migrated Chats
+// Helper: Extract Communities & Clean Ghost/Migrated Chats + Live Bot Verification
 async function extractCommunities(client) {
     const dialogs = await client.getDialogs({ limit: 100 });
     const groups = [];
     const channels = [];
 
-    // Firebase থেকে কানেক্টেড বটের লিস্ট রিড করা
-    const connectedSnap = await db.ref('connected_bots').once('value');
-    const connectedMap = connectedSnap.val() || {};
+    // 1. Filter out all obsolete / ghost / deactivated chats
+    const validDialogs = dialogs.filter(d => {
+        if (!d.isGroup && !d.isChannel) return false;
+        const e = d.entity;
+        if (!e) return false;
+        
+        // Remove migrated, deactivated, left or forbidden chats
+        if (e.deactivated || e.migratedTo || e.left || e.kicked) return false;
+        if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') return false;
+        if (d.isGroup && !d.isChannel && (!e.participantsCount || e.participantsCount <= 0)) return false;
 
-    for (const d of dialogs) {
-        if (!d.isGroup && !d.isChannel) continue;
+        const isCreator = e.creator === true;
+        const isAdmin = !!e.adminRights || e.admin === true;
+        return isCreator || isAdmin;
+    });
 
+    // 2. Process each valid community and check Live Bot Admin Status
+    for (const d of validDialogs) {
         const entity = d.entity;
-        if (!entity) continue;
-
-        // ১. মৃত, মাইগ্রেটেড অথবা ০ সদস্যের ফেক গ্রুপ ফিল্টার আউট
-        if (entity.deactivated || entity.migratedTo || entity.left) continue;
-        if (entity.className === 'ChatForbidden' || entity.className === 'ChannelForbidden') continue;
-        if (d.isGroup && !d.isChannel && (entity.participantsCount === 0 || !entity.participantsCount)) continue;
-
         const isCreator = entity.creator === true;
         const adminRights = entity.adminRights || null;
-        const isAdmin = !!adminRights || entity.admin === true;
-
-        if (!isCreator && !isAdmin) continue;
-
         const canAddBot = isCreator || (adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo)) || entity.admin === true;
 
-        // Fetch Thumbnail
         let photoBase64 = null;
         try {
             if (entity.photo) {
@@ -217,7 +212,19 @@ async function extractCommunities(client) {
 
         const isBroadcastChannel = d.isChannel && !entity.megagroup;
         const chatIdStr = d.id.toString();
-        const isBotConnected = !!connectedMap[chatIdStr] || !!connectedMap[`-100${entity.id}`];
+
+        // LIVE BOT API CHECK (Zero guessing! Asks Telegram directly)
+        let isBotConnected = false;
+        if (botId) {
+            try {
+                const botMember = await bot.telegram.getChatMember(chatIdStr, botId);
+                if (botMember && ['administrator', 'creator'].includes(botMember.status)) {
+                    isBotConnected = true;
+                }
+            } catch (err) {
+                isBotConnected = false;
+            }
+        }
 
         const itemData = {
             id: chatIdStr,
@@ -298,7 +305,7 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     const { session } = req.body;
     if (!session) return res.status(400).json({ error: "Session missing" });
     try {
-        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, {});
+        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
         const { groups, channels } = await extractCommunities(client);
         res.json({ success: true, groups, channels });
@@ -307,7 +314,7 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// 4. Auto-Add Bot to Group/Channel & Record in Firebase
+// 4. Auto-Add Bot to Group/Channel with Exact Right Schema
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
@@ -325,54 +332,67 @@ app.post('/api/tg/connect-group', async (req, res) => {
         }
 
         const botEntity = await client.getInputEntity(BOT_USERNAME);
-        let targetChannelPeer = null;
+        const entity = targetDialog.entity;
+        const isChannel = targetDialog.isChannel || entity.className === 'Channel' || String(chatId).startsWith('-100');
+        const isBroadcast = isChannel && !entity.megagroup;
 
-        if (targetDialog.isChannel || targetDialog.entity.className === 'Channel' || String(chatId).startsWith('-100')) {
-            targetChannelPeer = await client.getInputEntity(targetDialog.entity);
+        let channelPeer = null;
+
+        if (isChannel) {
+            channelPeer = await client.getInputEntity(entity);
         } else {
-            const rawBasicId = targetDialog.entity.id;
+            // Basic chat migration to supergroup
+            const basicChatId = entity.id;
             try {
                 await client.invoke(new Api.messages.AddChatUser({
-                    chatId: rawBasicId,
+                    chatId: basicChatId,
                     userId: botEntity,
                     fwdLimit: 0
                 }));
-            } catch (err) {}
+            } catch (e) {}
 
             try {
-                const migrateRes = await client.invoke(new Api.messages.MigrateChat({ chatId: rawBasicId }));
+                const migrateRes = await client.invoke(new Api.messages.MigrateChat({ chatId: basicChatId }));
                 if (migrateRes.chats && migrateRes.chats.length > 0) {
-                    targetChannelPeer = await client.getInputEntity(migrateRes.chats[0]);
+                    channelPeer = await client.getInputEntity(migrateRes.chats[0]);
                 }
             } catch (migErr) {}
 
-            if (!targetChannelPeer) {
+            if (!channelPeer) {
                 const freshDialogs = await client.getDialogs({ limit: 20 });
                 const freshTarget = freshDialogs.find(d => d.title === targetDialog.title && (d.isChannel || d.isGroup));
-                if (freshTarget) {
-                    targetChannelPeer = await client.getInputEntity(freshTarget.entity);
-                }
+                if (freshTarget) channelPeer = await client.getInputEntity(freshTarget.entity);
             }
         }
 
-        if (!targetChannelPeer) {
-            throw new Error("Failed to resolve channel peer for admin promotion.");
+        if (!channelPeer) {
+            throw new Error("Unable to resolve channel peer for admin appointment.");
         }
 
+        // Invite Bot (if needed)
         try {
             await client.invoke(new Api.channels.InviteToChannel({
-                channel: targetChannelPeer,
+                channel: channelPeer,
                 users: [botEntity]
             }));
         } catch (e) {}
 
-        await client.invoke(new Api.channels.EditAdmin({
-            channel: targetChannelPeer,
-            userId: botEntity,
-            adminRights: new Api.ChatAdminRights({
+        // Set EXACT Rights: Megagroups CANNOT have postMessages/editMessages (causes ADMIN_RIGHTS_INVALID)
+        let adminRights;
+        if (isBroadcast) {
+            adminRights = new Api.ChatAdminRights({
                 changeInfo: true,
                 postMessages: true,
                 editMessages: true,
+                deleteMessages: true,
+                inviteUsers: true,
+                addAdmins: false,
+                manageCall: true
+            });
+        } else {
+            // Supergroup / Megagroup rights
+            adminRights = new Api.ChatAdminRights({
+                changeInfo: true,
                 deleteMessages: true,
                 banUsers: true,
                 inviteUsers: true,
@@ -381,15 +401,15 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 anonymous: false,
                 manageCall: true,
                 other: true
-            }),
+            });
+        }
+
+        await client.invoke(new Api.channels.EditAdmin({
+            channel: channelPeer,
+            userId: botEntity,
+            adminRights: adminRights,
             rank: 'VS Guardian'
         }));
-
-        // Firebase-এ বট সফলভাবে কানেক্ট হয়েছে হিসেবে রেকর্ড করা
-        await db.ref(`connected_bots/${chatId}`).set({
-            connected: true,
-            updatedAt: Date.now()
-        });
 
         res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers!` });
     } catch (e) {
