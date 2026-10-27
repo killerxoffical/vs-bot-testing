@@ -69,6 +69,7 @@ async function getChatSettings(chatId) {
             commands: {
                 bio: { enabled: true, role: 'all' }
             },
+            autoReplies: {},
             warnLimit: 3,
             chatLocked: false,
             lockMsg: "🔒 *The chat has been locked by an administrator.*"
@@ -171,7 +172,6 @@ bot.on('message', async (ctx, next) => {
             const storedName = snap.val();
 
             if (storedName && storedName !== currentFullName) {
-                // Name changed! Alert the community!
                 ctx.replyWithMarkdown(
                     `📝 *[USER NAME CHANGE ALERT]*\n` +
                     `User: [${currentFullName}](tg://user?id=${userId})\n` +
@@ -179,7 +179,6 @@ bot.on('message', async (ctx, next) => {
                     `✨ *Current Name:* \`${currentFullName}\``
                 ).catch(() => {});
             }
-            // Update latest name
             await userHistoryRef.set(currentFullName);
         }
 
@@ -193,13 +192,55 @@ bot.on('message', async (ctx, next) => {
         }
 
         // -------------------------------------------------------------
-        // FEATURE 3: COMMAND ENGINE (/bio, /scam, /unscam & Custom Slash)
+        // FEATURE 3: AUTO-REPLY SYSTEM (Everyone / Admin & Owner / Owner Only)
+        // -------------------------------------------------------------
+        if (text && settings.autoReplies && typeof settings.autoReplies === 'object') {
+            const cleanText = text.trim().toLowerCase();
+            const replyKeys = Object.keys(settings.autoReplies);
+
+            for (const key of replyKeys) {
+                const rule = settings.autoReplies[key];
+                if (!rule || !rule.trigger || !rule.response) continue;
+
+                // Match Trigger
+                const triggerWord = rule.trigger.trim().toLowerCase();
+                if (cleanText === triggerWord || cleanText.includes(triggerWord)) {
+                    
+                    // Check Role Target: 'everyone' | 'admin_owner' | 'owner_only'
+                    const target = rule.target || 'everyone';
+                    let allowed = false;
+
+                    if (target === 'everyone') {
+                        allowed = true;
+                    } else if (target === 'admin_owner' && (userRole === 'admin' || userRole === 'owner')) {
+                        allowed = true;
+                    } else if (target === 'owner_only' && userRole === 'owner') {
+                        allowed = true;
+                    }
+
+                    if (allowed) {
+                        const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
+                        const formattedReply = rule.response
+                            .replace(/{user}/g, userMention)
+                            .replace(/{chat}/g, ctx.chat.title || "Community");
+
+                        ctx.replyWithMarkdown(formattedReply, { reply_to_message_id: ctx.message.message_id }).catch(async () => {
+                            await ctx.reply(formattedReply, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+                        });
+                        break; // One auto-reply per message
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // FEATURE 4: COMMAND ENGINE (/bio, /scam, /unscam & Custom Slash)
         // -------------------------------------------------------------
         if (text.startsWith('/')) {
             const parts = text.trim().split(/\s+/);
             const cmd = parts[0].toLowerCase().replace(`@${bot.botInfo?.username?.toLowerCase()}`, '');
 
-            // A. /bio COMMAND
+            // /bio COMMAND
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
@@ -214,7 +255,6 @@ bot.on('message', async (ctx, next) => {
                 const targetFullName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
                 const targetRole = await getUserRole(ctx, targetId);
 
-                // Fetch Database Stats
                 const warnSnap = await db.ref(`groups/${chatId}/warns/${targetId}`).once('value');
                 const warnsCount = warnSnap.val() || 0;
                 const isScammer = (await db.ref(`groups/${chatId}/scammers/${targetId}`).once('value')).val();
@@ -231,7 +271,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
             }
 
-            // B. /scam COMMAND (Admin Only)
+            // /scam COMMAND (Admin Only)
             if (cmd === '/scam' && isAdmin) {
                 let targetUser = ctx.message.reply_to_message?.from;
                 if (!targetUser) {
@@ -248,7 +288,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`🚨 [${targetUser.first_name}](tg://user?id=${targetUser.id}) has been added to the **Scammer Blacklist**! All future messages will trigger a scam alert.`);
             }
 
-            // C. /unscam COMMAND (Admin Only)
+            // /unscam COMMAND (Admin Only)
             if (cmd === '/unscam' && isAdmin) {
                 let targetUser = ctx.message.reply_to_message?.from;
                 if (!targetUser) return ctx.reply("⚠️ Reply to a user's message with `/unscam` to remove their scammer tag.");
@@ -257,7 +297,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`✅ Scam flag removed for [${targetUser.first_name}](tg://user?id=${targetUser.id}).`);
             }
 
-            // D. CUSTOM SLASH COMMANDS (From Dashboard)
+            // CUSTOM SLASH COMMANDS
             const cleanCmdName = cmd.replace('/', '');
             if (settings.customCommands && settings.customCommands[cleanCmdName]) {
                 const customObj = settings.customCommands[cleanCmdName];
@@ -682,7 +722,7 @@ app.post('/api/tg/get-members', async (req, res) => {
     }
 });
 
-// Get Scammers List Endpoint
+// Get Scammers List
 app.post('/api/tg/get-scammers', async (req, res) => {
     const { chatId } = req.body;
     try {
