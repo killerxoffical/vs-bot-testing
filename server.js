@@ -61,14 +61,14 @@ async function getChatSettings(chatId) {
         const snap = await db.ref(`groups/${chatId}/settings`).once('value');
         const settings = snap.val() || {
             welcome: { enabled: true, photoUrl: "", text: "👋 Welcome {user} to {chat}!", buttons: [], autoDeleteSeconds: 0 },
+            banSystem: { enabled: true, msg: "⛔ {user} has been banned from {chat}." },
             antiLink: { enabled: false, silent: false, msg: "⚠️ {user}, posting external links is prohibited!" },
             antiForward: { enabled: false, silent: false, msg: "⚠️ {user}, forwarded messages are not allowed!" },
             badWords: { enabled: false, words: [], action: 'delete', customMsg: "⚠️ {user}, abusive words are forbidden! ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
             scammerAlert: { enabled: true, msg: "🚨 *CAUTION: This user is flagged as a SCAMMER by administrators! Do not deal with them.*" },
             nameTracker: { enabled: true },
-            commands: {
-                bio: { enabled: true, role: 'all' }
-            },
+            leaveTracker: { enabled: true },
+            commands: { bio: { enabled: true, role: 'all' } },
             autoReplies: {},
             warnLimit: 3,
             chatLocked: false,
@@ -137,7 +137,43 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// Helper: Check User Role
+// 2. MEMBER LEFT TRACKER (SAVE TO DATABASE & NOTIFY OWNER)
+bot.on('left_chat_member', async (ctx) => {
+    try {
+        const chatId = ctx.chat.id;
+        const user = ctx.message.left_chat_member;
+        if (!user || user.is_bot) return;
+
+        const leftData = {
+            id: user.id.toString(),
+            name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User',
+            username: user.username ? `@${user.username}` : 'No username',
+            timestamp: Date.now()
+        };
+
+        // Save into Firebase for the Admin Dashboard
+        await db.ref(`groups/${chatId}/left_members/${user.id}`).set(leftData);
+
+        // Notify Owner's custom linked bot if configured
+        const ownerSnap = await db.ref(`groups/${chatId}/owner_bot`).once('value');
+        const ownerBotData = ownerSnap.val();
+        if (ownerBotData && ownerBotData.token && ownerBotData.ownerChatId) {
+            try {
+                const customBot = new Telegraf(ownerBotData.token);
+                await customBot.telegram.sendMessage(
+                    ownerBotData.ownerChatId,
+                    `🚪 *[MEMBER LEFT NOTIFICATION]*\n\n` +
+                    `• *Community:* ${ctx.chat.title}\n` +
+                    `• *User:* ${leftData.name} (${leftData.username})\n` +
+                    `• *User ID:* \`${leftData.id}\`\n` +
+                    `• *Time:* ${new Date().toLocaleString()}`,
+                    { parse_mode: 'Markdown' }
+                );
+            } catch (err) {}
+        }
+    } catch (e) {}
+});
+
 async function getUserRole(ctx, userId) {
     try {
         const member = await ctx.getChatMember(userId);
@@ -149,7 +185,7 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// 2. CORE MESSAGE & COMMAND MIDDLEWARE
+// 3. CORE MESSAGE & MODERATION PIPELINE
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -161,9 +197,7 @@ bot.on('message', async (ctx, next) => {
         const userRole = await getUserRole(ctx, userId);
         const isAdmin = ['owner', 'admin'].includes(userRole);
 
-        // -------------------------------------------------------------
-        // FEATURE 1: NAME CHANGE TRACKER
-        // -------------------------------------------------------------
+        // Name Change Tracker
         if (settings.nameTracker?.enabled !== false && ctx.from) {
             const currentFullName = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim() || ctx.from.first_name;
             const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
@@ -182,18 +216,14 @@ bot.on('message', async (ctx, next) => {
             await userHistoryRef.set(currentFullName);
         }
 
-        // -------------------------------------------------------------
-        // FEATURE 2: SCAMMER BOT DETECTION & TAGGING
-        // -------------------------------------------------------------
+        // Scammer Tagging Alert
         const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
         if (scammerSnap.val()) {
             const scamNotice = settings.scammerAlert?.msg || "🚨 *WARNING: This user is flagged as a SCAMMER by administrators!*";
             ctx.replyWithMarkdown(scamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
         }
 
-        // -------------------------------------------------------------
-        // FEATURE 3: AUTO-REPLY SYSTEM (Everyone / Admin & Owner / Owner Only)
-        // -------------------------------------------------------------
+        // Auto-Reply Engine
         if (text && settings.autoReplies && typeof settings.autoReplies === 'object') {
             const cleanText = text.trim().toLowerCase();
             const replyKeys = Object.keys(settings.autoReplies);
@@ -202,21 +232,14 @@ bot.on('message', async (ctx, next) => {
                 const rule = settings.autoReplies[key];
                 if (!rule || !rule.trigger || !rule.response) continue;
 
-                // Match Trigger
                 const triggerWord = rule.trigger.trim().toLowerCase();
                 if (cleanText === triggerWord || cleanText.includes(triggerWord)) {
-                    
-                    // Check Role Target: 'everyone' | 'admin_owner' | 'owner_only'
                     const target = rule.target || 'everyone';
                     let allowed = false;
 
-                    if (target === 'everyone') {
-                        allowed = true;
-                    } else if (target === 'admin_owner' && (userRole === 'admin' || userRole === 'owner')) {
-                        allowed = true;
-                    } else if (target === 'owner_only' && userRole === 'owner') {
-                        allowed = true;
-                    }
+                    if (target === 'everyone') allowed = true;
+                    else if (target === 'admin_owner' && (userRole === 'admin' || userRole === 'owner')) allowed = true;
+                    else if (target === 'owner_only' && userRole === 'owner') allowed = true;
 
                     if (allowed) {
                         const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
@@ -227,20 +250,32 @@ bot.on('message', async (ctx, next) => {
                         ctx.replyWithMarkdown(formattedReply, { reply_to_message_id: ctx.message.message_id }).catch(async () => {
                             await ctx.reply(formattedReply, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
                         });
-                        break; // One auto-reply per message
+                        break;
                     }
                 }
             }
         }
 
-        // -------------------------------------------------------------
-        // FEATURE 4: COMMAND ENGINE (/bio, /scam, /unscam & Custom Slash)
-        // -------------------------------------------------------------
+        // Command Engine (/bio, /scam, /unscam, /ban)
         if (text.startsWith('/')) {
             const parts = text.trim().split(/\s+/);
             const cmd = parts[0].toLowerCase().replace(`@${bot.botInfo?.username?.toLowerCase()}`, '');
 
-            // /bio COMMAND
+            // Manual Ban Command
+            if (cmd === '/ban' && isAdmin) {
+                let targetUser = ctx.message.reply_to_message?.from;
+                if (!targetUser) return ctx.reply("⚠️ Reply to a user's message with `/ban` to ban them.");
+
+                await ctx.banChatMember(targetUser.id).catch(() => {});
+                const banNotice = (settings.banSystem?.msg || "⛔ {user} has been banned from {chat}.")
+                    .replace(/{user}/g, `[${targetUser.first_name}](tg://user?id=${targetUser.id})`)
+                    .replace(/{chat}/g, ctx.chat.title)
+                    .replace(/{admin}/g, ctx.from.first_name);
+
+                return ctx.replyWithMarkdown(banNotice);
+            }
+
+            // /bio Command
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
@@ -271,12 +306,10 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
             }
 
-            // /scam COMMAND (Admin Only)
+            // /scam Command
             if (cmd === '/scam' && isAdmin) {
                 let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) {
-                    return ctx.reply("⚠️ Please reply to the user's message with `/scam` to flag them as a scammer.");
-                }
+                if (!targetUser) return ctx.reply("⚠️ Reply to a user's message with `/scam` to flag them as a scammer.");
 
                 await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).set({
                     name: `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim(),
@@ -285,48 +318,28 @@ bot.on('message', async (ctx, next) => {
                     flaggedBy: ctx.from.id
                 });
 
-                return ctx.replyWithMarkdown(`🚨 [${targetUser.first_name}](tg://user?id=${targetUser.id}) has been added to the **Scammer Blacklist**! All future messages will trigger a scam alert.`);
+                return ctx.replyWithMarkdown(`🚨 [${targetUser.first_name}](tg://user?id=${targetUser.id}) has been added to the **Scammer Blacklist**!`);
             }
 
-            // /unscam COMMAND (Admin Only)
+            // /unscam Command
             if (cmd === '/unscam' && isAdmin) {
                 let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply to a user's message with `/unscam` to remove their scammer tag.");
+                if (!targetUser) return ctx.reply("⚠️ Reply with `/unscam` to remove their scammer tag.");
 
                 await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).remove();
                 return ctx.replyWithMarkdown(`✅ Scam flag removed for [${targetUser.first_name}](tg://user?id=${targetUser.id}).`);
             }
-
-            // CUSTOM SLASH COMMANDS
-            const cleanCmdName = cmd.replace('/', '');
-            if (settings.customCommands && settings.customCommands[cleanCmdName]) {
-                const customObj = settings.customCommands[cleanCmdName];
-                const requiredRole = customObj.role || 'all';
-
-                if (requiredRole === 'owner' && userRole !== 'owner') return;
-                if (requiredRole === 'admin' && !isAdmin) return;
-
-                const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
-                const replyText = customObj.response
-                    .replace(/{user}/g, userMention)
-                    .replace(/{chat}/g, ctx.chat.title);
-
-                return ctx.replyWithMarkdown(replyText, { reply_to_message_id: ctx.message.message_id });
-            }
         }
 
-        // Admins bypass normal filters
         if (isAdmin) return next();
 
         const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
 
-        // Chat Lock Check
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             if (!settings.antiForward.silent && settings.antiForward.msg) {
@@ -336,7 +349,6 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
-        // Anti-Link Check
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
@@ -349,7 +361,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // Bad Words Filter
+        // Bad Words
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -370,7 +382,10 @@ bot.on('message', async (ctx, next) => {
                     if (warns >= warnLimit) {
                         await ctx.banChatMember(userId).catch(() => {});
                         await warnRef.remove();
-                        warningMsgSent = await ctx.replyWithMarkdown(`🚨 @${ctx.from.username || ctx.from.first_name} has been banned for reaching maximum warning limit!`).catch(() => {});
+                        const banMsg = (settings.banSystem?.msg || "⛔ {user} has been banned for reaching warning limits.")
+                            .replace(/{user}/g, `@${ctx.from.username || ctx.from.first_name}`)
+                            .replace(/{chat}/g, ctx.chat.title);
+                        warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
                     } else {
                         const template = settings.badWords.customMsg || "⚠️ {user}, prohibited words used! ({warns}/{warn_limit})";
                         const customNotice = template
@@ -382,14 +397,10 @@ bot.on('message', async (ctx, next) => {
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
-                    const template = settings.badWords.customMsg || "⛔ {user} was permanently banned for abusive speech.";
-                    const customNotice = template.replace(/{user}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                    warningMsgSent = await ctx.replyWithMarkdown(customNotice).catch(() => {});
-                } else if (action === 'delete') {
-                    if (settings.badWords.customMsg && settings.badWords.customMsg.trim()) {
-                        const customNotice = settings.badWords.customMsg.replace(/{user}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                        warningMsgSent = await ctx.replyWithMarkdown(customNotice).catch(() => {});
-                    }
+                    const banMsg = (settings.banSystem?.msg || "⛔ {user} has been banned from {chat}.")
+                        .replace(/{user}/g, userMention)
+                        .replace(/{chat}/g, ctx.chat.title);
+                    warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
                 }
 
                 const deleteSec = parseInt(settings.badWords.autoDeleteSeconds || 0);
@@ -722,17 +733,38 @@ app.post('/api/tg/get-members', async (req, res) => {
     }
 });
 
-// Get Scammers List
-app.post('/api/tg/get-scammers', async (req, res) => {
+// Get Left Members
+app.post('/api/tg/get-left-members', async (req, res) => {
     const { chatId } = req.body;
     try {
-        const snap = await db.ref(`groups/${chatId}/scammers`).once('value');
+        const snap = await db.ref(`groups/${chatId}/left_members`).once('value');
         const data = snap.val() || {};
         const list = Object.keys(data).map(uid => ({
             id: uid,
             ...data[uid]
-        }));
-        res.json({ success: true, scammers: list });
+        })).sort((a,b) => b.timestamp - a.timestamp);
+        res.json({ success: true, leftMembers: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Link Custom Owner Bot
+app.post('/api/tg/link-owner-bot', async (req, res) => {
+    const { chatId, token, ownerChatId } = req.body;
+    try {
+        if (!token) throw new Error("Bot token required");
+        const customBot = new Telegraf(token);
+        const me = await customBot.telegram.getMe();
+
+        await db.ref(`groups/${chatId}/owner_bot`).set({
+            token,
+            ownerChatId: ownerChatId || '',
+            botUsername: me.username,
+            linkedAt: Date.now()
+        });
+
+        res.json({ success: true, message: `Bot @${me.username} linked successfully!` });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
