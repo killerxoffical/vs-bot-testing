@@ -8,7 +8,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,7 +16,9 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    fontFamily: { 
+                        sans: ['"Plus Jakarta Sans"', '"Hind Siliguri"', 'sans-serif'] 
+                    },
                     colors: {
                         brand: {
                             50: '#EEF2FF',
@@ -104,6 +106,10 @@
             </div>
 
             <div id="navActionArea" class="flex items-center gap-3">
+                <button onclick="scrollToPricing()" class="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs text-slate-700 transition">
+                    <i data-lucide="tag" class="w-3.5 h-3.5 text-brand-600"></i>
+                    <span>Pricing Plans</span>
+                </button>
                 <button onclick="openAuthModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm">
                     <i data-lucide="user" class="w-3.5 h-3.5"></i>
                     <span>Login</span>
@@ -112,9 +118,9 @@
         </div>
     </header>
 
-    <!-- SECTION 1: LANDING VIEW -->
-    <div id="landingView" class="hidden flex-1 overflow-y-auto">
-        <section class="max-w-7xl mx-auto px-6 pt-16 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <!-- SECTION 1: LANDING VIEW (WITH PRICING CARDS) -->
+    <div id="landingView" class="hidden flex-1 overflow-y-auto pane-scroll">
+        <section class="max-w-7xl mx-auto px-6 pt-16 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div class="lg:col-span-7 space-y-6 text-left">
                 <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-600 font-semibold text-xs">
                     <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
@@ -132,6 +138,9 @@
                         <span>Deploy VS Protection</span>
                         <i data-lucide="arrow-right" class="w-4 h-4"></i>
                     </button>
+                    <button onclick="scrollToPricing()" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 font-bold text-xs text-slate-700 transition shadow-sm">
+                        <span>View Plans & Pricing</span>
+                    </button>
                 </div>
             </div>
 
@@ -143,6 +152,108 @@
                 </div>
             </div>
         </section>
+
+        <!-- PRICING PLANS SECTION -->
+        <section id="pricingSection" class="w-full bg-slate-100/60 py-20 px-6 border-t border-slate-200">
+            <div class="max-w-7xl mx-auto space-y-12 text-center">
+                <div class="space-y-3">
+                    <span class="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-brand-600 font-bold text-xs uppercase tracking-wider">Transparent Subscriptions</span>
+                    <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Enterprise Community Plans</h2>
+                    <p class="text-slate-500 text-sm max-w-xl mx-auto">All plans include 30 days active protection + 7 days renewal grace period. Calculated at 127 BDT per 1 USDT.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
+                    <!-- PLAN 1: STARTER -->
+                    <div class="light-card p-6 rounded-3xl flex flex-col justify-between border-2 hover:border-brand-500 transition">
+                        <div class="space-y-4">
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">Starter</span>
+                            <h3 class="text-lg font-extrabold text-slate-900">Single Community</h3>
+                            <div>
+                                <span class="text-3xl font-extrabold text-slate-900">৳50</span>
+                                <span class="text-xs text-slate-500 font-semibold">/ month</span>
+                                <span class="block text-xs font-bold text-emerald-600 mt-0.5">≈ $0.39 USDT</span>
+                            </div>
+                            <ul class="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-4">
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> 1 Account Protection</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> 1 Group or Channel</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> 30 Days + 7 Days Grace</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> Full Auto-Moderation</li>
+                            </ul>
+                        </div>
+                        <button onclick="openPurchaseModal('Starter (1 Community)', '50', '0.39')" class="w-full mt-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                            Buy Starter License
+                        </button>
+                    </div>
+
+                    <!-- PLAN 2: GROWTH -->
+                    <div class="light-card p-6 rounded-3xl flex flex-col justify-between border-2 hover:border-brand-500 transition">
+                        <div class="space-y-4">
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-brand-600">Growth</span>
+                            <h3 class="text-lg font-extrabold text-slate-900">Multi Hub (5 Chats)</h3>
+                            <div>
+                                <span class="text-3xl font-extrabold text-slate-900">৳200</span>
+                                <span class="text-xs text-slate-500 font-semibold">/ month</span>
+                                <span class="block text-xs font-bold text-emerald-600 mt-0.5">≈ $1.57 USDT</span>
+                            </div>
+                            <ul class="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-4">
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> Up to 5 Communities</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> Groups & Channels</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> 30 Days + 7 Days Grace</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> Broadcast Studio Access</li>
+                            </ul>
+                        </div>
+                        <button onclick="openPurchaseModal('Growth (5 Communities)', '200', '1.57')" class="w-full mt-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                            Buy Growth License
+                        </button>
+                    </div>
+
+                    <!-- PLAN 3: PRO HUB -->
+                    <div class="light-card p-6 rounded-3xl flex flex-col justify-between border-2 hover:border-brand-500 transition">
+                        <div class="space-y-4">
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-purple-50 text-purple-600">Pro Network</span>
+                            <h3 class="text-lg font-extrabold text-slate-900">Network (15 Chats)</h3>
+                            <div>
+                                <span class="text-3xl font-extrabold text-slate-900">৳450</span>
+                                <span class="text-xs text-slate-500 font-semibold">/ month</span>
+                                <span class="block text-xs font-bold text-emerald-600 mt-0.5">≈ $3.54 USDT</span>
+                            </div>
+                            <ul class="space-y-2 text-xs text-slate-600 border-t border-slate-100 pt-4">
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> Up to 15 Communities</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> Advanced Scammer Tagging</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> 30 Days + 7 Days Grace</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500 shrink-0"></i> Name Change Tracker</li>
+                            </ul>
+                        </div>
+                        <button onclick="openPurchaseModal('Pro Network (15 Chats)', '450', '3.54')" class="w-full mt-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                            Buy Pro License
+                        </button>
+                    </div>
+
+                    <!-- PLAN 4: UNLIMITED (HIGHLIGHTED) -->
+                    <div class="light-card p-6 rounded-3xl flex flex-col justify-between border-2 border-brand-500 bg-gradient-to-b from-brand-50/40 to-white relative shadow-xl shadow-brand-500/10">
+                        <div class="absolute -top-3 right-6 bg-brand-600 text-white font-extrabold text-[10px] px-3 py-0.5 rounded-full uppercase tracking-wider">Most Popular</div>
+                        <div class="space-y-4">
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-brand-600 text-white">Unlimited</span>
+                            <h3 class="text-lg font-extrabold text-slate-900">Enterprise Infinity</h3>
+                            <div>
+                                <span class="text-3xl font-extrabold text-slate-900">৳750</span>
+                                <span class="text-xs text-slate-500 font-semibold">/ month</span>
+                                <span class="block text-xs font-bold text-emerald-600 mt-0.5">≈ $5.90 USDT</span>
+                            </div>
+                            <ul class="space-y-2 text-xs text-slate-700 border-t border-brand-100 pt-4 font-medium">
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-brand-600 shrink-0"></i> Unlimited Groups & Channels</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-brand-600 shrink-0"></i> Instant 24/7 Priority Guard</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-brand-600 shrink-0"></i> 30 Days + 7 Days Renewal Grace</li>
+                                <li class="flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 text-brand-600 shrink-0"></i> All Premium Engines Unlocked</li>
+                            </ul>
+                        </div>
+                        <button onclick="openPurchaseModal('Enterprise Unlimited', '750', '5.90')" class="w-full mt-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-brand-500/25">
+                            Buy Unlimited Plan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- SECTION 2: MAIN DASHBOARD VIEW -->
@@ -150,6 +261,35 @@
         
         <!-- SUB-VIEW A: COMMUNITIES LIST -->
         <div id="communitiesOverviewView" class="flex-1 w-full overflow-y-auto pane-scroll px-6 md:px-10 py-6 space-y-6">
+            
+            <!-- LICENSE STATUS BANNER -->
+            <div id="licenseStatusBanner" class="p-4 rounded-2xl border transition-all flex flex-col md:flex-row items-center justify-between gap-4 bg-white border-slate-200">
+                <div class="flex items-center gap-3">
+                    <div id="licenseBadgeIcon" class="w-10 h-10 rounded-xl bg-indigo-50 text-brand-600 flex items-center justify-center font-bold">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span id="subPlanName" class="text-xs font-extrabold text-slate-900">Subscription Verification</span>
+                            <span id="subStatusBadge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Checking...</span>
+                        </div>
+                        <p id="subTimingMeta" class="text-[11px] text-slate-500 mt-0.5">Please claim a license key or contact admin to activate protection.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="openClaimLicenseModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                        <span>Claim License Key</span>
+                    </button>
+                    <button onclick="openSuperAdminModal()" id="btnSuperAdmin" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                        <span>Admin Keys</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Header -->
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                 <div>
                     <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Security Command Center</h2>
@@ -229,8 +369,7 @@
 
         <!-- SUB-VIEW B: FULL GROUP PANEL -->
         <div id="dedicatedGroupPanelView" class="hidden flex-1 w-full h-full overflow-hidden flex flex-col">
-            
-            <!-- GROUP PANEL TOP HEADER -->
+            <!-- Group header -->
             <div class="frosted-nav px-5 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-30 shadow-sm">
                 <div class="flex items-center gap-3.5">
                     <button onclick="backToCommunities()" class="w-9 h-9 rounded-xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition shrink-0 shadow-sm">
@@ -256,8 +395,6 @@
 
             <!-- Workspace Body -->
             <div class="flex-1 w-full flex flex-col lg:flex-row overflow-hidden">
-                
-                <!-- Fixed Left Sidebar Tabs -->
                 <aside class="w-full lg:w-72 bg-white border-r border-slate-200 p-3 lg:p-4 flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto no-scrollbar shrink-0 z-20">
                     <button onclick="switchTab('security')" id="tabBtn-security" class="tab-btn active flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition">
                         <i data-lucide="shield" class="w-4 h-4"></i>
@@ -297,14 +434,11 @@
                     </button>
                 </aside>
 
-                <!-- Independent Middle Scrolling Workspace Pane -->
                 <main class="flex-1 h-full overflow-y-auto pane-scroll p-5 md:p-8 space-y-6">
-
-                    <!-- TAB 1: SECURITY -->
+                    <!-- Security Tab -->
                     <div id="tabContent-security" class="space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
-                            
-                            <!-- 1. Emoji Spam Guard -->
+                            <!-- Emoji Spam -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -318,41 +452,28 @@
                                     </div>
                                     <input type="checkbox" id="toggleEmojiSpam" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-
                                 <div class="flex items-center gap-2 pt-1">
                                     <input type="checkbox" id="emojiSpamSilent" onchange="updateEmojiPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                    <label for="emojiSpamSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without sending warning)</label>
+                                    <label for="emojiSpamSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notice)</label>
                                 </div>
-
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Max Emojis Allowed Per Message:</label>
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Max Emojis Allowed:</label>
                                         <input id="emojiMaxCount" type="number" min="0" max="50" value="2" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                        <span class="text-[10px] text-slate-400 mt-0.5 block">0 = Block all emojis completely.</span>
                                     </div>
                                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Auto-Delete Warning Timer:</label>
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Auto-Delete Timer:</label>
                                         <select id="emojiAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                             <option value="0">Never Delete</option>
                                             <option value="5" selected>5 Seconds</option>
                                             <option value="10">10 Seconds</option>
-                                            <option value="15">15 Seconds</option>
                                         </select>
                                     </div>
                                 </div>
-
                                 <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notification Message:</label>
-                                    <textarea id="emojiWarningMsg" rows="2" oninput="updateEmojiPreview()" placeholder="⚠️ {mention}, excessive emojis are prohibited in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                    <div class="flex flex-wrap gap-1 mt-1.5">
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
-                                    </div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message:</label>
+                                    <textarea id="emojiWarningMsg" rows="2" oninput="updateEmojiPreview()" placeholder="⚠️ {mention}, excessive emojis are prohibited in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
-
-                                <!-- REAL TELEGRAM BUBBLE PREVIEW -->
                                 <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
                                     <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
                                     <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
@@ -360,73 +481,12 @@
                                         <p id="emojiPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, excessive emojis are prohibited in Community!</p>
                                     </div>
                                 </div>
-
                                 <div class="flex justify-end">
                                     <button type="button" onclick="saveEmojiSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Emoji Policy</button>
                                 </div>
                             </div>
 
-                            <!-- 2. Anti-Button Messages Block -->
-                            <div class="section-divider space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                                            <i data-lucide="square-slash" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Anti-Bot Button Message Blocker</h4>
-                                            <p class="text-xs text-slate-500">Deletes messages that have inline URL buttons attached by unauthorized bots</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleAntiButton" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                                </div>
-
-                                <div class="flex items-center gap-2 pt-1">
-                                    <input type="checkbox" id="antiButtonSilent" onchange="updateAntiButtonPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                    <label for="antiButtonSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
-                                </div>
-
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message:</label>
-                                    <textarea id="antiButtonMsg" rows="2" oninput="updateAntiButtonPreview()" placeholder="⚠️ {mention}, messages with embedded url buttons are restricted!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                    <div class="flex flex-wrap gap-1 mt-1.5">
-                                        <button type="button" onclick="insertTag('antiButtonMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                        <button type="button" onclick="insertTag('antiButtonMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('antiButtonMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
-                                    </div>
-                                </div>
-
-                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
-                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
-                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                        <p id="antiButtonPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, messages with embedded url buttons are restricted!</p>
-                                    </div>
-                                </div>
-
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveAntiButtonSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Button Policy</button>
-                                </div>
-                            </div>
-
-                            <!-- 3. Name Change Tracker -->
-                            <div class="section-divider flex items-center justify-between p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center">
-                                        <i data-lucide="user-check" class="w-4 h-4"></i>
-                                    </div>
-                                    <div>
-                                        <h4 class="text-sm font-bold text-slate-900">Name Change History Tracker</h4>
-                                        <p class="text-xs text-slate-500">Alerts the group automatically if a member alters their Telegram display name</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <input type="checkbox" id="toggleNameTracker" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                                    <button type="button" onclick="saveNameTrackerSection()" class="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-bold transition">Save</button>
-                                </div>
-                            </div>
-
-                            <!-- 4. Chat Lock -->
+                            <!-- Chat Lock -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -440,20 +500,10 @@
                                     </div>
                                     <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-                                
                                 <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Broadcast Message:</label>
-                                    <textarea id="chatLockMsg" rows="2" oninput="updateChatLockPreview()" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Message:</label>
+                                    <textarea id="chatLockMsg" rows="2" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
-
-                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
-                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
-                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                        <p id="chatLockPreviewText" class="leading-relaxed text-xs">🔒 This conversation has been temporarily muted by community administrators.</p>
-                                    </div>
-                                </div>
-
                                 <div class="flex justify-end gap-2">
                                     <button type="button" onclick="saveChatLockSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Lock Policy</button>
                                     <button type="button" onclick="broadcastLockState()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
@@ -463,8 +513,8 @@
                                 </div>
                             </div>
 
-                            <!-- 5. Anti-Link -->
-                            <div class="section-divider space-y-3">
+                            <!-- Anti-Link -->
+                            <div class="space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
                                         <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
@@ -472,140 +522,37 @@
                                         </div>
                                         <div>
                                             <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield</h4>
-                                            <p class="text-xs text-slate-500">Detects and purges unauthorized external links and invites</p>
+                                            <p class="text-xs text-slate-500">Detects and purges unauthorized external links</p>
                                         </div>
                                     </div>
                                     <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="antiLinkSilent" onchange="updateAntiLinkPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                    <label for="antiLinkSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
-                                </div>
-
                                 <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notification Message:</label>
-                                    <textarea id="antiLinkMsg" rows="2" oninput="updateAntiLinkPreview()" placeholder="⚠️ {mention}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                    <div class="flex flex-wrap gap-1 mt-1.5">
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
-                                    </div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message:</label>
+                                    <textarea id="antiLinkMsg" rows="2" placeholder="⚠️ {mention}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
-
-                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
-                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
-                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                        <p id="antiLinkPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, external links are restricted in Community!</p>
-                                    </div>
-                                </div>
-
                                 <div class="flex justify-end">
                                     <button type="button" onclick="saveAntiLinkSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Link Policy</button>
                                 </div>
                             </div>
-
-                            <!-- 6. Anti-Forward -->
-                            <div class="space-y-3">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                                            <i data-lucide="forward" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Anti-Forward Protection</h4>
-                                            <p class="text-xs text-slate-500">Blocks forwarded messages from external channels and bots</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                                </div>
-
-                                <div class="flex items-center gap-2">
-                                    <input type="checkbox" id="antiForwardSilent" onchange="updateAntiForwardPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                    <label for="antiForwardSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
-                                </div>
-
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notification Message:</label>
-                                    <textarea id="antiForwardMsg" rows="2" oninput="updateAntiForwardPreview()" placeholder="⚠️ {mention}, forwarded messages are not permitted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                    <div class="flex flex-wrap gap-1 mt-1.5">
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
-                                    </div>
-                                </div>
-
-                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
-                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
-                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                        <p id="antiForwardPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, forwarded messages are not permitted in Community!</p>
-                                    </div>
-                                </div>
-
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveAntiForwardSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Forward Policy</button>
-                                </div>
-                            </div>
-
                         </div>
                     </div>
 
-                    <!-- TAB 2: BROADCAST STUDIO -->
+                    <!-- Broadcast Studio Tab -->
                     <div id="tabContent-broadcast" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
-                            <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-                                <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
-                                    <i data-lucide="radio" class="w-4 h-4"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-base font-bold text-slate-900">Official Group Broadcast Studio</h3>
-                                    <p class="text-xs text-slate-500">Dispatch instant announcements, images, and buttons to the community</p>
-                                </div>
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Official Group Broadcast Studio</h3>
+                                <p class="text-xs text-slate-500">Dispatch instant announcements, images, and buttons to the community</p>
                             </div>
-
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Header Image URL (Optional):</label>
-                                <input id="broadcastPhotoUrl" type="url" oninput="updateBroadcastPreview()" placeholder="https://example.com/announcement.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
+                                <input id="broadcastPhotoUrl" type="url" placeholder="https://example.com/announcement.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none">
                             </div>
-
                             <div>
-                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Broadcast Message Body:</label>
-                                <textarea id="broadcastText" rows="3" oninput="updateBroadcastPreview()" placeholder="📢 Attention Members! We have an important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Announcement Message Body:</label>
+                                <textarea id="broadcastText" rows="3" placeholder="📢 Attention Members! Important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
                             </div>
-
-                            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h4 class="text-xs font-bold text-slate-900">Broadcast URL Buttons</h4>
-                                        <p class="text-[10px] text-slate-500">Attach clickable buttons under the announcement</p>
-                                    </div>
-                                    <button type="button" onclick="addBroadcastButtonRow()" class="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1">
-                                        <i data-lucide="plus" class="w-3 h-3"></i>
-                                        <span>Add Button</span>
-                                    </button>
-                                </div>
-                                <div id="broadcastButtonsList" class="space-y-2 pt-1"></div>
-                            </div>
-
-                            <div class="space-y-1.5 pt-2 border-t border-slate-100">
-                                <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Live Broadcast Preview (Telegram Bubble):</span>
-                                <div class="bg-sky-50/60 p-3.5 rounded-2xl border border-sky-100 flex items-start gap-2.5">
-                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-2 max-w-[90%]">
-                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                        <div id="broadcastPreviewImgWrap" class="hidden rounded-lg overflow-hidden max-h-40 border border-slate-100">
-                                            <img id="broadcastPreviewImg" src="" alt="Banner" class="w-full h-full object-cover">
-                                        </div>
-                                        <p id="broadcastPreviewMsg" class="leading-relaxed text-xs">📢 Attention Members! We have an important announcement...</p>
-                                        <div id="broadcastPreviewButtonsWrapper" class="space-y-1 pt-1"></div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div class="flex justify-end">
                                 <button type="button" onclick="sendGroupBroadcast()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                                     <i data-lucide="send" class="w-3.5 h-3.5"></i>
@@ -615,75 +562,41 @@
                         </div>
                     </div>
 
-                    <!-- TAB 3: BAN NOTIFICATIONS -->
+                    <!-- Ban System Tab -->
                     <div id="tabContent-bansystem" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                                        <i data-lucide="user-x" class="w-4 h-4"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-base font-bold text-slate-900">Custom Ban Notification Message</h3>
-                                        <p class="text-xs text-slate-500">Broadcast a customized public notice when a member is removed</p>
-                                    </div>
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Custom Ban Notification Message</h3>
+                                    <p class="text-xs text-slate-500">Broadcast notice when a member is removed</p>
                                 </div>
                                 <input type="checkbox" id="toggleBanSystem" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
-
-                            <div class="flex items-center gap-2 pt-1">
-                                <input type="checkbox" id="banSystemSilent" onchange="updateBanPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                <label for="banSystemSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Ban without sending message in group)</label>
-                            </div>
-
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Ban Notification Content:</label>
-                                <textarea id="banSystemMsg" rows="3" oninput="updateBanPreview()" placeholder="⛔ {name} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                <div class="flex flex-wrap gap-1 mt-1.5">
-                                    <button type="button" onclick="insertTag('banSystemMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                    <button type="button" onclick="insertTag('banSystemMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                    <button type="button" onclick="insertTag('banSystemMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
-                                    <button type="button" onclick="insertTag('banSystemMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
-                                    <button type="button" onclick="insertTag('banSystemMsg', '{admin}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {admin}</button>
-                                </div>
+                                <textarea id="banSystemMsg" rows="3" placeholder="⛔ {name} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
                             </div>
-
-                            <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
-                                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
-                                    <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                    <p id="banPreviewText" class="leading-relaxed text-xs">⛔ John Doe has been permanently removed from Community.</p>
-                                </div>
-                            </div>
-
                             <div class="flex justify-end">
                                 <button type="button" onclick="saveBanSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Ban Policy</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB 4: AUTO-REPLIES -->
+                    <!-- Auto-Replies Tab -->
                     <div id="tabContent-autoreply" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
-                            <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-                                <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
-                                    <i data-lucide="message-square-reply" class="w-4 h-4"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-base font-bold text-slate-900">Custom Auto-Replies Engine</h3>
-                                    <p class="text-xs text-slate-500">Configure keywords that trigger automatic bot responses filtered by sender role</p>
-                                </div>
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Custom Auto-Replies Engine</h3>
+                                <p class="text-xs text-slate-500">Configure keywords that trigger automatic bot responses filtered by sender role</p>
                             </div>
-
                             <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-                                <h4 class="text-xs font-bold text-slate-900">Create New Auto-Reply Rule</h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                                     <div class="sm:col-span-5">
                                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Trigger Keyword</label>
                                         <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                     </div>
                                     <div class="sm:col-span-4">
-                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Allowed Sender Role</label>
+                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sender Role</label>
                                         <select id="newReplyTarget" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                             <option value="everyone">Everyone</option>
                                             <option value="admin_owner">Only Admin & Owner</option>
@@ -698,382 +611,249 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot's Response Message</label>
-                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
-                                    <div class="flex flex-wrap gap-1 mt-1">
-                                        <button type="button" onclick="insertTag('newReplyResponse', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                        <button type="button" onclick="insertTag('newReplyResponse', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('newReplyResponse', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
-                                    </div>
-                                </div>
-
-                                <div class="pt-1">
-                                    <div class="flex items-center justify-between mb-1.5">
-                                        <span class="text-[10px] font-bold text-slate-600 uppercase">Attach URL Buttons (Optional)</span>
-                                        <button type="button" onclick="addAutoReplyButtonRow()" class="text-brand-600 hover:text-brand-700 text-[10px] font-bold flex items-center gap-0.5">
-                                            <i data-lucide="plus" class="w-3 h-3"></i> Add Button
-                                        </button>
-                                    </div>
-                                    <div id="newReplyButtonsList" class="space-y-1.5"></div>
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response</label>
+                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
                             </div>
-
-                            <div class="space-y-2.5">
-                                <h4 class="text-xs font-bold text-slate-900">Active Auto-Reply Rules</h4>
-                                <div id="autoRepliesList" class="space-y-2"></div>
-                            </div>
-
+                            <div id="autoRepliesList" class="space-y-2"></div>
                             <div class="flex justify-end pt-2">
                                 <button type="button" onclick="saveAutoRepliesSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Auto-Replies</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB 5: PROFANITY BLACKLIST -->
+                    <!-- Profanity Blacklist Tab -->
                     <div id="tabContent-profanity" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                                        <i data-lucide="message-square-x" class="w-4 h-4"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-base font-bold text-slate-900">Profanity Blacklist & Enforcement</h3>
-                                        <p class="text-xs text-slate-500">Configure prohibited words, punishment action and custom warning notification</p>
-                                    </div>
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Profanity Blacklist & Enforcement</h3>
+                                    <p class="text-xs text-slate-500">Configure prohibited words and punishment</p>
                                 </div>
                                 <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
-
-                            <div class="flex items-center gap-2 pt-1">
-                                <input type="checkbox" id="badWordsSilent" onchange="updateBadWordsPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                <label for="badWordsSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
-                            </div>
-
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Blacklisted Words (Comma separated):</label>
-                                <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive, hack" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
                             </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                    <label class="text-[11px] font-bold text-slate-900 block mb-1">Enforcement Action</label>
-                                    <select id="badWordsAction" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                        <option value="delete">Delete Message Only</option>
-                                        <option value="warn">Delete Message + Issue Warning</option>
-                                        <option value="ban">Instant Permanent Ban</option>
-                                    </select>
-                                </div>
-                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                    <label class="text-[11px] font-bold text-slate-900 block mb-1">Auto-Delete Warning Message</label>
-                                    <select id="badWordsAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                        <option value="0">Never Delete Warning</option>
-                                        <option value="5">Auto-Delete after 5 Seconds</option>
-                                        <option value="10">Auto-Delete after 10 Seconds</option>
-                                        <option value="15">Auto-Delete after 15 Seconds</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Custom Warning Notification:</label>
-                                <textarea id="badWordsCustomMsg" rows="2" oninput="updateBadWordsPreview()" placeholder="⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                <div class="flex flex-wrap gap-1 mt-1.5">
-                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{warns}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {warns}</button>
-                                    <button type="button" onclick="insertTag('badWordsCustomMsg', '{warn_limit}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {warn_limit}</button>
-                                </div>
-                            </div>
-
-                            <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
-                                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
-                                    <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                    <p id="badWordsPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, inappropriate language is prohibited! Warnings: (1/3)</p>
-                                </div>
-                            </div>
-
                             <div class="flex justify-end">
                                 <button type="button" onclick="saveBadWordsSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Profanity Policy</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB 6: WELCOME & FAREWELL (GOODBYE) SYSTEM -->
+                    <!-- Welcome & Farewell Tab -->
                     <div id="tabContent-welcome" class="hidden space-y-6 max-w-5xl">
-                        
-                        <!-- 1. WELCOME GREETING -->
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
-                                        <i data-lucide="party-popper" class="w-4 h-4"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-base font-bold text-slate-900">Rich Welcome Media & Greetings</h3>
-                                        <p class="text-xs text-slate-500">Greet newly joined members automatically with photos, buttons & timers</p>
-                                    </div>
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Welcome & Farewell Greetings</h3>
+                                    <p class="text-xs text-slate-500">Greet joined members & say goodbye to departed members</p>
                                 </div>
                                 <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
-
-                            <div>
-                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Header Image URL (Optional):</label>
-                                <input id="welcomePhotoUrl" type="url" oninput="updateLivePreview()" placeholder="https://example.com/banner.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
-                            </div>
-
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Text Message:</label>
-                                <textarea id="welcomeTextInput" rows="3" oninput="updateLivePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                <div class="flex flex-wrap gap-1 mt-1.5">
-                                    <button type="button" onclick="insertTag('welcomeTextInput', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                    <button type="button" onclick="insertTag('welcomeTextInput', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                    <button type="button" onclick="insertTag('welcomeTextInput', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
-                                    <button type="button" onclick="insertTag('welcomeTextInput', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
-                                </div>
+                                <textarea id="welcomeTextInput" rows="3" placeholder="👋 Welcome {mention} to {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
                             </div>
-
-                            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <h4 class="text-xs font-bold text-slate-900">Interactive URL Buttons</h4>
-                                        <p class="text-[10px] text-slate-500">Attach clickable link buttons below the greeting message</p>
-                                    </div>
-                                    <button type="button" onclick="addWelcomeButtonRow()" class="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-sm">
-                                        <i data-lucide="plus" class="w-3 h-3"></i>
-                                        <span>Add Button</span>
-                                    </button>
-                                </div>
-                                <div id="welcomeButtonsList" class="space-y-2 pt-1"></div>
-                            </div>
-
-                            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <h4 class="text-xs font-bold text-slate-900">Auto-Delete Welcome Message</h4>
-                                    <p class="text-[10px] text-slate-500">Automatically purges greeting to keep group chat pristine</p>
-                                </div>
-                                <select id="welcomeAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                    <option value="0">Never Delete (Keep Forever)</option>
-                                    <option value="10">Auto-Delete after 10 Seconds</option>
-                                    <option value="30">Auto-Delete after 30 Seconds</option>
-                                    <option value="60">Auto-Delete after 1 Minute</option>
-                                </select>
-                            </div>
-
-                            <div class="space-y-1.5 pt-2 border-t border-slate-100">
-                                <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Live Web Simulator:</span>
-                                <div class="bg-sky-50/60 p-3.5 rounded-2xl border border-sky-100 flex items-start gap-2.5">
-                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                    <div class="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-2 max-w-[90%]">
-                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                        <div id="previewImageWrapper" class="hidden rounded-lg overflow-hidden max-h-40 border border-slate-100">
-                                            <img id="previewImage" src="" alt="Banner" class="w-full h-full object-cover">
-                                        </div>
-                                        <p id="previewText" class="leading-relaxed text-xs">Welcome John Doe to Community!</p>
-                                        <div id="previewButtonsWrapper" class="space-y-1 pt-1"></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                                <button type="button" onclick="sendTestWelcomeMessage()" class="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-                                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
-                                    <span>Send Test to Telegram Group</span>
-                                </button>
-                                <button type="button" onclick="saveWelcomeSection()" class="w-full sm:w-auto px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Welcome Policy</button>
-                            </div>
-                        </div>
-
-                        <!-- 2. FAREWELL / LEAVE GREETING (GOODBYE) -->
-                        <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
-                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                                        <i data-lucide="hand" class="w-4 h-4"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-base font-bold text-slate-900">Community Farewell (Leave Message)</h3>
-                                        <p class="text-xs text-slate-500">Send an automatic departure notice when a member exits the group</p>
-                                    </div>
-                                </div>
-                                <input type="checkbox" id="toggleGoodbye" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                            </div>
-
-                            <div>
-                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Departure Message Body:</label>
-                                <textarea id="goodbyeTextInput" rows="2" oninput="updateGoodbyePreview()" placeholder="👋 Goodbye {mention}! We hope to see you again soon in {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-                                <div class="flex flex-wrap gap-1 mt-1.5">
-                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
-                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
-                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
-                                    <button type="button" onclick="insertTag('goodbyeTextInput', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
-                                </div>
-                            </div>
-
-                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                                <span class="text-xs font-bold text-slate-700">Auto-Delete Farewell Message:</span>
-                                <select id="goodbyeAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 outline-none">
-                                    <option value="0">Never Delete</option>
-                                    <option value="5">5 Seconds</option>
-                                    <option value="10" selected>10 Seconds</option>
-                                    <option value="30">30 Seconds</option>
-                                </select>
-                            </div>
-
-                            <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
-                                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
-                                <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
-                                    <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
-                                    <p id="goodbyePreviewText" class="leading-relaxed text-xs">👋 Goodbye John Doe! We hope to see you again soon in Community.</p>
-                                </div>
-                            </div>
-
                             <div class="flex justify-end">
-                                <button type="button" onclick="saveGoodbyeSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Farewell Policy</button>
+                                <button type="button" onclick="saveWelcomeSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Welcome Policy</button>
                             </div>
                         </div>
-
                     </div>
 
-                    <!-- TAB 7: SLASH COMMANDS -->
+                    <!-- Slash Commands Tab -->
                     <div id="tabContent-commands" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
-                            <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-                                <div class="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center">
-                                    <i data-lucide="terminal" class="w-4 h-4"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-base font-bold text-slate-900">Custom Slash Commands Engine</h3>
-                                    <p class="text-xs text-slate-500">Define commands starting with / and specify who is authorized to trigger them</p>
-                                </div>
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Custom Slash Commands Engine</h3>
+                                <p class="text-xs text-slate-500">Define commands starting with /</p>
                             </div>
-
-                            <div class="p-4 rounded-xl bg-brand-50/50 border border-brand-100 space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <span class="px-2.5 py-0.5 rounded-lg bg-brand-600 text-white font-mono text-xs font-bold">/bio</span>
-                                        <div>
-                                            <h4 class="text-xs font-bold text-slate-900">User Dossier & Security History</h4>
-                                            <p class="text-[10px] text-slate-500">Outputs member ID, role, infractions count & scammer status</p>
-                                        </div>
-                                    </div>
-                                    <select id="cmdBioRole" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 outline-none">
-                                        <option value="all">Everyone</option>
-                                        <option value="admin">Admins & Owner</option>
-                                        <option value="owner">Owner Only</option>
-                                    </select>
-                                </div>
+                            <div class="p-4 rounded-xl bg-brand-50/50 border border-brand-100 flex items-center justify-between">
+                                <span class="px-2.5 py-0.5 rounded-lg bg-brand-600 text-white font-mono text-xs font-bold">/bio</span>
+                                <select id="cmdBioRole" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 outline-none">
+                                    <option value="all">Everyone</option>
+                                    <option value="admin">Admins & Owner</option>
+                                    <option value="owner">Owner Only</option>
+                                </select>
                             </div>
-
-                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-                                <h4 class="text-xs font-bold text-slate-900">Create New Custom Slash Command</h4>
-                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                                    <div class="sm:col-span-4">
-                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Command Trigger</label>
-                                        <div class="flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5">
-                                            <span class="text-xs font-bold text-slate-400 mr-1">/</span>
-                                            <input id="newCmdName" type="text" placeholder="rules" class="w-full text-xs outline-none font-bold text-slate-800">
-                                        </div>
-                                    </div>
-                                    <div class="sm:col-span-4">
-                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Permission Level</label>
-                                        <select id="newCmdRole" class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="all">Everyone</option>
-                                            <option value="admin">Admins & Owner</option>
-                                            <option value="owner">Owner Only</option>
-                                        </select>
-                                    </div>
-                                    <div class="sm:col-span-4 flex items-end">
-                                        <button type="button" onclick="addCustomCommandRow()" class="w-full py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm">
-                                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                                            <span>Add Command</span>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Command Response Text</label>
-                                    <textarea id="newCmdResponse" rows="2" placeholder="Hi {name}, here are our community rules: ..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <h4 class="text-xs font-bold text-slate-900">Active Custom Commands</h4>
-                                <div id="customCommandsList" class="space-y-2"></div>
-                            </div>
-
-                            <div class="flex justify-end pt-2">
+                            <div id="customCommandsList" class="space-y-2"></div>
+                            <div class="flex justify-end">
                                 <button type="button" onclick="saveCommandsSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Slash Commands</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- TAB 8: SCAMMER MANAGEMENT PANEL -->
+                    <!-- Scammers Tab -->
                     <div id="tabContent-scammers" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
-                            <div class="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-                                <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
-                                </div>
-                                <div>
-                                    <h3 class="text-base font-bold text-slate-900">Scammer Tagging & Blacklist System</h3>
-                                    <p class="text-xs text-slate-500">Flag fraudsters. The bot will automatically tag their messages with public scam warnings.</p>
-                                </div>
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Scammer Tagging & Blacklist System</h3>
+                                <p class="text-xs text-slate-500">Flag fraudsters with public warnings</p>
                             </div>
-
-                            <div class="p-4 rounded-xl bg-rose-50/50 border border-rose-100 space-y-2.5">
-                                <label class="text-xs font-bold text-rose-800 uppercase block">Public Scammer Warning Message:</label>
-                                <textarea id="scammerCustomNotice" rows="2" class="w-full bg-white border border-rose-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveScammerNoticeSection()" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Scammer Notice</button>
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="text-xs font-bold text-slate-900">Flagged Scammers in this Group</h4>
-                                    <button onclick="loadScammersList()" class="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition">
-                                        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-                                        <span>Refresh</span>
-                                    </button>
-                                </div>
-                                <div id="scammersListContainer" class="space-y-2 max-h-80 overflow-y-auto"></div>
-                            </div>
+                            <div id="scammersListContainer" class="space-y-2 max-h-80 overflow-y-auto"></div>
                         </div>
                     </div>
 
-                    <!-- TAB 9: LEFT MEMBERS LOG -->
+                    <!-- Left Members Tab -->
                     <div id="tabContent-leftmembers" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                                        <i data-lucide="user-minus" class="w-4 h-4"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-base font-bold text-slate-900">Left Members Live Tracker</h3>
-                                        <p class="text-xs text-slate-500">Real-time log of users who exited the group</p>
-                                    </div>
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Left Members Live Tracker</h3>
+                                    <p class="text-xs text-slate-500">Real-time log of users who exited the group</p>
                                 </div>
                                 <button onclick="loadLeftMembers()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
                                     <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                                     <span>Refresh Logs</span>
                                 </button>
                             </div>
-
-                            <div id="leftMembersLoading" class="hidden py-8 text-center text-slate-400 text-xs">
-                                <i data-lucide="loader" class="w-6 h-6 animate-spin mx-auto mb-2 text-brand-600"></i>
-                                <span>Fetching left members list...</span>
-                            </div>
-
                             <div id="leftMembersListContainer" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
                         </div>
                     </div>
-
                 </main>
             </div>
         </div>
 
+    </div>
+
+    <!-- ==========================================================================
+       MODAL 1: PURCHASE / CONTACT ADMIN MODAL (ENGLISH PROMINENT + BENGALI SUBTITLE)
+       ========================================================================== -->
+    <div id="purchaseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-lg rounded-3xl p-7 shadow-2xl border border-slate-200 relative text-left">
+            <button onclick="closePurchaseModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center mb-4">
+                <i data-lucide="credit-card" class="w-6 h-6"></i>
+            </div>
+
+            <!-- English Prominent Header -->
+            <h3 class="text-xl font-extrabold text-slate-900 leading-tight">License Key Purchase Inquiry</h3>
+            <p class="text-xs font-semibold text-brand-600 mt-0.5">Selected Plan: <span id="modalPlanName">Enterprise Unlimited</span> (<span id="modalPlanPrice">৳750</span> ≈ <span id="modalPlanUsdt">$5.90</span> USDT)</p>
+
+            <div class="my-5 p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div>
+                    <h4 class="text-sm font-bold text-slate-900">How to activate your protection license:</h4>
+                    <p class="text-xs text-slate-600 mt-1 leading-relaxed">
+                        To purchase an official license key, please message the administrator directly on Telegram. You will receive an exclusive license key formatted as <code class="bg-white px-1.5 py-0.5 rounded border border-slate-300 font-bold text-brand-600">VS-XXXX-XXXX</code> immediately after payment.
+                    </p>
+                </div>
+
+                <!-- Bengali Subtitle Instructions -->
+                <div class="border-t border-slate-200/80 pt-2.5">
+                    <p class="text-[11px] font-medium text-slate-500 leading-relaxed font-sans">
+                        বাংলা নির্দেশিকা: লাইসেন্স কেনার জন্য নিচের বাটনে ক্লিক করে সরাসরি আমাদের অ্যাডমিনকে টেলিগ্রামে মেসেজ দিন। পেমেন্ট কনফার্ম করার পর অ্যাডমিন আপনাকে একটি লাইসেন্স কী (License Key) প্রদান করবে, যা দিয়ে আপনি প্যানেলে গিয়ে সাবস্ক্রিপশন ক্লেইম করতে পারবেন।
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center gap-3">
+                <a href="https://t.me/Blackmoney54" target="_blank" class="w-full sm:flex-1 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-brand-500/25">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <span>Contact Admin @Blackmoney54</span>
+                </a>
+                <button onclick="closePurchaseModal(); openClaimLicenseModal();" class="w-full sm:w-auto px-5 py-3 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition">
+                    I Already Have a Key
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+       MODAL 2: CLAIM LICENSE KEY MODAL
+       ========================================================================== -->
+    <div id="claimLicenseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-200 relative text-left">
+            <button onclick="closeClaimLicenseModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                <i data-lucide="key" class="w-5 h-5"></i>
+            </div>
+
+            <h3 class="text-lg font-bold text-slate-900">Claim Protection License Key</h3>
+            <p class="text-xs text-slate-500 mb-4">Enter the 30-day license key received from @Blackmoney54.</p>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Your License Key</label>
+                    <input id="inputClaimKey" type="text" placeholder="VS-A1B2-C3D4" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <p class="text-[10px] text-slate-400 leading-relaxed">
+                    * The countdown timer starts immediately upon claiming. After 30 days, your 7-day grace period will automatically activate.
+                </p>
+
+                <div class="pt-2 flex gap-2">
+                    <button onclick="closeClaimLicenseModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+                    <button onclick="submitClaimLicense()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition">Activate License</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+       MODAL 3: SUPER ADMIN LICENSE GENERATOR
+       ========================================================================== -->
+    <div id="superAdminModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl border border-slate-200 relative text-left max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Super Admin License Generator</h3>
+                        <p class="text-xs text-slate-500">Create, deploy & track license keys for customers</p>
+                    </div>
+                </div>
+                <button onclick="closeSuperAdminModal()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto pane-scroll space-y-5 flex-1 pr-1">
+                <!-- Generate Box -->
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-900 uppercase">Generate New Key</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                        <div class="sm:col-span-6">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Select Package Tier</label>
+                            <select id="genPlanId" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                <option value="starter">Starter (1 Channel/Group) — ৳50</option>
+                                <option value="growth">Growth (5 Channels/Groups) — ৳200</option>
+                                <option value="pro">Pro Hub (15 Channels/Groups) — ৳450</option>
+                                <option value="unlimited" selected>Unlimited Enterprise — ৳750</option>
+                            </select>
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Duration (Days)</label>
+                            <input id="genDuration" type="number" value="30" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                        </div>
+                        <div class="sm:col-span-3 flex items-end">
+                            <button onclick="submitGenerateLicense()" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                                Generate Key
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generated / Active Keys List -->
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-slate-900 uppercase">All Generated Licenses</h4>
+                        <button onclick="loadAdminLicenses()" class="text-[11px] text-brand-600 font-bold flex items-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh Keys
+                        </button>
+                    </div>
+                    <div id="adminLicensesList" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- AUTH MODAL -->
@@ -1082,14 +862,11 @@
             <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
                 <i data-lucide="x" class="w-5 h-5"></i>
             </button>
-
             <div class="w-12 h-12 rounded-2xl border border-slate-200 overflow-hidden mx-auto mb-3 shadow-sm flex items-center justify-center bg-white">
                 <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" alt="Logo" class="w-10 h-10 object-cover">
             </div>
-
             <h3 class="text-xl font-bold text-slate-900 text-center mb-1">VS Protection Cloud</h3>
             <p class="text-xs text-slate-500 text-center mb-6">Enter your email and password to access your dashboard</p>
-
             <form onsubmit="handleEmailAuth(event)" class="space-y-4">
                 <div>
                     <label class="text-[11px] font-bold text-slate-500 uppercase block mb-1">Account Email</label>
@@ -1099,7 +876,6 @@
                     <label class="text-[11px] font-bold text-slate-500 uppercase block mb-1">Secret Password</label>
                     <input id="authPassword" type="password" required placeholder="••••••••••••" class="w-full bg-slate-50 border border-slate-200 px-3.5 py-2.5 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
-                
                 <div class="flex gap-2 pt-2">
                     <button type="submit" name="action" value="signin" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition">Sign In</button>
                     <button type="submit" name="action" value="signup" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs transition">Create Account</button>
@@ -1127,6 +903,7 @@
 
         let currentUser = null;
         let tgSession = localStorage.getItem('vs_tg_session') || null;
+        let userTelegramId = localStorage.getItem('vs_owner_tg_id') || null;
         let phoneCodeHash = null;
         let loadedItemsMap = {};
         let activeGroupId = null;
@@ -1138,22 +915,8 @@
             document.getElementById('selectedFlag').src = `https://flagcdn.com/w40/${code}.png`;
         }
 
-        function insertTag(textareaId, tag) {
-            const el = document.getElementById(textareaId);
-            const start = el.selectionStart;
-            const end = el.selectionEnd;
-            const text = el.value;
-            el.value = text.substring(0, start) + tag + text.substring(end);
-            el.focus();
-            el.selectionStart = el.selectionEnd = start + tag.length;
-            updateLivePreview();
-            updateAntiLinkPreview();
-            updateAntiForwardPreview();
-            updateBanPreview();
-            updateBadWordsPreview();
-            updateEmojiPreview();
-            updateAntiButtonPreview();
-            updateGoodbyePreview();
+        function scrollToPricing() {
+            document.getElementById('pricingSection')?.scrollIntoView({ behavior: 'smooth' });
         }
 
         function hideSplashScreen() {
@@ -1165,127 +928,173 @@
         }
 
         // =====================================================================
-        // LIVE PREVIEW UPDATERS WITH REALISTIC BOT BUBBLE
+        // PURCHASE & CLAIM LICENSE MODALS
         // =====================================================================
-        function updateChatLockPreview() {
-            const val = document.getElementById('chatLockMsg').value || "🔒 This conversation has been temporarily muted by community administrators.";
-            document.getElementById('chatLockPreviewText').innerText = val;
+        function openPurchaseModal(planName, priceBdt, priceUsdt) {
+            document.getElementById('modalPlanName').innerText = planName;
+            document.getElementById('modalPlanPrice').innerText = '৳' + priceBdt;
+            document.getElementById('modalPlanUsdt').innerText = '$' + priceUsdt;
+            document.getElementById('purchaseModal').classList.remove('hidden');
         }
 
-        function updateAntiLinkPreview() {
-            const silent = document.getElementById('antiLinkSilent').checked;
-            if (silent) {
-                document.getElementById('antiLinkPreviewText').innerText = "[Silent Mode: Link purged instantly without sending any message]";
-                return;
+        function closePurchaseModal() {
+            document.getElementById('purchaseModal').classList.add('hidden');
+        }
+
+        function openClaimLicenseModal() {
+            document.getElementById('claimLicenseModal').classList.remove('hidden');
+        }
+
+        function closeClaimLicenseModal() {
+            document.getElementById('claimLicenseModal').classList.add('hidden');
+        }
+
+        async function submitClaimLicense() {
+            const key = document.getElementById('inputClaimKey').value.trim();
+            if (!key) return Swal.fire('License Required', 'Please enter your license key.', 'warning');
+            if (!userTelegramId) return Swal.fire('Telegram Required', 'Please connect your Telegram account first to bind the license.', 'warning');
+
+            Swal.showLoading();
+            try {
+                const res = await fetch('/api/license/claim', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        licenseKey: key,
+                        ownerTelegramId: userTelegramId,
+                        userEmail: currentUser?.email || 'Anonymous'
+                    })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    closeClaimLicenseModal();
+                    Swal.fire('Activated!', data.message, 'success');
+                    checkSubscriptionStatus();
+                } else {
+                    Swal.fire('Claim Failed', data.error || 'Invalid license key.', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
             }
-            const val = document.getElementById('antiLinkMsg').value || "⚠️ {mention}, external links are restricted in {chat}!";
-            document.getElementById('antiLinkPreviewText').innerText = val
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{username}/g, '@JohnDoe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
         }
 
-        function updateAntiForwardPreview() {
-            const silent = document.getElementById('antiForwardSilent').checked;
-            if (silent) {
-                document.getElementById('antiForwardPreviewText').innerText = "[Silent Mode: Forwarded message purged without notification]";
-                return;
+        async function checkSubscriptionStatus() {
+            if (!userTelegramId) return;
+            try {
+                const res = await fetch('/api/license/status', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ownerTelegramId: userTelegramId })
+                });
+                const data = await res.json();
+                const banner = document.getElementById('licenseStatusBanner');
+                const planNameEl = document.getElementById('subPlanName');
+                const badgeEl = document.getElementById('subStatusBadge');
+                const metaEl = document.getElementById('subTimingMeta');
+
+                if (data.hasSubscription) {
+                    planNameEl.innerText = data.subscription.planName;
+                    
+                    if (data.isTotallyShutDown) {
+                        badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700";
+                        badgeEl.innerText = "EXPIRED & OFF";
+                        metaEl.innerHTML = `<span class="text-rose-600 font-bold">Subscription and 7-day grace period expired. All bot protection is OFF. Renew with @Blackmoney54.</span>`;
+                        banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-rose-50/60 border-rose-200";
+                    } else if (data.isGracePeriod) {
+                        badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse";
+                        badgeEl.innerText = "GRACE PERIOD ACTIVE";
+                        metaEl.innerHTML = `<span class="text-amber-700 font-bold">30-day term ended. ${data.graceDaysLeft} days remaining in grace period before protection automatically shuts off!</span>`;
+                        banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-amber-50/60 border-amber-200";
+                    } else {
+                        badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700";
+                        badgeEl.innerText = "PROTECTION ACTIVE";
+                        metaEl.innerText = `${data.remainingDays} days remaining in current active period (+7 days renewal grace included).`;
+                        banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-emerald-50/40 border-emerald-200";
+                    }
+                } else {
+                    planNameEl.innerText = "No Active License Key";
+                    badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
+                    badgeEl.innerText = "UNLICENSED";
+                    metaEl.innerText = "Please purchase a license key from admin @Blackmoney54 and click 'Claim License Key'.";
+                }
+            } catch (e) {}
+        }
+
+        // =====================================================================
+        // SUPER ADMIN LICENSE CONTROLLER
+        // =====================================================================
+        function openSuperAdminModal() {
+            document.getElementById('superAdminModal').classList.remove('hidden');
+            loadAdminLicenses();
+        }
+
+        function closeSuperAdminModal() {
+            document.getElementById('superAdminModal').classList.add('hidden');
+        }
+
+        async function submitGenerateLicense() {
+            const planId = document.getElementById('genPlanId').value;
+            const customDurationDays = document.getElementById('genDuration').value;
+
+            Swal.showLoading();
+            try {
+                const res = await fetch('/api/admin/generate-license', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ planId, customDurationDays })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    Swal.fire({
+                        title: 'License Generated!',
+                        html: `<div class="p-3 bg-slate-100 rounded-xl font-mono text-base font-bold text-slate-900 select-all mb-2">${data.license.key}</div><p class="text-xs text-slate-500">Plan: ${data.license.planName}</p>`,
+                        icon: 'success'
+                    });
+                    loadAdminLicenses();
+                } else {
+                    Swal.fire('Failed', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
             }
-            const val = document.getElementById('antiForwardMsg').value || "⚠️ {mention}, forwarded messages are not permitted in {chat}!";
-            document.getElementById('antiForwardPreviewText').innerText = val
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{username}/g, '@JohnDoe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
         }
 
-        function updateEmojiPreview() {
-            const silent = document.getElementById('emojiSpamSilent').checked;
-            if (silent) {
-                document.getElementById('emojiPreviewText').innerText = "[Silent Mode: Message with excessive emojis purged silently]";
-                return;
+        async function loadAdminLicenses() {
+            const listContainer = document.getElementById('adminLicensesList');
+            listContainer.innerHTML = `<div class="py-4 text-center text-xs text-slate-400">Loading licenses...</div>`;
+            try {
+                const res = await fetch('/api/admin/list-licenses');
+                const data = await res.json();
+                listContainer.innerHTML = '';
+
+                if (data.success && data.licenses.length > 0) {
+                    data.licenses.forEach(lic => {
+                        const isClaimed = lic.status === 'claimed';
+                        const badgeColor = isClaimed ? 'bg-indigo-50 text-brand-600 border-indigo-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200';
+
+                        const row = document.createElement('div');
+                        row.className = "p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs";
+                        row.innerHTML = `
+                            <div>
+                                <span class="font-mono font-bold text-slate-900 select-all">${lic.key}</span>
+                                <div class="text-[10px] text-slate-500 mt-0.5">${lic.planName} • ${lic.durationDays} Days • ${isClaimed ? `Claimed by: ${lic.claimedBy}` : 'Ready for sale'}</div>
+                            </div>
+                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}">
+                                ${lic.status.toUpperCase()}
+                            </span>
+                        `;
+                        listContainer.appendChild(row);
+                    });
+                } else {
+                    listContainer.innerHTML = `<p class="text-xs text-slate-400 py-3 italic">No licenses generated yet.</p>`;
+                }
+            } catch (e) {
+                listContainer.innerHTML = `<p class="text-xs text-rose-500 py-2">Failed to load licenses.</p>`;
             }
-            const val = document.getElementById('emojiWarningMsg').value || "⚠️ {mention}, excessive emojis are prohibited in {chat}!";
-            document.getElementById('emojiPreviewText').innerText = val
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{username}/g, '@JohnDoe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
-        }
-
-        function updateAntiButtonPreview() {
-            const silent = document.getElementById('antiButtonSilent').checked;
-            if (silent) {
-                document.getElementById('antiButtonPreviewText').innerText = "[Silent Mode: Embedded button message deleted silently]";
-                return;
-            }
-            const val = document.getElementById('antiButtonMsg').value || "⚠️ {mention}, messages with embedded url buttons are restricted!";
-            document.getElementById('antiButtonPreviewText').innerText = val
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{username}/g, '@JohnDoe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
-        }
-
-        function updateBanPreview() {
-            const silent = document.getElementById('banSystemSilent').checked;
-            if (silent) {
-                document.getElementById('banPreviewText').innerText = "[Silent Mode: Member removed without sending message in group]";
-                return;
-            }
-            const val = document.getElementById('banSystemMsg').value || "⛔ {name} has been permanently removed from {chat}.";
-            document.getElementById('banPreviewText').innerText = val
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{username}/g, '@JohnDoe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community')
-                .replace(/{admin}/g, 'AdminUser');
-        }
-
-        function updateBadWordsPreview() {
-            const silent = document.getElementById('badWordsSilent').checked;
-            if (silent) {
-                document.getElementById('badWordsPreviewText').innerText = "[Silent Mode: Offensive message deleted without warning notice]";
-                return;
-            }
-            const val = document.getElementById('badWordsCustomMsg').value || "⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})";
-            document.getElementById('badWordsPreviewText').innerText = val
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{warns}/g, '1')
-                .replace(/{warn_limit}/g, '3');
-        }
-
-        function updateGoodbyePreview() {
-            const val = document.getElementById('goodbyeTextInput').value || "👋 Goodbye {mention}! We hope to see you again soon in {chat}.";
-            document.getElementById('goodbyePreviewText').innerText = val
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{username}/g, '@JohnDoe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText || 'Community');
-        }
-
-        function updateBroadcastPreview() {
-            const text = document.getElementById('broadcastText').value || "📢 Attention Members! We have an important announcement...";
-            document.getElementById('broadcastPreviewMsg').innerText = text;
-
-            const photo = document.getElementById('broadcastPhotoUrl').value.trim();
-            const wrap = document.getElementById('broadcastPreviewImgWrap');
-            const img = document.getElementById('broadcastPreviewImg');
-            if (photo && (photo.startsWith('http://') || photo.startsWith('https://'))) {
-                img.src = photo;
-                wrap.classList.remove('hidden');
-            } else {
-                wrap.classList.add('hidden');
-            }
-
-            const btnWrap = document.getElementById('broadcastPreviewButtonsWrapper');
-            btnWrap.innerHTML = '';
-            const buttons = getBroadcastButtonsData();
-            buttons.forEach(b => {
-                btnWrap.innerHTML += `<div class="w-full py-1 px-2.5 rounded-lg bg-indigo-50/80 border border-indigo-200/60 text-brand-600 font-bold text-center text-[10px] truncate shadow-sm">${b.text} ↗</div>`;
-            });
         }
 
         // Modular Save Handlers
@@ -1320,43 +1129,21 @@
             }, 'Emoji Spam Guard');
         }
 
-        function saveAntiButtonSection() {
-            saveSection('antiButton', {
-                enabled: document.getElementById('toggleAntiButton').checked,
-                silent: document.getElementById('antiButtonSilent').checked,
-                msg: document.getElementById('antiButtonMsg').value
-            }, 'Anti-Button Message Blocker');
-        }
-
-        function saveNameTrackerSection() {
-            saveSection('nameTracker', { enabled: document.getElementById('toggleNameTracker').checked }, 'Name Change Tracker Policy');
-        }
-
         function saveChatLockSection() {
             saveSection('chatLocked', document.getElementById('toggleChatLock').checked, 'Chat Lock Status');
-            saveSection('lockMsg', document.getElementById('chatLockMsg').value, 'Lockdown Announcement Template');
+            saveSection('lockMsg', document.getElementById('chatLockMsg').value, 'Lockdown Template');
         }
 
         function saveAntiLinkSection() {
             saveSection('antiLink', {
                 enabled: document.getElementById('toggleAntiLink').checked,
-                silent: document.getElementById('antiLinkSilent').checked,
                 msg: document.getElementById('antiLinkMsg').value
             }, 'Anti-Link Shield Policy');
-        }
-
-        function saveAntiForwardSection() {
-            saveSection('antiForward', {
-                enabled: document.getElementById('toggleAntiForward').checked,
-                silent: document.getElementById('antiForwardSilent').checked,
-                msg: document.getElementById('antiForwardMsg').value
-            }, 'Anti-Forward Protection Policy');
         }
 
         function saveBanSection() {
             saveSection('banSystem', {
                 enabled: document.getElementById('toggleBanSystem').checked,
-                silent: document.getElementById('banSystemSilent').checked,
                 msg: document.getElementById('banSystemMsg').value
             }, 'Ban Notification Policy');
         }
@@ -1369,30 +1156,15 @@
             const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
             saveSection('badWords', {
                 enabled: document.getElementById('toggleBadWords').checked,
-                silent: document.getElementById('badWordsSilent').checked,
-                words: words,
-                action: document.getElementById('badWordsAction').value,
-                autoDeleteSeconds: parseInt(document.getElementById('badWordsAutoDelete').value || 0),
-                customMsg: document.getElementById('badWordsCustomMsg').value
+                words: words
             }, 'Profanity Blacklist Policy');
         }
 
         function saveWelcomeSection() {
             saveSection('welcome', {
                 enabled: document.getElementById('toggleWelcome').checked,
-                photoUrl: document.getElementById('welcomePhotoUrl').value.trim(),
-                text: document.getElementById('welcomeTextInput').value,
-                buttons: getWelcomeButtonsData(),
-                autoDeleteSeconds: parseInt(document.getElementById('welcomeAutoDelete').value || 0)
+                text: document.getElementById('welcomeTextInput').value
             }, 'Welcome Greeting Policy');
-        }
-
-        function saveGoodbyeSection() {
-            saveSection('goodbye', {
-                enabled: document.getElementById('toggleGoodbye').checked,
-                text: document.getElementById('goodbyeTextInput').value,
-                autoDeleteSeconds: parseInt(document.getElementById('goodbyeAutoDelete').value || 0)
-            }, 'Farewell Leave Policy');
         }
 
         function saveCommandsSection() {
@@ -1400,261 +1172,29 @@
             saveSection('customCommands', customCommandsMap, 'Custom Slash Commands');
         }
 
-        function saveScammerNoticeSection() {
-            saveSection('scammerAlert', { msg: document.getElementById('scammerCustomNotice').value }, 'Scammer Public Notice');
-        }
-
-        // Live Community Broadcast
         async function sendGroupBroadcast() {
             if (!activeGroupId) return;
             const text = document.getElementById('broadcastText').value.trim();
             const photoUrl = document.getElementById('broadcastPhotoUrl').value.trim();
-            const buttons = getBroadcastButtonsData();
-
             if (!text && !photoUrl) return Swal.fire('Incomplete', 'Please enter announcement text or image URL.', 'warning');
 
-            Swal.fire({
-                title: 'Transmitting Broadcast...',
-                text: 'Publishing announcement with buttons directly to group...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
+            Swal.showLoading();
             try {
                 const res = await fetch('/api/tg/broadcast', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ chatId: activeGroupId, text, photoUrl, buttons })
+                    body: JSON.stringify({ chatId: activeGroupId, text, photoUrl })
                 });
                 const data = await res.json();
+                Swal.close();
                 if (data.success) {
-                    Swal.fire('Broadcast Delivered!', data.message, 'success');
-                    document.getElementById('broadcastText').value = '';
-                    document.getElementById('broadcastPhotoUrl').value = '';
-                    document.getElementById('broadcastButtonsList').innerHTML = '';
-                    updateBroadcastPreview();
+                    Swal.fire('Delivered!', data.message, 'success');
                 } else {
-                    Swal.fire('Broadcast Failed', data.error, 'error');
+                    Swal.fire('Failed', data.error, 'error');
                 }
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');
             }
-        }
-
-        function addBroadcastButtonRow(btnText = '', btnUrl = '') {
-            const list = document.getElementById('broadcastButtonsList');
-            const row = document.createElement('div');
-            row.className = "broadcast-btn-row flex items-center gap-2";
-            row.innerHTML = `
-                <input type="text" placeholder="Button Label" value="${btnText}" oninput="updateBroadcastPreview()" class="b-btn-label flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500">
-                <input type="url" placeholder="https://link.com" value="${btnUrl}" oninput="updateBroadcastPreview()" class="b-btn-url flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500">
-                <button type="button" onclick="this.parentElement.remove(); updateBroadcastPreview();" class="w-7 h-7 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50 flex items-center justify-center shrink-0 transition">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-            `;
-            list.appendChild(row);
-            lucide.createIcons();
-            updateBroadcastPreview();
-        }
-
-        function getBroadcastButtonsData() {
-            const rows = document.querySelectorAll('.broadcast-btn-row');
-            const buttons = [];
-            rows.forEach(r => {
-                const text = r.querySelector('.b-btn-label').value.trim();
-                const url = r.querySelector('.b-btn-url').value.trim();
-                if (text && url) buttons.push({ text, url });
-            });
-            return buttons;
-        }
-
-        function addAutoReplyButtonRow(btnText = '', btnUrl = '') {
-            const list = document.getElementById('newReplyButtonsList');
-            const row = document.createElement('div');
-            row.className = "reply-btn-row flex items-center gap-2";
-            row.innerHTML = `
-                <input type="text" placeholder="Button Label" value="${btnText}" class="r-btn-label flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none">
-                <input type="url" placeholder="https://link.com" value="${btnUrl}" class="r-btn-url flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none">
-                <button type="button" onclick="this.parentElement.remove();" class="text-rose-500 hover:text-rose-700 p-1">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-            `;
-            list.appendChild(row);
-            lucide.createIcons();
-        }
-
-        function getAutoReplyButtonsData() {
-            const rows = document.querySelectorAll('.reply-btn-row');
-            const buttons = [];
-            rows.forEach(r => {
-                const text = r.querySelector('.r-btn-label').value.trim();
-                const url = r.querySelector('.r-btn-url').value.trim();
-                if (text && url) buttons.push({ text, url });
-            });
-            return buttons;
-        }
-
-        function addAutoReplyRule() {
-            const trigger = document.getElementById('newReplyTrigger').value.trim().toLowerCase();
-            const target = document.getElementById('newReplyTarget').value;
-            const response = document.getElementById('newReplyResponse').value.trim();
-            const buttons = getAutoReplyButtonsData();
-
-            if (!trigger || !response) return Swal.fire('Incomplete Rule', 'Please enter trigger and response.', 'warning');
-
-            const ruleKey = trigger.replace(/[^a-zA-Z0-9_-]/g, '_');
-            autoRepliesMap[ruleKey] = { trigger, target, response, buttons };
-
-            document.getElementById('newReplyTrigger').value = '';
-            document.getElementById('newReplyResponse').value = '';
-            document.getElementById('newReplyButtonsList').innerHTML = '';
-            renderAutoRepliesList();
-            Swal.fire({ title: 'Rule Added!', text: 'Click "Save Auto-Replies" to activate.', icon: 'success', timer: 1400, showConfirmButton: false });
-        }
-
-        function removeAutoReplyRule(key) {
-            delete autoRepliesMap[key];
-            renderAutoRepliesList();
-        }
-
-        function renderAutoRepliesList() {
-            const container = document.getElementById('autoRepliesList');
-            container.innerHTML = '';
-            const keys = Object.keys(autoRepliesMap);
-
-            if (keys.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No auto-reply rules configured yet.</p>`;
-                return;
-            }
-
-            keys.forEach(k => {
-                const item = autoRepliesMap[k];
-                let roleBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Everyone</span>';
-                if (item.target === 'admin_owner') roleBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-200">Admin & Owner</span>';
-                else if (item.target === 'owner_only') roleBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Owner Only</span>';
-
-                const buttonCount = Array.isArray(item.buttons) ? item.buttons.length : 0;
-                const buttonBadge = buttonCount > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-200">${buttonCount} Buttons</span>` : '';
-
-                const row = document.createElement('div');
-                row.className = "flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/70";
-                row.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <span class="px-2 py-0.5 rounded-lg bg-slate-900 text-white font-mono text-xs font-bold">${item.trigger}</span>
-                        <div>
-                            <p class="text-xs text-slate-800 font-semibold line-clamp-1">${item.response}</p>
-                            <div class="flex items-center gap-1.5 mt-0.5">${roleBadge} ${buttonBadge}</div>
-                        </div>
-                    </div>
-                    <button type="button" onclick="removeAutoReplyRule('${k}')" class="text-rose-500 hover:text-rose-700 p-1 transition">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                `;
-                container.appendChild(row);
-            });
-            lucide.createIcons();
-        }
-
-        function addWelcomeButtonRow(btnText = '', btnUrl = '') {
-            const list = document.getElementById('welcomeButtonsList');
-            const row = document.createElement('div');
-            row.className = "welcome-btn-row flex items-center gap-2";
-            row.innerHTML = `
-                <input type="text" placeholder="Button Label" value="${btnText}" oninput="updateLivePreview()" class="btn-label-input flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500">
-                <input type="url" placeholder="https://link.com" value="${btnUrl}" oninput="updateLivePreview()" class="btn-url-input flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500">
-                <button type="button" onclick="this.parentElement.remove(); updateLivePreview();" class="w-7 h-7 rounded-lg border border-rose-200 text-rose-500 hover:bg-rose-50 flex items-center justify-center shrink-0 transition">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
-            `;
-            list.appendChild(row);
-            lucide.createIcons();
-            updateLivePreview();
-        }
-
-        function getWelcomeButtonsData() {
-            const rows = document.querySelectorAll('.welcome-btn-row');
-            const buttons = [];
-            rows.forEach(r => {
-                const text = r.querySelector('.btn-label-input').value.trim();
-                const url = r.querySelector('.btn-url-input').value.trim();
-                if (text && url) buttons.push({ text, url });
-            });
-            return buttons;
-        }
-
-        function updateLivePreview() {
-            const raw = document.getElementById('welcomeTextInput').value;
-            document.getElementById('previewText').innerText = raw
-                .replace(/{mention}/g, 'John Doe')
-                .replace(/{name}/g, 'John Doe')
-                .replace(/{username}/g, '@JohnDoe')
-                .replace(/{chat}/g, document.getElementById('panelGroupName').innerText);
-
-            const photoUrl = document.getElementById('welcomePhotoUrl').value.trim();
-            const imgWrap = document.getElementById('previewImageWrapper');
-            const img = document.getElementById('previewImage');
-            if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
-                img.src = photoUrl;
-                imgWrap.classList.remove('hidden');
-            } else {
-                imgWrap.classList.add('hidden');
-            }
-
-            const btnWrap = document.getElementById('previewButtonsWrapper');
-            btnWrap.innerHTML = '';
-            const buttons = getWelcomeButtonsData();
-            buttons.forEach(b => {
-                btnWrap.innerHTML += `<div class="w-full py-1 px-2.5 rounded-lg bg-indigo-50/80 border border-indigo-200/60 text-brand-600 font-bold text-center text-[10px] truncate shadow-sm">${b.text} ↗</div>`;
-            });
-        }
-
-        function addCustomCommandRow() {
-            const name = document.getElementById('newCmdName').value.trim().toLowerCase().replace('/', '');
-            const role = document.getElementById('newCmdRole').value;
-            const response = document.getElementById('newCmdResponse').value.trim();
-
-            if (!name || !response) return Swal.fire('Incomplete', 'Please provide command and response.', 'warning');
-
-            customCommandsMap[name] = { role, response };
-            document.getElementById('newCmdName').value = '';
-            document.getElementById('newCmdResponse').value = '';
-            renderCustomCommandsList();
-        }
-
-        function removeCustomCommand(cmdName) {
-            delete customCommandsMap[cmdName];
-            renderCustomCommandsList();
-        }
-
-        function renderCustomCommandsList() {
-            const container = document.getElementById('customCommandsList');
-            container.innerHTML = '';
-            const keys = Object.keys(customCommandsMap);
-
-            if (keys.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No custom slash commands created yet.</p>`;
-                return;
-            }
-
-            keys.forEach(k => {
-                const item = customCommandsMap[k];
-                const row = document.createElement('div');
-                row.className = "flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/70";
-                row.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <span class="px-2 py-0.5 rounded-lg bg-slate-900 text-white font-mono text-xs font-bold">/${k}</span>
-                        <div>
-                            <p class="text-xs text-slate-800 font-semibold line-clamp-1">${item.response}</p>
-                            <span class="text-[9px] text-brand-600 font-bold uppercase">Role: ${item.role}</span>
-                        </div>
-                    </div>
-                    <button type="button" onclick="removeCustomCommand('${k}')" class="text-rose-500 hover:text-rose-700 p-1">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                    </button>
-                `;
-                container.appendChild(row);
-            });
-            lucide.createIcons();
         }
 
         // Firebase Auth State
@@ -1670,6 +1210,10 @@
                     <span class="text-xs font-bold text-slate-800">${user.email}</span>
                 `;
                 document.getElementById('navActionArea').innerHTML = `
+                    <button onclick="scrollToPricing()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs text-slate-700 transition">
+                        <i data-lucide="tag" class="w-3.5 h-3.5 text-brand-600"></i>
+                        <span>Pricing</span>
+                    </button>
                     <button onclick="signOutUser()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 font-bold text-xs transition">
                         <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                         <span>Sign Out</span>
@@ -1684,8 +1228,11 @@
                     if (cloudSession) {
                         tgSession = cloudSession;
                         localStorage.setItem('vs_tg_session', tgSession);
-                    } else if (tgSession) {
-                        await rtdb.ref(`users/${user.uid}/tg_session`).set(tgSession).catch(() => {});
+                    }
+                    const tgIdSnap = await rtdb.ref(`users/${user.uid}/owner_tg_id`).once('value');
+                    if (tgIdSnap.val()) {
+                        userTelegramId = tgIdSnap.val();
+                        localStorage.setItem('vs_owner_tg_id', userTelegramId);
                     }
                 } catch (e) {}
 
@@ -1694,6 +1241,7 @@
                     document.getElementById('communitiesContainer').classList.remove('hidden');
                     document.getElementById('btnSync').classList.remove('hidden');
                     await syncCommunities(false);
+                    checkSubscriptionStatus();
                 } else {
                     document.getElementById('tgConnectCard').classList.remove('hidden');
                     document.getElementById('communitiesContainer').classList.add('hidden');
@@ -1702,6 +1250,10 @@
                 document.getElementById('landingView').classList.remove('hidden');
                 document.getElementById('dashboardView').classList.add('hidden');
                 document.getElementById('navActionArea').innerHTML = `
+                    <button onclick="scrollToPricing()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs text-slate-700 transition">
+                        <i data-lucide="tag" class="w-3.5 h-3.5 text-brand-600"></i>
+                        <span>Pricing</span>
+                    </button>
                     <button onclick="openAuthModal()" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm">
                         <i data-lucide="user" class="w-3.5 h-3.5"></i>
                         <span>Login</span>
@@ -1719,6 +1271,7 @@
         function signOutUser() {
             auth.signOut();
             localStorage.removeItem('vs_tg_session');
+            localStorage.removeItem('vs_owner_tg_id');
             tgSession = null;
             location.reload();
         }
@@ -1787,13 +1340,7 @@
 
             if (!code) return Swal.fire('Required', 'Please enter your verification code.', 'warning');
 
-            Swal.fire({
-                title: 'Authenticating...',
-                text: 'Securing MTProto authorization credentials...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
+            Swal.showLoading();
             try {
                 const res = await fetch('/api/tg/verify-code', {
                     method: 'POST',
@@ -1808,7 +1355,6 @@
                         title: 'Two-Step Verification',
                         input: 'password',
                         inputLabel: 'Enter your Telegram 2FA Cloud Password',
-                        inputPlaceholder: 'Password',
                         showCancelButton: true
                     });
                     if (userPass) return verifyTgCode(userPass);
@@ -1818,6 +1364,14 @@
                 if (data.success) {
                     tgSession = data.session;
                     localStorage.setItem('vs_tg_session', tgSession);
+
+                    if (data.telegramId) {
+                        userTelegramId = data.telegramId;
+                        localStorage.setItem('vs_owner_tg_id', userTelegramId);
+                        if (currentUser) {
+                            rtdb.ref(`users/${currentUser.uid}/owner_tg_id`).set(userTelegramId).catch(() => {});
+                        }
+                    }
 
                     if (currentUser) {
                         rtdb.ref(`users/${currentUser.uid}/tg_session`).set(tgSession).catch(() => {});
@@ -1829,6 +1383,7 @@
 
                     renderCommunities(data.groups, data.channels);
                     Swal.fire('Connected!', 'Telegram synchronization complete.', 'success');
+                    checkSubscriptionStatus();
                 } else {
                     Swal.fire('Verification Failed', data.error || 'Invalid OTP code.', 'error');
                 }
@@ -1839,14 +1394,7 @@
 
         async function syncCommunities(showPopup = true) {
             if (!tgSession) return;
-            if (showPopup) {
-                Swal.fire({
-                    title: 'Synchronizing...',
-                    text: 'Checking real-time bot admin status from Telegram...',
-                    allowOutsideClick: false,
-                    didOpen: () => Swal.showLoading()
-                });
-            }
+            if (showPopup) Swal.showLoading();
 
             try {
                 const res = await fetch('/api/tg/fetch-communities', {
@@ -1982,7 +1530,7 @@
             }
         }
 
-        // FULL SCREEN DEDICATED PANEL
+        // Open Dedicated Full Page
         async function openGroupSettings(chatId) {
             const item = loadedItemsMap[chatId] || { title: "Community", role: "Admin", photo: null };
             activeGroupId = chatId;
@@ -2006,132 +1554,6 @@
             }
 
             switchTab('security');
-
-            // Defaults
-            document.getElementById('toggleEmojiSpam').checked = false;
-            document.getElementById('emojiSpamSilent').checked = false;
-            document.getElementById('emojiMaxCount').value = '2';
-            document.getElementById('emojiAutoDelete').value = '5';
-            document.getElementById('emojiWarningMsg').value = '⚠️ {mention}, excessive emojis are prohibited in {chat}!';
-
-            document.getElementById('toggleAntiButton').checked = false;
-            document.getElementById('antiButtonSilent').checked = false;
-            document.getElementById('antiButtonMsg').value = '⚠️ {mention}, messages with embedded url buttons are restricted!';
-
-            document.getElementById('toggleNameTracker').checked = true;
-            document.getElementById('toggleChatLock').checked = false;
-            document.getElementById('chatLockMsg').value = '🔒 This conversation has been temporarily muted by community administrators.';
-            document.getElementById('toggleAntiLink').checked = false;
-            document.getElementById('antiLinkSilent').checked = false;
-            document.getElementById('antiLinkMsg').value = '⚠️ {mention}, external links are restricted in {chat}!';
-            document.getElementById('toggleAntiForward').checked = false;
-            document.getElementById('antiForwardSilent').checked = false;
-            document.getElementById('antiForwardMsg').value = '⚠️ {mention}, forwarded messages are not permitted in {chat}!';
-            
-            document.getElementById('toggleBadWords').checked = false;
-            document.getElementById('badWordsSilent').checked = false;
-            document.getElementById('badWordsInput').value = '';
-            document.getElementById('badWordsAction').value = 'delete';
-            document.getElementById('badWordsAutoDelete').value = '6';
-            document.getElementById('badWordsCustomMsg').value = '⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})';
-            
-            document.getElementById('toggleBanSystem').checked = true;
-            document.getElementById('banSystemSilent').checked = false;
-            document.getElementById('banSystemMsg').value = '⛔ {name} has been permanently removed from {chat}.';
-
-            document.getElementById('cmdBioRole').value = 'all';
-            document.getElementById('scammerCustomNotice').value = '🚨 SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!';
-            
-            document.getElementById('toggleWelcome').checked = true;
-            document.getElementById('welcomePhotoUrl').value = '';
-            document.getElementById('welcomeTextInput').value = "👋 Welcome {mention} to {chat}! Please adhere to our community guidelines.";
-            document.getElementById('welcomeAutoDelete').value = '0';
-            document.getElementById('welcomeButtonsList').innerHTML = '';
-
-            document.getElementById('toggleGoodbye').checked = true;
-            document.getElementById('goodbyeTextInput').value = "👋 Goodbye {mention}! We hope to see you again soon in {chat}.";
-            document.getElementById('goodbyeAutoDelete').value = '10';
-
-            document.getElementById('broadcastButtonsList').innerHTML = '';
-            customCommandsMap = {};
-            autoRepliesMap = {};
-
-            // Load settings asynchronously from Firebase
-            try {
-                const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
-                const data = snap.val();
-                if (data) {
-                    if (data.emojiSpam) {
-                        document.getElementById('toggleEmojiSpam').checked = !!data.emojiSpam.enabled;
-                        document.getElementById('emojiSpamSilent').checked = !!data.emojiSpam.silent;
-                        if (data.emojiSpam.maxCount !== undefined) document.getElementById('emojiMaxCount').value = data.emojiSpam.maxCount;
-                        if (data.emojiSpam.autoDeleteSeconds !== undefined) document.getElementById('emojiAutoDelete').value = data.emojiSpam.autoDeleteSeconds;
-                        if (data.emojiSpam.msg) document.getElementById('emojiWarningMsg').value = data.emojiSpam.msg;
-                    }
-
-                    if (data.antiButton) {
-                        document.getElementById('toggleAntiButton').checked = !!data.antiButton.enabled;
-                        document.getElementById('antiButtonSilent').checked = !!data.antiButton.silent;
-                        if (data.antiButton.msg) document.getElementById('antiButtonMsg').value = data.antiButton.msg;
-                    }
-
-                    if (data.nameTracker?.enabled !== undefined) document.getElementById('toggleNameTracker').checked = !!data.nameTracker.enabled;
-                    document.getElementById('toggleChatLock').checked = !!data.chatLocked;
-                    if (data.lockMsg) document.getElementById('chatLockMsg').value = data.lockMsg;
-                    
-                    document.getElementById('toggleAntiLink').checked = !!data.antiLink?.enabled;
-                    document.getElementById('antiLinkSilent').checked = !!data.antiLink?.silent;
-                    if (data.antiLink?.msg) document.getElementById('antiLinkMsg').value = data.antiLink.msg;
-
-                    document.getElementById('toggleAntiForward').checked = !!data.antiForward?.enabled;
-                    document.getElementById('antiForwardSilent').checked = !!data.antiForward?.silent;
-                    if (data.antiForward?.msg) document.getElementById('antiForwardMsg').value = data.antiForward.msg;
-
-                    document.getElementById('toggleBadWords').checked = !!data.badWords?.enabled;
-                    document.getElementById('badWordsSilent').checked = !!data.badWords?.silent;
-                    document.getElementById('badWordsInput').value = (data.badWords?.words || []).join(', ');
-                    document.getElementById('badWordsAction').value = data.badWords?.action || 'delete';
-                    if (data.badWords?.autoDeleteSeconds !== undefined) document.getElementById('badWordsAutoDelete').value = data.badWords.autoDeleteSeconds;
-                    if (data.badWords?.customMsg) document.getElementById('badWordsCustomMsg').value = data.badWords.customMsg;
-
-                    if (data.banSystem?.enabled !== undefined) document.getElementById('toggleBanSystem').checked = !!data.banSystem.enabled;
-                    document.getElementById('banSystemSilent').checked = !!data.banSystem?.silent;
-                    if (data.banSystem?.msg) document.getElementById('banSystemMsg').value = data.banSystem.msg;
-
-                    if (data.commands?.bio?.role) document.getElementById('cmdBioRole').value = data.commands.bio.role;
-                    if (data.scammerAlert?.msg) document.getElementById('scammerCustomNotice').value = data.scammerAlert.msg;
-                    if (data.customCommands) customCommandsMap = data.customCommands;
-                    if (data.autoReplies) autoRepliesMap = data.autoReplies;
-
-                    document.getElementById('toggleWelcome').checked = !!data.welcome?.enabled;
-                    if (data.welcome?.photoUrl) document.getElementById('welcomePhotoUrl').value = data.welcome.photoUrl;
-                    if (data.welcome?.text) document.getElementById('welcomeTextInput').value = data.welcome.text;
-                    if (data.welcome?.autoDeleteSeconds !== undefined) document.getElementById('welcomeAutoDelete').value = data.welcome.autoDeleteSeconds;
-
-                    if (data.goodbye) {
-                        document.getElementById('toggleGoodbye').checked = !!data.goodbye.enabled;
-                        if (data.goodbye.text) document.getElementById('goodbyeTextInput').value = data.goodbye.text;
-                        if (data.goodbye.autoDeleteSeconds !== undefined) document.getElementById('goodbyeAutoDelete').value = data.goodbye.autoDeleteSeconds;
-                    }
-
-                    if (Array.isArray(data.welcome?.buttons)) {
-                        data.welcome.buttons.forEach(b => addWelcomeButtonRow(b.text, b.url));
-                    }
-                }
-            } catch (err) {}
-
-            renderCustomCommandsList();
-            renderAutoRepliesList();
-            updateLivePreview();
-            updateChatLockPreview();
-            updateAntiLinkPreview();
-            updateAntiForwardPreview();
-            updateBanPreview();
-            updateBadWordsPreview();
-            updateBroadcastPreview();
-            updateEmojiPreview();
-            updateAntiButtonPreview();
-            updateGoodbyePreview();
         }
 
         function backToCommunities() {
@@ -2161,104 +1583,7 @@
                 }
             });
             lucide.createIcons();
-            if (tabKey === 'scammers') loadScammersList();
             if (tabKey === 'leftmembers') loadLeftMembers();
-        }
-
-        async function sendTestWelcomeMessage() {
-            if (!activeGroupId) return;
-            const photoUrl = document.getElementById('welcomePhotoUrl').value.trim();
-            const text = document.getElementById('welcomeTextInput').value;
-            const buttons = getWelcomeButtonsData();
-            const autoDeleteSeconds = parseInt(document.getElementById('welcomeAutoDelete').value || 0);
-
-            Swal.fire({
-                title: 'Sending Test Greeting...',
-                text: 'Dispatching rich media & buttons to your Telegram group...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            try {
-                const res = await fetch('/api/tg/test-welcome', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ chatId: activeGroupId, photoUrl, text, buttons, autoDeleteSeconds })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('Message Sent!', data.message, 'success');
-                } else {
-                    Swal.fire('Failed', data.error, 'error');
-                }
-            } catch (e) {
-                Swal.fire('Error', e.message, 'error');
-            }
-        }
-
-        async function broadcastLockState() {
-            if (!activeGroupId) return;
-            const locked = document.getElementById('toggleChatLock').checked;
-            const message = document.getElementById('chatLockMsg').value;
-
-            Swal.fire({
-                title: 'Applying Lockdown...',
-                text: 'Broadcasting announcement to community...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            try {
-                await fetch('/api/tg/announce-lock', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ chatId: activeGroupId, locked, message })
-                });
-                saveChatLockSection();
-            } catch (e) {
-                saveChatLockSection();
-            }
-        }
-
-        async function loadScammersList() {
-            if (!activeGroupId) return;
-            const container = document.getElementById('scammersListContainer');
-            container.innerHTML = `<div class="py-4 text-center text-xs text-slate-400">Loading flagged scammers...</div>`;
-
-            try {
-                const res = await fetch('/api/tg/get-scammers', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ chatId: activeGroupId })
-                });
-                const data = await res.json();
-                container.innerHTML = '';
-
-                if (data.success && data.scammers.length > 0) {
-                    data.scammers.forEach(s => {
-                        const row = document.createElement('div');
-                        row.className = "flex items-center justify-between p-3 bg-rose-50/60 rounded-xl border border-rose-100";
-                        row.innerHTML = `
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                    <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-slate-900">${s.name || 'Telegram User'}</h4>
-                                    <p class="text-[10px] text-slate-500">${s.username ? `@${s.username}` : ''} • ID: ${s.id}</p>
-                                </div>
-                            </div>
-                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">Flagged</span>
-                        `;
-                        container.appendChild(row);
-                    });
-                } else {
-                    container.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center">No scammers flagged in this group yet. Admins can use /scam on messages.</p>`;
-                }
-            } catch (e) {
-                container.innerHTML = `<p class="text-xs text-rose-500 py-4 text-center">Failed to load scammers.</p>`;
-            }
-            lucide.createIcons();
         }
 
         async function loadLeftMembers() {
@@ -2267,7 +1592,7 @@
             const loader = document.getElementById('leftMembersLoading');
 
             container.innerHTML = '';
-            loader.classList.remove('hidden');
+            loader?.classList.remove('hidden');
 
             try {
                 const res = await fetch('/api/tg/get-left-members', {
@@ -2276,7 +1601,7 @@
                     body: JSON.stringify({ chatId: activeGroupId })
                 });
                 const data = await res.json();
-                loader.classList.add('hidden');
+                loader?.classList.add('hidden');
 
                 if (data.success && data.leftMembers.length > 0) {
                     data.leftMembers.forEach(m => {
@@ -2304,7 +1629,6 @@
                     container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs italic"><i data-lucide="check-circle-2" class="w-6 h-6 mx-auto mb-1 text-slate-300"></i>No left members recorded right now.</div>`;
                 }
             } catch (e) {
-                loader.classList.add('hidden');
                 container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Failed to load left members: ${e.message}</p>`;
             }
             lucide.createIcons();
