@@ -260,7 +260,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: GROUP CONTROL (OPENS INSTANTLY) -->
+    <!-- MODAL 2: GROUP CONTROL -->
     <div id="groupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
         <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
             
@@ -425,12 +425,6 @@
                     document.getElementById('tgConnectCard').classList.add('hidden');
                     document.getElementById('communitiesContainer').classList.remove('hidden');
                     document.getElementById('btnSync').classList.remove('hidden');
-                    
-                    const cachedData = localStorage.getItem('vs_cached_communities');
-                    if (cachedData) {
-                        const parsed = JSON.parse(cachedData);
-                        renderCommunities(parsed.groups, parsed.channels);
-                    }
                     syncCommunities(false);
                 }
             } else {
@@ -561,9 +555,7 @@
                     document.getElementById('communitiesContainer').classList.remove('hidden');
                     document.getElementById('btnSync').classList.remove('hidden');
 
-                    localStorage.setItem('vs_cached_communities', JSON.stringify({ groups: data.groups, channels: data.channels }));
                     renderCommunities(data.groups, data.channels);
-
                     Swal.fire('Connected!', 'Telegram synchronization complete.', 'success');
                 } else {
                     Swal.fire('Verification Failed', data.error || 'Invalid OTP code.', 'error');
@@ -578,7 +570,7 @@
             if (showPopup) {
                 Swal.fire({
                     title: 'Synchronizing...',
-                    text: 'Fetching updated permissions and communities...',
+                    text: 'Checking real-time bot admin status from Telegram...',
                     allowOutsideClick: false,
                     didOpen: () => Swal.showLoading()
                 });
@@ -594,9 +586,8 @@
                 if (showPopup) Swal.close();
 
                 if (data.success) {
-                    localStorage.setItem('vs_cached_communities', JSON.stringify({ groups: data.groups, channels: data.channels }));
                     renderCommunities(data.groups, data.channels);
-                    if (showPopup) Swal.fire('Synced!', 'Community lists are now up to date.', 'success');
+                    if (showPopup) Swal.fire('Synced!', 'Community lists and bot statuses verified.', 'success');
                 }
             } catch (e) {
                 if (showPopup) Swal.fire('Sync Error', e.message, 'error');
@@ -646,22 +637,22 @@
                 ? `${item.subscribersCount} subscribers` 
                 : `${item.membersCount} members`;
 
-            // Status Badge: Bot Active vs Not Connected
+            // REAL BOT STATUS BADGE
             const botBadgeHtml = item.isBotConnected
-                ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60"><i data-lucide="shield-check" class="w-3 h-3"></i> Bot Active</span>`
+                ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60"><i data-lucide="shield-check" class="w-3 h-3"></i> Active Admin</span>`
                 : (item.canAddBot 
                     ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"><i data-lucide="plus-circle" class="w-3 h-3"></i> Ready to Add</span>`
                     : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 border border-rose-200"><i data-lucide="shield-x" class="w-3 h-3"></i> Missing Rights</span>`);
 
-            // Primary Button: If bot connected, shows "Open Panel" in Green
+            // DYNAMIC BUTTON
             const actionBtnHtml = item.isBotConnected
                 ? `<button onclick="openGroupSettings('${item.id}')" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
                         <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
-                        <span>Open Control Panel</span>
+                        <span>Open Settings Panel</span>
                    </button>`
                 : `<button onclick="connectBot('${item.id}')" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
                         <i data-lucide="bot" class="w-3.5 h-3.5"></i>
-                        <span>Connect Bot</span>
+                        <span>Auto-Add & Make Admin</span>
                    </button>`;
 
             card.innerHTML = `
@@ -703,14 +694,16 @@
                     body: JSON.stringify({ session: tgSession, chatId })
                 });
                 const data = await res.json();
+                
                 if (data.success) {
                     if (loadedItemsMap[chatId]) {
                         loadedItemsMap[chatId].isBotConnected = true;
                     }
+                    // Re-sync with verified status
                     syncCommunities(false);
                     Swal.fire({
-                        title: 'Protection Activated!',
-                        text: 'Bot deployed successfully. Opening control panel...',
+                        title: 'Bot Activated!',
+                        text: 'Permissions applied successfully. Opening control panel...',
                         icon: 'success',
                         timer: 1500,
                         showConfirmButton: false
@@ -726,7 +719,6 @@
             }
         }
 
-        // Guaranteed to open instantly without hanging
         async function openGroupSettings(chatId) {
             const item = loadedItemsMap[chatId] || { title: "Community", role: "Admin", photo: null };
             activeGroupId = chatId;
@@ -741,7 +733,7 @@
                 avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-sm">${item.title[0]}</div>`;
             }
 
-            // Fallback default values
+            // Defaults
             document.getElementById('toggleChatLock').checked = false;
             document.getElementById('toggleAntiLink').checked = false;
             document.getElementById('toggleAntiForward').checked = false;
@@ -751,11 +743,11 @@
             document.getElementById('toggleWelcome').checked = true;
             document.getElementById('welcomeTextInput').value = "Welcome {user} to {chat}!";
 
-            // Reveal modal immediately
+            // Reveal modal instantly
             document.getElementById('groupModal').classList.remove('hidden');
             updateLivePreview();
 
-            // Load settings asynchronously from Firebase
+            // Load real-time settings from Firebase
             try {
                 const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
                 const data = snap.val();
