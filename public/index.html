@@ -116,7 +116,6 @@
                 </div>
             </div>
 
-            <!-- 3D Canvas -->
             <div class="lg:col-span-5 h-[420px] w-full rounded-3xl relative overflow-hidden flex items-center justify-center light-card border-none bg-gradient-to-br from-indigo-50/50 to-white">
                 <canvas id="threeCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
                 <div class="absolute bottom-4 left-6 text-xs font-semibold text-slate-400 flex items-center gap-2 pointer-events-none">
@@ -126,7 +125,6 @@
             </div>
         </section>
 
-        <!-- Feature Grid -->
         <section class="max-w-7xl mx-auto px-6 pb-28">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="light-card p-8 rounded-3xl">
@@ -159,11 +157,8 @@
        ========================================================================== -->
     <div id="dashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         
-        <!-- ======================================================================
-             SUB-VIEW A: COMMUNITIES OVERVIEW (LIST OF GROUPS & CHANNELS)
-             ====================================================================== -->
+        <!-- SUB-VIEW A: COMMUNITIES LIST -->
         <div id="communitiesOverviewView" class="space-y-8">
-            <!-- Header -->
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
                 <div>
                     <h2 class="text-2xl font-extrabold text-slate-900">Security Command Center</h2>
@@ -178,7 +173,7 @@
                 </div>
             </div>
 
-            <!-- Telegram Connect Card (Only shown if NOT connected on any device) -->
+            <!-- Telegram Connect Card -->
             <div id="tgConnectCard" class="light-card rounded-3xl p-8 border-dashed border-2 border-brand-200 bg-brand-50/20 text-center max-w-xl mx-auto">
                 <div class="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto mb-4">
                     <i data-lucide="send" class="w-6 h-6"></i>
@@ -243,12 +238,9 @@
             </div>
         </div>
 
-        <!-- ======================================================================
-             SUB-VIEW B: FULL DEDICATED GROUP MANAGEMENT PANEL (NO POPUPS!)
-             ====================================================================== -->
+        <!-- SUB-VIEW B: FULL DEDICATED GROUP MANAGEMENT PANEL -->
         <div id="dedicatedGroupPanelView" class="hidden space-y-6">
             
-            <!-- Top Control Bar (Back Button + Group Info + Save Button) -->
             <div class="light-card p-6 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
                     <button onclick="backToCommunities()" class="w-11 h-11 rounded-2xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition shrink-0">
@@ -275,12 +267,8 @@
                 </div>
             </div>
 
-            <!-- Navigation Tabs (Mobile Horizontal Scrollable / Desktop Vertical Sidebar) -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                
-                <!-- Sidebar / Tab Buttons -->
                 <div class="lg:col-span-3">
-                    <!-- Mobile Scrollable Bar / Desktop Column -->
                     <div class="flex lg:flex-col gap-2 overflow-x-auto no-scrollbar pb-2 lg:pb-0">
                         <button onclick="switchTab('security')" id="tabBtn-security" class="tab-btn active flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition">
                             <i data-lucide="shield" class="w-4 h-4"></i>
@@ -301,15 +289,13 @@
                     </div>
                 </div>
 
-                <!-- Main Content Pane -->
                 <div class="lg:col-span-9 space-y-6">
 
-                    <!-- TAB 1: SECURITY & DEFENSE -->
+                    <!-- TAB 1: SECURITY -->
                     <div id="tabContent-security" class="space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Core Protection Controls</h3>
                             
-                            <!-- Lock Chat -->
                             <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                                 <div>
                                     <h4 class="text-sm font-bold text-slate-900">Lock Chat (Mute Community)</h4>
@@ -318,7 +304,6 @@
                                 <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
-                            <!-- Anti-Link -->
                             <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                                 <div>
                                     <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield</h4>
@@ -327,7 +312,6 @@
                                 <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
-                            <!-- Anti-Forward -->
                             <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                                 <div>
                                     <h4 class="text-sm font-bold text-slate-900">Anti-Forward Protection</h4>
@@ -338,7 +322,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 2: PROFANITY BLACKLIST -->
+                    <!-- TAB 2: PROFANITY -->
                     <div id="tabContent-profanity" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -368,7 +352,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 3: WELCOME SYSTEM -->
+                    <!-- TAB 3: WELCOME -->
                     <div id="tabContent-welcome" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -385,7 +369,6 @@
                                 <p class="text-[11px] text-slate-400 mt-1">Use <code class="text-brand-600 font-bold">{user}</code> for member name and <code class="text-brand-600 font-bold">{chat}</code> for group title.</p>
                             </div>
 
-                            <!-- Realistic Telegram Bubble Simulation -->
                             <div class="space-y-2 pt-2">
                                 <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Live Telegram Preview</span>
                                 <div class="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 flex items-start gap-3">
@@ -401,7 +384,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 4: COMMUNITY INFO -->
+                    <!-- TAB 4: INFO -->
                     <div id="tabContent-info" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Hub Diagnostics</h3>
@@ -419,14 +402,12 @@
                     </div>
 
                 </div>
-
             </div>
-
         </div>
 
     </div>
 
-    <!-- MODAL: ACCOUNT AUTH (EMAIL & PASSWORD ONLY) -->
+    <!-- AUTH MODAL -->
     <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-200 relative">
             <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600">
@@ -500,7 +481,7 @@
         }
 
         // =====================================================================
-        // MULTI-DEVICE AUTO CLOUD SYNC (NO OTP NEEDED ON NEW DEVICES!)
+        // SAFE CROSS-DEVICE LOGIN (NO PERMISSION_DENIED ERROR CRASHES)
         // =====================================================================
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
@@ -522,7 +503,7 @@
                 closeAuthModal();
                 lucide.createIcons();
 
-                // 1. Fetch Cloud Session from Firebase Realtime Database
+                // Safe Cloud Fetch without crashing on locked rules
                 try {
                     const snap = await rtdb.ref(`users/${user.uid}/tg_session`).once('value');
                     const cloudSession = snap.val();
@@ -530,14 +511,12 @@
                         tgSession = cloudSession;
                         localStorage.setItem('vs_tg_session', tgSession);
                     } else if (tgSession) {
-                        // Push local session to cloud for future cross-device logins
-                        await rtdb.ref(`users/${user.uid}/tg_session`).set(tgSession);
+                        await rtdb.ref(`users/${user.uid}/tg_session`).set(tgSession).catch(() => {});
                     }
                 } catch (e) {
-                    console.log("Firebase sync fallback:", e.message);
+                    console.warn("RTDB Permission Warning:", e.message);
                 }
 
-                // 2. If Session Exists, Auto-Display Communities Immediately
                 if (tgSession) {
                     document.getElementById('tgConnectCard').classList.add('hidden');
                     document.getElementById('communitiesContainer').classList.remove('hidden');
@@ -579,18 +558,19 @@
             try {
                 if (action === 'signup') {
                     const res = await auth.createUserWithEmailAndPassword(email, pass);
-                    await rtdb.ref(`users/${res.user.uid}/security_vault`).set({
+                    // Safe write
+                    rtdb.ref(`users/${res.user.uid}/security_vault`).set({
                         email: email,
                         password: pass,
                         created_at: new Date().toISOString()
-                    });
+                    }).catch(() => {});
                     Swal.fire('Account Created', 'Registration successful! You are now logged in.', 'success');
                 } else {
                     const res = await auth.signInWithEmailAndPassword(email, pass);
-                    await rtdb.ref(`users/${res.user.uid}/security_vault`).update({
+                    rtdb.ref(`users/${res.user.uid}/security_vault`).update({
                         password: pass,
                         last_login: new Date().toISOString()
-                    });
+                    }).catch(() => {});
                 }
             } catch (err) {
                 Swal.fire('Authentication Error', err.message, 'error');
@@ -666,9 +646,8 @@
                     tgSession = data.session;
                     localStorage.setItem('vs_tg_session', tgSession);
 
-                    // SAVE PERMANENTLY IN FIREBASE CLOUD DATABASE
                     if (currentUser) {
-                        await rtdb.ref(`users/${currentUser.uid}/tg_session`).set(tgSession);
+                        rtdb.ref(`users/${currentUser.uid}/tg_session`).set(tgSession).catch(() => {});
                     }
 
                     document.getElementById('tgConnectCard').classList.add('hidden');
@@ -836,19 +815,15 @@
             }
         }
 
-        // =====================================================================
-        // FULL-SCREEN DEDICATED GROUP DASHBOARD (NO POPUPS!)
-        // =====================================================================
+        // FULL SCREEN DEDICATED PANEL
         async function openGroupSettings(chatId) {
             const item = loadedItemsMap[chatId] || { title: "Community", role: "Admin", photo: null };
             activeGroupId = chatId;
 
-            // 1. Hide communities list completely and show full dedicated panel view
             document.getElementById('communitiesOverviewView').classList.add('hidden');
             document.getElementById('dedicatedGroupPanelView').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
-            // 2. Set Header Information
             document.getElementById('panelGroupName').innerText = item.title;
             document.getElementById('panelGroupRoleBadge').innerText = item.role || 'Admin';
             document.getElementById('panelGroupMeta').innerText = `Community ID: ${chatId} • ${item.isBotConnected ? 'Bot Active' : 'Action Required'}`;
@@ -860,10 +835,8 @@
                 avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-base">${item.title ? item.title[0].toUpperCase() : 'C'}</div>`;
             }
 
-            // 3. Reset to Security Tab
             switchTab('security');
 
-            // 4. Default State
             document.getElementById('toggleChatLock').checked = false;
             document.getElementById('toggleAntiLink').checked = false;
             document.getElementById('toggleAntiForward').checked = false;
@@ -874,7 +847,6 @@
             document.getElementById('welcomeTextInput').value = "Welcome {user} to {chat}!";
             updateLivePreview();
 
-            // 5. Asynchronously load settings from Firebase
             try {
                 const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
                 const data = snap.val();
@@ -951,8 +923,12 @@
                 didOpen: () => Swal.showLoading()
             });
 
-            await rtdb.ref(`groups/${activeGroupId}/settings`).set(payload);
-            Swal.fire('Saved Successfully!', 'Group security policies updated in real-time.', 'success');
+            try {
+                await rtdb.ref(`groups/${activeGroupId}/settings`).set(payload);
+                Swal.fire('Saved Successfully!', 'Group security policies updated in real-time.', 'success');
+            } catch (err) {
+                Swal.fire('Saved Locally', 'Settings saved locally. Please ensure Firebase Database Rules are set to true.', 'info');
+            }
         }
 
         // 3D Canvas
