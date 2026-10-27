@@ -69,9 +69,7 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white relative">
 
-    <!-- ==========================================================================
-       SPLASH SCREEN / PRELOADER (FIXES FLASH GLITCH ON REFRESH)
-       ========================================================================== -->
+    <!-- SPLASH SCREEN / PRELOADER -->
     <div id="splashScreen" class="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-300">
         <div class="flex flex-col items-center gap-4">
             <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-xl shadow-brand-500/30 animate-pulse">
@@ -120,7 +118,7 @@
                     <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">For High-Traffic Hubs</span>
                 </h1>
                 <p class="text-slate-600 text-base md:text-lg max-w-xl font-normal leading-relaxed">
-                    Granular security controls for Groups and Broadcast Channels. Real-time scammer tagging, name change history alerts, and slash command managers.
+                    Granular security controls for Groups and Broadcast Channels. Smart auto-replies, real-time scammer tagging, name change alerts, and slash commands.
                 </p>
                 <div class="pt-2 flex flex-wrap items-center gap-4">
                     <button onclick="openAuthModal()" class="flex items-center gap-3 px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition">
@@ -145,10 +143,10 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div class="light-card p-8 rounded-3xl">
                     <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center mb-6">
-                        <i data-lucide="user-check" class="w-6 h-6"></i>
+                        <i data-lucide="message-square-reply" class="w-6 h-6"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 mb-2">Name Change Tracker</h3>
-                    <p class="text-xs text-slate-500 leading-relaxed">Instantly alerts the group whenever a member changes their Telegram name to stop impersonation.</p>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Smart Auto-Replies</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Configure automatic keyword replies filtered by roles: Everyone, Only Admins, or Owner Only.</p>
                 </div>
                 <div class="light-card p-8 rounded-3xl">
                     <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-6">
@@ -289,6 +287,10 @@
                             <i data-lucide="shield" class="w-4 h-4"></i>
                             <span>Security & Defense</span>
                         </button>
+                        <button onclick="switchTab('autoreply')" id="tabBtn-autoreply" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="message-square-reply" class="w-4 h-4"></i>
+                            <span>Auto-Replies</span>
+                        </button>
                         <button onclick="switchTab('profanity')" id="tabBtn-profanity" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                             <i data-lucide="message-square-x" class="w-4 h-4"></i>
                             <span>Profanity Blacklist</span>
@@ -315,7 +317,7 @@
                 <!-- Main Content Pane -->
                 <div class="lg:col-span-9 space-y-6">
 
-                    <!-- TAB 1: SECURITY (CHAT LOCK, ANTI-LINK, ANTI-FORWARD, NAME TRACKER) -->
+                    <!-- TAB 1: SECURITY -->
                     <div id="tabContent-security" class="space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-6">
                             <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Core Protection Controls</h3>
@@ -412,7 +414,61 @@
                         </div>
                     </div>
 
-                    <!-- TAB 2: PROFANITY BLACKLIST -->
+                    <!-- TAB 2: AUTO-REPLIES MANAGER (NEW!) -->
+                    <div id="tabContent-autoreply" class="hidden space-y-6">
+                        <div class="light-card p-6 rounded-3xl space-y-6">
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Custom Auto-Replies Engine</h3>
+                                <p class="text-xs text-slate-500">Configure keywords that trigger automatic bot responses filtered by sender role</p>
+                            </div>
+
+                            <!-- Add Rule Form -->
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+                                <h4 class="text-xs font-bold text-slate-900">Create New Auto-Reply Rule</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div class="sm:col-span-5">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">When Someone Says (Trigger)</label>
+                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules, deposit" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
+                                    </div>
+                                    <div class="sm:col-span-4">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Triggered By (Role)</label>
+                                        <select id="newReplyTarget" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="everyone">Everyone (এভরিওয়ান)</option>
+                                            <option value="admin_owner">Only Admin & Owner (অনলি অ্যাডমিন ও ওনার)</option>
+                                            <option value="owner_only">Only Owner (অনলি ওনার)</option>
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-3 flex items-end">
+                                        <button type="button" onclick="addAutoReplyRule()" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                            <i data-lucide="plus" class="w-4 h-4"></i>
+                                            <span>Add Reply</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Bot's Automatic Response</label>
+                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {user}, here are the details you requested..." class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    
+                                    <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{user}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                            + {user} (Member Mention)
+                                        </button>
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{chat}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-brand-600 text-[11px] font-bold border border-indigo-100 transition">
+                                            + {chat} (Group Title)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Active Rules List -->
+                            <div class="space-y-3">
+                                <h4 class="text-xs font-bold text-slate-900">Active Auto-Reply Rules</h4>
+                                <div id="autoRepliesList" class="space-y-2.5"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: PROFANITY BLACKLIST -->
                     <div id="tabContent-profanity" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -468,7 +524,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 3: WELCOME SYSTEM -->
+                    <!-- TAB 4: WELCOME SYSTEM -->
                     <div id="tabContent-welcome" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-6">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -556,7 +612,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 4: SLASH COMMANDS MANAGER (NEW!) -->
+                    <!-- TAB 5: SLASH COMMANDS MANAGER -->
                     <div id="tabContent-commands" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-6">
                             <div class="border-b border-slate-100 pb-3">
@@ -625,7 +681,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 5: SCAMMER MANAGEMENT PANEL (NEW!) -->
+                    <!-- TAB 6: SCAMMER MANAGEMENT PANEL -->
                     <div id="tabContent-scammers" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-6">
                             <div class="border-b border-slate-100 pb-3">
@@ -633,14 +689,12 @@
                                 <p class="text-xs text-slate-500">Flag fraudsters. The bot will automatically tag their messages with public scam warnings.</p>
                             </div>
 
-                            <!-- Custom Warning Message -->
                             <div class="p-5 rounded-2xl bg-rose-50/50 border border-rose-100 space-y-3">
                                 <label class="text-xs font-bold text-rose-800 uppercase block">Public Scammer Warning Message (Appears on every scammer message):</label>
                                 <textarea id="scammerCustomNotice" rows="2" class="w-full bg-white border border-rose-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-rose-500"></textarea>
                                 <p class="text-[11px] text-slate-400">Admins can also flag users directly inside the group by replying to them with <code class="text-rose-600 font-bold">/scam</code> or unflag with <code class="text-emerald-600 font-bold">/unscam</code>.</p>
                             </div>
 
-                            <!-- Flagged Users Roster -->
                             <div class="space-y-3">
                                 <div class="flex items-center justify-between">
                                     <h4 class="text-xs font-bold text-slate-900">Flagged Scammers in this Group</h4>
@@ -654,7 +708,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 6: COMMUNITY MEMBERS -->
+                    <!-- TAB 7: COMMUNITY MEMBERS -->
                     <div id="tabContent-members" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -751,6 +805,7 @@
         let loadedItemsMap = {};
         let activeGroupId = null;
         let customCommandsMap = {};
+        let autoRepliesMap = {};
 
         function onCountryChange(select) {
             const code = select.options[select.selectedIndex].getAttribute('data-code');
@@ -768,15 +823,76 @@
             updateLivePreview();
         }
 
-        // =====================================================================
-        // SPLASH SCREEN CONTROLLER
-        // =====================================================================
         function hideSplashScreen() {
             const splash = document.getElementById('splashScreen');
             if (splash) {
                 splash.classList.add('opacity-0');
                 setTimeout(() => splash.classList.add('hidden'), 300);
             }
+        }
+
+        // =====================================================================
+        // AUTO-REPLY SYSTEM (ADD / REMOVE / RENDER)
+        // =====================================================================
+        function addAutoReplyRule() {
+            const trigger = document.getElementById('newReplyTrigger').value.trim().toLowerCase();
+            const target = document.getElementById('newReplyTarget').value;
+            const response = document.getElementById('newReplyResponse').value.trim();
+
+            if (!trigger || !response) {
+                return Swal.fire('Incomplete Rule', 'Please enter a trigger keyword and response message.', 'warning');
+            }
+
+            const ruleKey = trigger.replace(/[^a-zA-Z0-9_-]/g, '_');
+            autoRepliesMap[ruleKey] = { trigger, target, response };
+
+            document.getElementById('newReplyTrigger').value = '';
+            document.getElementById('newReplyResponse').value = '';
+            renderAutoRepliesList();
+            Swal.fire({ title: 'Rule Added!', text: 'Click "Save All Changes" to sync to the bot.', icon: 'success', timer: 1500, showConfirmButton: false });
+        }
+
+        function removeAutoReplyRule(key) {
+            delete autoRepliesMap[key];
+            renderAutoRepliesList();
+        }
+
+        function renderAutoRepliesList() {
+            const container = document.getElementById('autoRepliesList');
+            container.innerHTML = '';
+            const keys = Object.keys(autoRepliesMap);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No auto-reply rules configured yet.</p>`;
+                return;
+            }
+
+            keys.forEach(k => {
+                const item = autoRepliesMap[k];
+                let roleBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Everyone</span>';
+                if (item.target === 'admin_owner') {
+                    roleBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-200">Admin & Owner</span>';
+                } else if (item.target === 'owner_only') {
+                    roleBadge = '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Owner Only</span>';
+                }
+
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/70";
+                row.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="px-2.5 py-1 rounded-xl bg-slate-900 text-white font-mono text-xs font-bold">${item.trigger}</span>
+                        <div>
+                            <p class="text-xs text-slate-800 font-semibold line-clamp-1">${item.response}</p>
+                            <div class="flex items-center gap-2 mt-0.5">${roleBadge}</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="removeAutoReplyRule('${k}')" class="text-rose-500 hover:text-rose-700 p-1.5 transition">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+            lucide.createIcons();
         }
 
         // =====================================================================
@@ -838,7 +954,7 @@
         }
 
         // =====================================================================
-        // CUSTOM SLASH COMMANDS MANAGER
+        // CUSTOM SLASH COMMANDS
         // =====================================================================
         function addCustomCommandRow() {
             const name = document.getElementById('newCmdName').value.trim().toLowerCase().replace('/', '');
@@ -946,7 +1062,6 @@
                 lucide.createIcons();
             }
 
-            // Hide preloader smoothly
             hideSplashScreen();
         });
 
@@ -1265,6 +1380,7 @@
             document.getElementById('welcomeAutoDelete').value = '0';
             document.getElementById('welcomeButtonsList').innerHTML = '';
             customCommandsMap = {};
+            autoRepliesMap = {};
 
             // Load settings asynchronously from Firebase
             try {
@@ -1292,6 +1408,7 @@
                     if (data.commands?.bio?.role) document.getElementById('cmdBioRole').value = data.commands.bio.role;
                     if (data.scammerAlert?.msg) document.getElementById('scammerCustomNotice').value = data.scammerAlert.msg;
                     if (data.customCommands) customCommandsMap = data.customCommands;
+                    if (data.autoReplies) autoRepliesMap = data.autoReplies;
 
                     document.getElementById('toggleWelcome').checked = !!data.welcome?.enabled;
                     if (data.welcome?.photoUrl) document.getElementById('welcomePhotoUrl').value = data.welcome.photoUrl;
@@ -1305,6 +1422,7 @@
             } catch (err) {}
 
             renderCustomCommandsList();
+            renderAutoRepliesList();
             updateLivePreview();
         }
 
@@ -1315,7 +1433,7 @@
         }
 
         function switchTab(tabKey) {
-            const tabs = ['security', 'profanity', 'welcome', 'commands', 'scammers', 'members'];
+            const tabs = ['security', 'autoreply', 'profanity', 'welcome', 'commands', 'scammers', 'members'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tabBtn-${t}`);
                 const content = document.getElementById(`tabContent-${t}`);
@@ -1391,7 +1509,6 @@
             }
         }
 
-        // Load Flagged Scammers List
         async function loadScammersList() {
             if (!activeGroupId) return;
             const container = document.getElementById('scammersListContainer');
@@ -1519,7 +1636,8 @@
                 scammerAlert: {
                     msg: document.getElementById('scammerCustomNotice').value
                 },
-                customCommands: customCommandsMap
+                customCommands: customCommandsMap,
+                autoReplies: autoRepliesMap
             };
 
             Swal.fire({
