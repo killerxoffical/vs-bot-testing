@@ -169,19 +169,31 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (UNIVERSAL BOT PROMOTION ENGINE)
+// GRAMJS MTPROTO (GHOST CHAT FILTERING & REAL STATUS CHECK)
 // =============================================================================
 const tempAuthClients = {};
 
+// Helper: Extract Communities & Clean Ghost/Migrated Chats
 async function extractCommunities(client) {
     const dialogs = await client.getDialogs({ limit: 100 });
     const groups = [];
     const channels = [];
 
+    // Firebase থেকে কানেক্টেড বটের লিস্ট রিড করা
+    const connectedSnap = await db.ref('connected_bots').once('value');
+    const connectedMap = connectedSnap.val() || {};
+
     for (const d of dialogs) {
         if (!d.isGroup && !d.isChannel) continue;
 
         const entity = d.entity;
+        if (!entity) continue;
+
+        // ১. মৃত, মাইগ্রেটেড অথবা ০ সদস্যের ফেক গ্রুপ ফিল্টার আউট
+        if (entity.deactivated || entity.migratedTo || entity.left) continue;
+        if (entity.className === 'ChatForbidden' || entity.className === 'ChannelForbidden') continue;
+        if (d.isGroup && !d.isChannel && (entity.participantsCount === 0 || !entity.participantsCount)) continue;
+
         const isCreator = entity.creator === true;
         const adminRights = entity.adminRights || null;
         const isAdmin = !!adminRights || entity.admin === true;
@@ -190,6 +202,7 @@ async function extractCommunities(client) {
 
         const canAddBot = isCreator || (adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo)) || entity.admin === true;
 
+        // Fetch Thumbnail
         let photoBase64 = null;
         try {
             if (entity.photo) {
@@ -203,12 +216,15 @@ async function extractCommunities(client) {
         }
 
         const isBroadcastChannel = d.isChannel && !entity.megagroup;
+        const chatIdStr = d.id.toString();
+        const isBotConnected = !!connectedMap[chatIdStr] || !!connectedMap[`-100${entity.id}`];
 
         const itemData = {
-            id: d.id.toString(),
+            id: chatIdStr,
             title: d.title || "Untitled",
             role: isCreator ? 'Owner' : 'Admin',
             canAddBot: !!canAddBot,
+            isBotConnected: isBotConnected,
             photo: photoBase64
         };
 
@@ -243,9 +259,7 @@ app.post('/api/tg/verify-code', async (req, res) => {
     const { phone, code, phoneCodeHash, password } = req.body;
     try {
         const sessionData = tempAuthClients[phone];
-        if (!sessionData) {
-            throw new Error("Session expired. Please request code again.");
-        }
+        if (!sessionData) throw new Error("Session expired. Please request code again.");
 
         const client = sessionData.client;
         if (!client.connected) await client.connect();
@@ -293,17 +307,14 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// 4. Auto-Add Bot to Group/Channel (AUTO-MIGRATES BASIC CHATS TO SUPERGROUPS)
+// 4. Auto-Add Bot to Group/Channel & Record in Firebase
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
 
-        // ডায়ালগ লোড করে ক্যাশ সমৃদ্ধ করা
         const dialogs = await client.getDialogs({ limit: 100 });
-        
-        // টার্গেট ডায়ালগটি খুঁজে বের করা
         const targetDialog = dialogs.find(d => 
             d.id.toString() === chatId.toString() ||
             String(d.entity?.id) === chatId.replace('-100', '').replace('-', '')
@@ -316,14 +327,10 @@ app.post('/api/tg/connect-group', async (req, res) => {
         const botEntity = await client.getInputEntity(BOT_USERNAME);
         let targetChannelPeer = null;
 
-        // চেক করা: এটি কি সুপারগ্রুপ বা চ্যানেল?
         if (targetDialog.isChannel || targetDialog.entity.className === 'Channel' || String(chatId).startsWith('-100')) {
             targetChannelPeer = await client.getInputEntity(targetDialog.entity);
         } else {
-            // যদি এটি সাধারণ বেসিক গ্রুপ (Basic Group) হয়, তবে টেলিগ্রাম নিয়মে সুপারগ্রুপে রূপান্তর করতে হবে
             const rawBasicId = targetDialog.entity.id;
-
-            // ১. বেসিক গ্রুপে আগে বটকে অ্যাড করা
             try {
                 await client.invoke(new Api.messages.AddChatUser({
                     chatId: rawBasicId,
@@ -332,21 +339,13 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 }));
             } catch (err) {}
 
-            // ২. বেসিক গ্রুপকে সুপারগ্রুপে মাইগ্রেট করা
             try {
-                const migrateRes = await client.invoke(new Api.messages.MigrateChat({
-                    chatId: rawBasicId
-                }));
-
+                const migrateRes = await client.invoke(new Api.messages.MigrateChat({ chatId: rawBasicId }));
                 if (migrateRes.chats && migrateRes.chats.length > 0) {
                     targetChannelPeer = await client.getInputEntity(migrateRes.chats[0]);
                 }
-            } catch (migErr) {
-                // অলরেডি কনভার্ট হয়ে থাকলে এন্টারপ্রাইজ হ্যান্ডলার
-                console.log("Migration state:", migErr.message);
-            }
+            } catch (migErr) {}
 
-            // যদি মাইগ্রেশন শেষে সরাসরি চ্যানেল পিয়ার না পাওয়া যায়
             if (!targetChannelPeer) {
                 const freshDialogs = await client.getDialogs({ limit: 20 });
                 const freshTarget = freshDialogs.find(d => d.title === targetDialog.title && (d.isChannel || d.isGroup));
@@ -360,7 +359,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             throw new Error("Failed to resolve channel peer for admin promotion.");
         }
 
-        // ইনভাইট করার চেষ্টা (যদি বট এখনো মেম্বার না হয়ে থাকে)
         try {
             await client.invoke(new Api.channels.InviteToChannel({
                 channel: targetChannelPeer,
@@ -368,7 +366,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }));
         } catch (e) {}
 
-        // সুপারগ্রুপে বটকে পূর্ণ অ্যাডমিন ক্ষমতা দেওয়া
         await client.invoke(new Api.channels.EditAdmin({
             channel: targetChannelPeer,
             userId: botEntity,
@@ -387,6 +384,12 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }),
             rank: 'VS Guardian'
         }));
+
+        // Firebase-এ বট সফলভাবে কানেক্ট হয়েছে হিসেবে রেকর্ড করা
+        await db.ref(`connected_bots/${chatId}`).set({
+            connected: true,
+            updatedAt: Date.now()
+        });
 
         res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers!` });
     } catch (e) {
