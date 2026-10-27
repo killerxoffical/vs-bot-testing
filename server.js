@@ -1,13 +1,13 @@
 const express = require('express');
 const cors = require('cors');
-const { Telegraf } = require('telegraf');
+const { Telegraf, Markup } = require('telegraf');
 const { TelegramClient, Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 const { computeCheck } = require('telegram/Password');
 const path = require('path');
 const fs = require('fs');
 
-// Firebase Node Setup
+// Firebase Node Client Setup
 const firebase = require('firebase/compat/app');
 require('firebase/compat/database');
 
@@ -26,6 +26,7 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
+// Environment & Keys
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFezVtaNE6D0QF0ss26k2SHj5tW7hCiSN8";
 const BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
@@ -42,7 +43,7 @@ app.use(express.static(__dirname));
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
 // =============================================================================
-// TELEGRAF BOT ENGINE
+// TELEGRAF BOT ENGINE (RICH WELCOME & PROFANITY AUTO-DELETE)
 // =============================================================================
 const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
@@ -55,15 +56,28 @@ bot.telegram.getMe().then(info => {
     console.error("[VS Protection] Bot Token Error:", err.message);
 });
 
+// Cache Synced Settings
 async function getChatSettings(chatId) {
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
     try {
         const snap = await db.ref(`groups/${chatId}/settings`).once('value');
         const settings = snap.val() || {
-            welcome: { enabled: true, text: "👋 Welcome {user} to {chat}! Enjoy your stay and follow the rules." },
+            welcome: { 
+                enabled: true, 
+                photoUrl: "", 
+                text: "👋 Welcome {user} to {chat}! Enjoy your stay and follow the rules.",
+                buttons: [],
+                autoDeleteSeconds: 0
+            },
             antiLink: { enabled: false, silent: false, msg: "⚠️ {user}, posting external links is prohibited here!" },
             antiForward: { enabled: false, silent: false, msg: "⚠️ {user}, forwarded messages from channels are not allowed!" },
-            badWords: { enabled: false, words: [], action: 'delete' },
+            badWords: { 
+                enabled: false, 
+                words: [], 
+                action: 'delete',
+                customMsg: "⚠️ {user}, abusive words are forbidden! ({warns}/{warn_limit})",
+                autoDeleteSeconds: 6
+            },
             warnLimit: 3,
             chatLocked: false,
             lockMsg: "🔒 *The chat has been locked by an administrator.*"
@@ -80,7 +94,19 @@ db.ref('groups').on('child_changed', (snap) => {
     if (val && val.settings) chatSettingsCache[snap.key] = val.settings;
 });
 
-// Welcome New Members
+// Helper: Build Inline Buttons Matrix
+function buildInlineButtons(buttonsArray) {
+    if (!Array.isArray(buttonsArray) || buttonsArray.length === 0) return null;
+    const inlineRows = [];
+    buttonsArray.forEach(b => {
+        if (b.text && b.url && (b.url.startsWith('http://') || b.url.startsWith('https://') || b.url.startsWith('tg://'))) {
+            inlineRows.push([Markup.button.url(b.text.trim(), b.url.trim())]);
+        }
+    });
+    return inlineRows.length > 0 ? Markup.inlineKeyboard(inlineRows) : null;
+}
+
+// 1. WELCOME NEW MEMBERS (Supports Image, Buttons, Auto-Delete)
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
@@ -89,16 +115,39 @@ bot.on('new_chat_members', async (ctx) => {
 
         for (const member of ctx.message.new_chat_members) {
             if (member.is_bot) continue;
+
             const userMention = `[${member.first_name}](tg://user?id=${member.id})`;
             const msg = (settings.welcome.text || "Welcome {user} to {chat}!")
                 .replace(/{user}/g, userMention)
                 .replace(/{chat}/g, ctx.chat.title || "Community");
-            ctx.replyWithMarkdown(msg).catch(() => {});
+
+            const keyboard = buildInlineButtons(settings.welcome.buttons);
+            const extra = { parse_mode: 'Markdown' };
+            if (keyboard) extra.reply_markup = keyboard.reply_markup;
+
+            let sentWelcome;
+            const photoUrl = (settings.welcome.photoUrl || "").trim();
+
+            if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+                sentWelcome = await ctx.replyWithPhoto(photoUrl, { caption: msg, ...extra }).catch(async () => {
+                    return await ctx.replyWithMarkdown(msg, extra).catch(() => {});
+                });
+            } else {
+                sentWelcome = await ctx.replyWithMarkdown(msg, extra).catch(() => {});
+            }
+
+            // Auto-Delete Welcome Message Timer
+            const deleteSec = parseInt(settings.welcome.autoDeleteSeconds || 0);
+            if (deleteSec > 0 && sentWelcome && sentWelcome.message_id) {
+                setTimeout(() => {
+                    ctx.deleteMessage(sentWelcome.message_id).catch(() => {});
+                }, deleteSec * 1000);
+            }
         }
     } catch (err) {}
 });
 
-// Message Moderation
+// 2. MODERATION ENGINE (Includes Custom Bad-Word Warning & Auto-Delete Timer)
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -108,7 +157,7 @@ bot.on('message', async (ctx, next) => {
         const text = ctx.message.text || ctx.message.caption || "";
         const settings = await getChatSettings(chatId);
 
-        // Bypass for Group Administrators
+        // Administrator Bypass
         try {
             const member = await ctx.getChatMember(userId);
             if (['creator', 'administrator'].includes(member.status)) return next();
@@ -118,25 +167,25 @@ bot.on('message', async (ctx, next) => {
 
         const userMention = `[${ctx.from.first_name}](tg://user?id=${userId})`;
 
-        // 1. Chat Lock Enforcement
+        // Chat Lock Check
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 2. Anti-Forward Check
+        // Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             if (!settings.antiForward.silent && settings.antiForward.msg) {
                 const response = settings.antiForward.msg
                     .replace(/{user}/g, userMention)
                     .replace(/{chat}/g, ctx.chat.title);
-                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 6000));
+                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
             }
             return;
         }
 
-        // 3. Anti-Link Check
+        // Anti-Link Check
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
@@ -145,21 +194,25 @@ bot.on('message', async (ctx, next) => {
                     const response = settings.antiLink.msg
                         .replace(/{user}/g, userMention)
                         .replace(/{chat}/g, ctx.chat.title);
-                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 6000));
+                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
             }
         }
 
-        // 4. Bad Words Filter
+        // Bad Words Filter (Custom Message + Punishment + Auto-Delete Timer)
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
             );
 
             if (foundBadWord) {
+                // Delete the offensive user message immediately
                 await ctx.deleteMessage().catch(() => {});
+
                 const action = settings.badWords.action || 'delete';
+                const warnLimit = settings.warnLimit || 3;
+                let warningMsgSent = null;
 
                 if (action === 'warn') {
                     const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
@@ -167,16 +220,44 @@ bot.on('message', async (ctx, next) => {
                     const warns = (snap.val() || 0) + 1;
                     await warnRef.set(warns);
 
-                    if (warns >= (settings.warnLimit || 3)) {
+                    if (warns >= warnLimit) {
                         await ctx.banChatMember(userId).catch(() => {});
                         await warnRef.remove();
-                        ctx.reply(`🚨 User @${ctx.from.username || ctx.from.first_name} has been banned for reaching warning limit!`);
+                        warningMsgSent = await ctx.replyWithMarkdown(`🚨 @${ctx.from.username || ctx.from.first_name} has been banned for reaching maximum warning limit!`).catch(() => {});
                     } else {
-                        ctx.replyWithMarkdown(`⚠️ Warning ${userMention}! Blacklisted words detected. (${warns}/${settings.warnLimit || 3})`);
+                        const template = settings.badWords.customMsg || "⚠️ {user}, prohibited words used! ({warns}/{warn_limit})";
+                        const customNotice = template
+                            .replace(/{user}/g, userMention)
+                            .replace(/{chat}/g, ctx.chat.title)
+                            .replace(/{warns}/g, warns)
+                            .replace(/{warn_limit}/g, warnLimit);
+
+                        warningMsgSent = await ctx.replyWithMarkdown(customNotice).catch(() => {});
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
+                    const template = settings.badWords.customMsg || "⛔ {user} was permanently banned for abusive speech.";
+                    const customNotice = template
+                        .replace(/{user}/g, userMention)
+                        .replace(/{chat}/g, ctx.chat.title);
+                    warningMsgSent = await ctx.replyWithMarkdown(customNotice).catch(() => {});
+                } else if (action === 'delete') {
+                    if (settings.badWords.customMsg && settings.badWords.customMsg.trim()) {
+                        const customNotice = settings.badWords.customMsg
+                            .replace(/{user}/g, userMention)
+                            .replace(/{chat}/g, ctx.chat.title);
+                        warningMsgSent = await ctx.replyWithMarkdown(customNotice).catch(() => {});
+                    }
                 }
+
+                // Auto-Delete Warning Timer (Cleans up group conversation)
+                const deleteSec = parseInt(settings.badWords.autoDeleteSeconds || 0);
+                if (deleteSec > 0 && warningMsgSent && warningMsgSent.message_id) {
+                    setTimeout(() => {
+                        ctx.deleteMessage(warningMsgSent.message_id).catch(() => {});
+                    }, deleteSec * 1000);
+                }
+
                 return;
             }
         }
@@ -185,7 +266,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO & ADVANCED COMMUNITY MANAGEMENT
+// GRAMJS MTPROTO SESSION & COMMUNITY RESOLVER
 // =============================================================================
 const tempAuthClients = {};
 
@@ -412,12 +493,12 @@ app.post('/api/tg/connect-group', async (req, res) => {
 });
 
 // =============================================================================
-// NEW FEATURES: TEST WELCOME, LOCK BROADCAST & FETCH COMMUNITY MEMBERS
+// RICH TEST WELCOME & LIVE ACTIONS APIS
 // =============================================================================
 
-// 1. Send Live Test Welcome Message to Group
+// 1. Rich Live Test Welcome Message (Image + Text + Buttons + Timer)
 app.post('/api/tg/test-welcome', async (req, res) => {
-    const { chatId, text } = req.body;
+    const { chatId, photoUrl, text, buttons, autoDeleteSeconds } = req.body;
     try {
         const testUser = `[Admin (Test)](tg://user?id=${botId || 0})`;
         const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
@@ -425,14 +506,42 @@ app.post('/api/tg/test-welcome', async (req, res) => {
             .replace(/{user}/g, testUser)
             .replace(/{chat}/g, chatInfo.title);
 
-        await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, { parse_mode: 'Markdown' });
-        res.json({ success: true, message: "Test welcome message sent to your group successfully!" });
+        const keyboard = buildInlineButtons(buttons);
+        const extra = { parse_mode: 'Markdown' };
+        if (keyboard) extra.reply_markup = keyboard.reply_markup;
+
+        let sentMsg;
+        const validPhoto = (photoUrl || "").trim();
+
+        if (validPhoto && (validPhoto.startsWith('http://') || validPhoto.startsWith('https://'))) {
+            sentMsg = await bot.telegram.sendPhoto(chatId, validPhoto, {
+                caption: `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`,
+                ...extra
+            }).catch(async () => {
+                return await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, extra);
+            });
+        } else {
+            sentMsg = await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, extra);
+        }
+
+        // Live Auto-Delete test
+        const sec = parseInt(autoDeleteSeconds || 0);
+        if (sec > 0 && sentMsg && sentMsg.message_id) {
+            setTimeout(() => {
+                bot.telegram.deleteMessage(chatId, sentMsg.message_id).catch(() => {});
+            }, sec * 1000);
+        }
+
+        res.json({ 
+            success: true, 
+            message: `Test welcome sent to group! ${sec > 0 ? `(Will auto-delete in ${sec} seconds)` : ''}` 
+        });
     } catch (e) {
-        res.status(500).json({ error: e.message || "Bot cannot send message to group. Make sure it is an administrator." });
+        res.status(500).json({ error: e.message || "Failed to send test message to group." });
     }
 });
 
-// 2. Announce Chat Lock / Unlock in Group
+// 2. Announce Chat Lock / Unlock
 app.post('/api/tg/announce-lock', async (req, res) => {
     const { chatId, locked, message } = req.body;
     try {
@@ -448,7 +557,7 @@ app.post('/api/tg/announce-lock', async (req, res) => {
     }
 });
 
-// 3. Fetch Real Community Members (Administrators & Participants)
+// 3. Get Community Members List
 app.post('/api/tg/get-members', async (req, res) => {
     const { session, chatId } = req.body;
     try {
@@ -465,7 +574,6 @@ app.post('/api/tg/get-members', async (req, res) => {
 
         res.json({ success: true, members: membersList });
     } catch (e) {
-        // Fallback to Telegram Bot API Administrators if MTProto participants restricted
         try {
             const admins = await bot.telegram.getChatAdministrators(chatId);
             const fallbackList = admins.map(a => ({
@@ -481,7 +589,7 @@ app.post('/api/tg/get-members', async (req, res) => {
     }
 });
 
-// Route Fallback
+// Fallback Route
 app.get('*', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'index.html');
     const p2 = path.join(__dirname, 'index.html');
