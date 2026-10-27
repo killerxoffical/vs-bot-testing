@@ -28,6 +28,7 @@ const db = firebase.database();
 
 // Environment & Keys
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFezVtaNE6D0QF0ss26k2SHj5tW7hCiSN8";
+const BOT_USERNAME = "Vareonprotection_bot"; // Your Verified Bot Username
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
 const PORT = process.env.PORT || 3000;
@@ -48,11 +49,9 @@ app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine A
 // =============================================================================
 const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
-let botUsername = "";
 
 bot.telegram.getMe().then(info => {
-    botUsername = info.username;
-    console.log(`[VS Protection] Bot Online: @${botUsername}`);
+    console.log(`[VS Protection] Telegraf Bot Online: @${info.username}`);
 }).catch(err => {
     console.error("[VS Protection] Bot Token Error:", err.message);
 });
@@ -170,7 +169,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (SEPARATE GROUPS & CHANNELS + PERMISSION CHECKS)
+// GRAMJS MTPROTO (HANDLES CHAT VS CHANNEL & BOT PROMOTION)
 // =============================================================================
 const tempAuthClients = {};
 
@@ -188,12 +187,10 @@ async function extractCommunities(client) {
         const adminRights = entity.adminRights || null;
         const isAdmin = !!adminRights || entity.admin === true;
 
-        // Filter: Must be Owner or Admin
         if (!isCreator && !isAdmin) continue;
 
-        // Determine if user can invite/promote bots
-        // Needs Creator or Admin rights with 'addAdmins' or 'inviteUsers'
-        const canAddBot = isCreator || (adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo));
+        // Check if user can add bot / invite
+        const canAddBot = isCreator || (adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo)) || entity.admin === true;
 
         // Fetch Thumbnail
         let photoBase64 = null;
@@ -244,7 +241,7 @@ app.post('/api/tg/send-code', async (req, res) => {
     }
 });
 
-// 2. Verify OTP & Return Classified Lists
+// 2. Verify OTP
 app.post('/api/tg/verify-code', async (req, res) => {
     const { phone, code, phoneCodeHash, password } = req.body;
     try {
@@ -285,7 +282,7 @@ app.post('/api/tg/verify-code', async (req, res) => {
     }
 });
 
-// 3. Re-Fetch Communities Using Existing Saved Session (No re-login on refresh)
+// 3. Re-Fetch Communities
 app.post('/api/tg/fetch-communities', async (req, res) => {
     const { session } = req.body;
     if (!session) return res.status(400).json({ error: "Session missing" });
@@ -299,35 +296,66 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// 4. Auto-Add Bot to Group/Channel & Promote Admin
+// 4. Auto-Add Bot to Group/Channel (FIXED: Supports both Channel & Basic Chat!)
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, {});
         await client.connect();
 
-        const targetBot = botUsername || BOT_TOKEN.split(':')[0];
-        const botEntity = await client.getEntity(targetBot);
-        
-        await client.invoke(new Api.channels.EditAdmin({
-            channel: chatId,
-            userId: botEntity,
-            adminRights: new Api.ChatAdminRights({
-                changeInfo: true,
-                postMessages: true,
-                editMessages: true,
-                deleteMessages: true,
-                banUsers: true,
-                inviteUsers: true,
-                pinMessages: true,
-                addAdmins: false,
-                manageCall: true
-            }),
-            rank: 'VS Guardian'
-        }));
+        const peer = await client.getEntity(chatId);
+        const botEntity = await client.getEntity(BOT_USERNAME);
 
-        res.json({ success: true, message: "VS Protection Bot deployed & granted Admin rights!" });
+        if (peer.className === 'Channel') {
+            // CASE 1: Supergroup or Broadcast Channel (InputChannel)
+            try {
+                // Try to invite bot first
+                await client.invoke(new Api.channels.InviteToChannel({
+                    channel: peer,
+                    users: [botEntity]
+                }));
+            } catch (inviteErr) {
+                // Already in channel or direct promote supported
+            }
+
+            // Promote to Admin
+            await client.invoke(new Api.channels.EditAdmin({
+                channel: peer,
+                userId: botEntity,
+                adminRights: new Api.ChatAdminRights({
+                    changeInfo: true,
+                    postMessages: true,
+                    editMessages: true,
+                    deleteMessages: true,
+                    banUsers: true,
+                    inviteUsers: true,
+                    pinMessages: true,
+                    addAdmins: false,
+                    manageCall: true
+                }),
+                rank: 'VS Guardian'
+            }));
+
+        } else if (peer.className === 'Chat') {
+            // CASE 2: Basic Legacy Group (InputPeerChat - Fixes the Cast Error!)
+            try {
+                await client.invoke(new Api.messages.AddChatUser({
+                    chatId: peer.id,
+                    userId: botEntity,
+                    fwdLimit: 0
+                }));
+            } catch (addErr) {}
+
+            await client.invoke(new Api.messages.EditChatAdmin({
+                chatId: peer.id,
+                userId: botEntity,
+                isAdministrator: true
+            }));
+        }
+
+        res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator rights!` });
     } catch (e) {
+        console.error("Connect Bot Error:", e);
         res.status(500).json({ error: e.message });
     }
 });
