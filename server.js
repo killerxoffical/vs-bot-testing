@@ -174,7 +174,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO API (SESSION MANAGEMENT & AUTO BOT SETUP)
+// GRAMJS MTPROTO API (ONLY OWNER/ADMIN GROUPS + LIVE AVATARS)
 // =============================================================================
 const tempAuthClients = {};
 
@@ -192,7 +192,7 @@ app.post('/api/tg/send-code', async (req, res) => {
     }
 });
 
-// Step 2: Verify Code (Direct MTProto RPC Call)
+// Step 2: Verify Code, Filter strictly by Creator/Admin, Download Thumbnails
 app.post('/api/tg/verify-code', async (req, res) => {
     const { phone, code, phoneCodeHash, password } = req.body;
     try {
@@ -205,14 +205,12 @@ app.post('/api/tg/verify-code', async (req, res) => {
         if (!client.connected) await client.connect();
 
         try {
-            // Direct RPC Call to bypass client.signInUser callback bugs
             await client.invoke(new Api.auth.SignIn({
                 phoneNumber: phone,
                 phoneCodeHash: phoneCodeHash || sessionData.phoneCodeHash,
                 phoneCode: code.toString().trim()
             }));
         } catch (authErr) {
-            // Handle Two-Step Cloud Verification Password (2FA)
             if (authErr.message.includes('SESSION_PASSWORD_NEEDED')) {
                 if (!password) {
                     return res.json({ success: false, needPassword: true, message: "Two-step verification password required." });
@@ -228,14 +226,35 @@ app.post('/api/tg/verify-code', async (req, res) => {
         const stringSession = client.session.save();
         const dialogs = await client.getDialogs({ limit: 100 });
         
-        // Extract Groups/Channels
+        // STRICT FILTER: Only groups where the user is CREATOR (Owner) or has ADMIN rights
         const adminGroups = [];
         for (const d of dialogs) {
-            if (d.isGroup || d.isChannel) {
+            if (!d.isGroup && !d.isChannel) continue;
+
+            const entity = d.entity;
+            const isCreator = entity.creator === true;
+            const isAdmin = !!entity.adminRights || entity.admin === true;
+
+            // সাধারণ মেম্বার হওয়া গ্রুপ বাদ দেওয়া হচ্ছে
+            if (isCreator || isAdmin) {
+                let photoBase64 = null;
+                try {
+                    if (entity.photo) {
+                        const buffer = await client.downloadProfilePhoto(entity, { isBig: false });
+                        if (buffer && buffer.length > 0) {
+                            photoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+                        }
+                    }
+                } catch (e) {
+                    photoBase64 = null;
+                }
+
                 adminGroups.push({
                     id: d.id.toString(),
                     title: d.title || "Community",
-                    membersCount: d.entity?.participantsCount || 0
+                    membersCount: entity.participantsCount || 0,
+                    role: isCreator ? 'Owner' : 'Admin',
+                    photo: photoBase64
                 });
             }
         }
@@ -280,7 +299,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
     }
 });
 
-// Single Page Application Fallback (Guaranteed File Route)
+// Single Page Application Fallback
 app.get('*', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'index.html');
     const p2 = path.join(__dirname, 'index.html');
