@@ -31,7 +31,7 @@
         }
     </script>
 
-    <!-- Icons & Animation Engines -->
+    <!-- Vector Icons, 3D Engine & Modern Alerts -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -326,7 +326,7 @@
 
             <div class="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
                 <button onclick="closeGroupModal()" class="px-4 py-2 rounded-xl border border-slate-300 font-semibold text-xs text-slate-700">Cancel</button>
-                <button onclick="saveGroupSettings()" class="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 font-bold text-xs text-white shadow-md transition">Save Configuration</button>
+                <button onclick="saveGroupSettings()" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 font-bold text-xs text-white shadow-md transition">Save Configuration</button>
             </div>
         </div>
     </div>
@@ -364,7 +364,7 @@
         let activeGroupId = null;
         let phoneCodeHash = null;
 
-        // Auth Listener
+        // Firebase Auth State
         auth.onAuthStateChanged(user => {
             currentUser = user;
             if (user) {
@@ -423,7 +423,7 @@
             }
         }
 
-        // Telegram Auth (MTProto)
+        // Telegram Auth (MTProto Flow)
         async function sendTgCode() {
             const phone = document.getElementById('tgPhone').value.trim();
             if (!phone) return Swal.fire('Required', 'Please enter your phone number with country code.', 'warning');
@@ -450,19 +450,44 @@
             }
         }
 
-        async function verifyTgCode() {
+        async function verifyTgCode(password = null) {
             const phone = document.getElementById('tgPhone').value.trim();
             const code = document.getElementById('tgOtp').value.trim();
 
-            Swal.showLoading();
+            if (!code) {
+                return Swal.fire('Required', 'Please enter the OTP code you received.', 'warning');
+            }
+
+            Swal.fire({
+                title: 'Verifying...',
+                text: 'Authenticating with Telegram MTProto Servers',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
             try {
                 const res = await fetch('/api/tg/verify-code', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ phone, code, phoneCodeHash })
+                    body: JSON.stringify({ phone, code, phoneCodeHash, password })
                 });
                 const data = await res.json();
                 Swal.close();
+
+                // 2FA Password Check
+                if (data.needPassword) {
+                    const { value: userPass } = await Swal.fire({
+                        title: 'Two-Step Verification',
+                        input: 'password',
+                        inputLabel: 'Enter your Telegram 2FA Cloud Password',
+                        inputPlaceholder: 'Password',
+                        showCancelButton: true
+                    });
+                    if (userPass) {
+                        return verifyTgCode(userPass);
+                    }
+                    return;
+                }
 
                 if (data.success) {
                     tgSession = data.session;
@@ -470,8 +495,9 @@
                     document.getElementById('tgConnectCard').classList.add('hidden');
                     document.getElementById('groupsSection').classList.remove('hidden');
                     renderGroups(data.groups);
+                    Swal.fire('Connected!', 'Telegram account linked successfully!', 'success');
                 } else {
-                    Swal.fire('Verification Failed', data.error, 'error');
+                    Swal.fire('Verification Failed', data.error || 'Invalid code', 'error');
                 }
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');
@@ -510,7 +536,7 @@
         async function connectBot(chatId) {
             Swal.fire({
                 title: 'Deploying Bot...',
-                text: 'Promoting bot to Admin role via Telegram API...',
+                text: 'Promoting bot to Administrator via Telegram API...',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
             });
@@ -558,8 +584,8 @@
         function updateLivePreview() {
             const raw = document.getElementById('welcomeTextInput').value;
             document.getElementById('previewText').innerText = raw
-                .replace('{user}', 'John Doe')
-                .replace('{chat}', document.getElementById('modalGroupName').innerText);
+                .replace(/{user}/g, 'John Doe')
+                .replace(/{chat}/g, document.getElementById('modalGroupName').innerText);
         }
 
         async function saveGroupSettings() {
