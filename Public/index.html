@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="bn" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoseX Guard — Modern Telegram Cloud Ecosystem</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Hind Siliguri"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#EEF2FF',
+                            100: '#E0E7FF',
+                            500: '#6366F1',
+                            600: '#4F46E5',
+                            700: '#4338CA',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- GSAP for Smooth UI Animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- Three.js for 3D Visual Experience -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- SweetAlert2 (Modern Alerts) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+    <style>
+        body {
+            background-color: #F8FAFC;
+            color: #0F172A;
+        }
+        .light-card {
+            background: #FFFFFF;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .light-card:hover {
+            box-shadow: 0 20px 30px -10px rgba(79, 70, 229, 0.08), 0 1px 3px rgba(0,0,0,0.05);
+            transform: translateY(-2px);
+        }
+        .frosted-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        /* Custom Modern Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #4F46E5;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4F46E5;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+
+    <!-- NAVBAR -->
+    <header class="frosted-nav sticky top-0 z-40 transition-all">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i data-lucide="shield-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-xl tracking-tight text-slate-900 block leading-tight">RoseX<span class="text-brand-600">.</span></span>
+                    <span class="text-[11px] font-semibold tracking-wider uppercase text-slate-400">Cloud Protection</span>
+                </div>
+            </div>
+
+            <div id="navActionArea" class="flex items-center gap-4">
+                <button onclick="loginGoogle()" class="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm transition-all shadow-sm">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    <span>লগইন করুন</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================================================
+       SECTION 1: LANDING VIEW (WITH 3D INTERACTIVE CANVAS)
+       ========================================================================== -->
+    <div id="landingView">
+        <section class="max-w-7xl mx-auto px-6 pt-12 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            <div class="lg:col-span-7 space-y-6 text-left">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-600 font-semibold text-xs tracking-wide">
+                    <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                    <span>টেলিগ্রামের সবচেয়ে আধুনিক ম্যানেজমেন্ট প্ল্যাটফর্ম</span>
+                </div>
+                <h1 class="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
+                    আপনার গ্রুপ পরিচালনা করুন <br>
+                    <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">স্মার্ট ও সুরক্ষিত উপায়ে</span>
+                </h1>
+                <p class="text-lg text-slate-600 max-w-xl font-normal leading-relaxed">
+                    অ্যান্টি-লিংক, গালি ফিল্টার, অটো-ব্যান এবং ইনস্ট্যান্ট চ্যাট লক—কোনো জটিল কমান্ড ছাড়া ব্রাউজার থেকেই এক ক্লিকে সম্পূর্ণ গ্রুপ নিয়ন্ত্রণ করুন।
+                </p>
+                <div class="pt-2 flex flex-wrap items-center gap-4">
+                    <button onclick="loginGoogle()" class="flex items-center gap-3 px-8 py-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-xl shadow-brand-500/25 transition-all">
+                        <span>ড্যাশবোর্ড শুরু করুন</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3D Animation Container -->
+            <div class="lg:col-span-5 h-[420px] w-full rounded-3xl relative overflow-hidden flex items-center justify-center light-card border-none bg-gradient-to-br from-indigo-50/50 to-white">
+                <canvas id="threeCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+                <div class="absolute bottom-4 left-6 text-xs font-semibold text-slate-400 flex items-center gap-2 pointer-events-none">
+                    <i data-lucide="move-3d" class="w-4 h-4"></i>
+                    <span>ইন্টারেক্টিভ ৩ডি শিল্ড কোর</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Grid -->
+        <section class="max-w-7xl mx-auto px-6 pb-28">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center mb-6">
+                        <i data-lucide="link-2-off" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">অটো অ্যান্টি-লিংক</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">স্প্যামিং এবং প্রমোশনাল যেকোনো টেলিগ্রাম লিংক আসা মাত্রই মিলিসেকেন্ডে ডিলিট হয়ে যাবে।</p>
+                </div>
+
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-6">
+                        <i data-lucide="message-square-warning" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">কাস্টম গালি ফিল্টার</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">নির্দিষ্ট খারাপ শব্দের তালিকা সেট করুন। ব্যবহারকারীর জন্য ওয়ার্নিং লিমিট ও ব্যান রুল নির্ধারণ করুন।</p>
+                </div>
+
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
+                        <i data-lucide="lock" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">ইনস্ট্যান্ট চ্যাট লক</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">রেইড বা স্প্যাম অ্যাটাকের সময় মাত্র এক টগলে পুরো গ্রুপের মেসেজ পাঠানো সাথে সাথে বন্ধ করুন।</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ==========================================================================
+       SECTION 2: MODERN DASHBOARD VIEW (AUTHENTICATED)
+       ========================================================================== -->
+    <div id="dashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto px-6 py-10 space-y-10">
+
+        <!-- Welcome Banner -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+            <div>
+                <h2 class="text-3xl font-extrabold text-slate-900">কন্ট্রোল ড্যাশবোর্ড</h2>
+                <p class="text-slate-500 text-sm mt-1">আপনার টেলিগ্রাম অ্যাকাউন্ট এবং বট কানেক্টেড গ্রুপসমূহ পরিচালনা করুন।</p>
+            </div>
+            <div id="userBadge" class="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- MTProto Telegram Connect Section -->
+        <div id="tgConnectCard" class="light-card rounded-3xl p-8 border-dashed border-2 border-brand-200 bg-brand-50/20 text-center max-w-2xl mx-auto">
+            <div class="w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="send" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-900 mb-1">টেলিগ্রাম অথেনটিকেশন</h3>
+            <p class="text-sm text-slate-500 mb-6">আপনার যেসব গ্রুপে অ্যাডমিন রোল রয়েছে সেগুলো লোড করতে ফোন নম্বর দিন।</p>
+
+            <div class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                <input id="tgPhone" type="text" placeholder="+8801XXXXXXXXX" class="flex-1 bg-white border border-slate-300 px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <button onclick="sendTgCode()" class="px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2">
+                    <i data-lucide="key-round" class="w-4 h-4"></i>
+                    <span>ওটিপি পাঠান</span>
+                </button>
+            </div>
+
+            <!-- OTP Box (Hidden Initially) -->
+            <div id="otpInputArea" class="hidden mt-4 pt-4 border-t border-slate-200/60 max-w-md mx-auto flex gap-3">
+                <input id="tgOtp" type="text" placeholder="Telegram Login Code" class="flex-1 bg-white border border-slate-300 px-4 py-3 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <button onclick="verifyTgCode()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm transition-all">
+                    ভেরিফাই করুন
+                </button>
+            </div>
+        </div>
+
+        <!-- Groups Grid Section -->
+        <div id="groupsSection" class="hidden space-y-6">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="layout-grid" class="w-5 h-5 text-brand-600"></i>
+                    <span>আপনার পরিচালিত গ্রুপসমূহ</span>
+                </h3>
+            </div>
+            <div id="groupsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+       MODAL: GROUP ADVANCED CONTROL PANEL (PREMIUM LIGHT MODAL)
+       ========================================================================== -->
+    <div id="groupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity">
+        <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] overflow-hidden">
+            
+            <!-- Modal Header -->
+            <div class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                        <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalGroupName" class="text-lg font-bold text-slate-900 leading-tight">-</h3>
+                        <p id="modalGroupMeta" class="text-xs text-slate-500">আইডি: -</p>
+                    </div>
+                </div>
+                <button onclick="closeGroupModal()" class="w-9 h-9 rounded-full hover:bg-slate-200/60 flex items-center justify-center text-slate-500 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Split: Settings & Live Preview) -->
+            <div class="p-8 overflow-y-auto space-y-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- Settings Column -->
+                <div class="lg:col-span-7 space-y-6">
+                    
+                    <!-- Chat Lock -->
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="lock" class="w-5 h-5 text-slate-600"></i>
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-900">চ্যাট লক (Chat Lock)</h4>
+                                <p class="text-xs text-slate-500">সাধারণ মেম্বারদের মেসেজ পাঠানো বন্ধ রাখুন</p>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                    </div>
+
+                    <!-- Anti-Link -->
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="link-2-off" class="w-5 h-5 text-slate-600"></i>
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-900">অ্যান্টি-লিংক (Anti-Link)</h4>
+                                <p class="text-xs text-slate-500">গ্রুপে যেকোনো অপ্রয়োজনীয় লিঙ্ক অটো ডিলিট</p>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                    </div>
+
+                    <!-- Anti-Forward -->
+                    <div class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="forward" class="w-5 h-5 text-slate-600"></i>
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-900">অ্যান্টি-ফরওয়ার্ড (Anti-Forward)</h4>
+                                <p class="text-xs text-slate-500">অন্যান্য চ্যানেল থেকে ফরওয়ার্ড ব্লক করুন</p>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                    </div>
+
+                    <!-- Bad Words Filter -->
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="shield-alert" class="w-5 h-5 text-rose-600"></i>
+                                <h4 class="text-sm font-bold text-slate-900">গালি ফিল্টার ও অ্যাকশন</h4>
+                            </div>
+                            <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                        </div>
+                        <div>
+                            <label class="text-xs font-semibold text-slate-500 block mb-1.5">নিষিদ্ধ শব্দসমূহ (কমা দিয়ে লিখুন):</label>
+                            <input id="badWordsInput" type="text" placeholder="bot, spam, scam, abusive" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div class="flex items-center justify-between text-xs font-medium">
+                            <span class="text-slate-600">শব্দ ব্যবহারে কী হবে:</span>
+                            <select id="badWordsAction" class="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 font-semibold focus:outline-none">
+                                <option value="delete">শুধু মেসেজ ডিলিট</option>
+                                <option value="warn">মেসেজ ডিলিট + ওয়ার্নিং</option>
+                                <option value="ban">সরাসরি ব্যান</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Welcome Message & Live Preview -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="party-popper" class="w-5 h-5 text-amber-500"></i>
+                                <h4 class="text-sm font-bold text-slate-900">ওয়েলকাম মেসেজ</h4>
+                            </div>
+                            <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                        </div>
+                        <textarea id="welcomeTextInput" rows="3" oninput="updateLivePreview()" placeholder="Welcome {user} to our group!" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                    </div>
+
+                    <!-- Live Telegram Bubble Preview -->
+                    <div class="space-y-2">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">লাইভ প্রিভিউ (Telegram Chat)</span>
+                        <div class="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                <i data-lucide="bot" class="w-4 h-4"></i>
+                            </div>
+                            <div class="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 max-w-[85%] text-xs text-slate-800 space-y-1">
+                                <span class="font-bold text-brand-600 block text-[11px]">RoseX Guardian Bot</span>
+                                <p id="previewText" class="leading-relaxed">স্বাগতম জন আমাদের গ্রুপে!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="px-8 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button onclick="closeGroupModal()" class="px-5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 font-semibold text-xs text-slate-700 transition">বাতিল</button>
+                <button onclick="saveGroupSettings()" class="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 font-bold text-xs text-white shadow-md shadow-brand-500/20 transition flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>সেটিংস সেভ করুন</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-200 bg-white py-6">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+            <span>&copy; ২০২৫ RoseX Protection Engine. সর্বস্বত্ব সংরক্ষিত।</span>
+            <div class="flex items-center gap-6 font-medium">
+                <span class="inline-flex items-center gap-1.5 text-emerald-600 font-bold">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Render সার্ভার সচল
+                </span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==========================================================================
+       CLIENT LOGIC & SCRIPTS (FIREBASE + GRAMJS + THREE.JS)
+       ========================================================================== -->
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // 1. FIREBASE SETUP
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkL3ObqERCiDBuyXz4lr3Y7PYxzxt4hqA",
+            authDomain: "vsprotection1.firebaseapp.com",
+            databaseURL: "https://vsprotection1-default-rtdb.firebaseio.com",
+            projectId: "vsprotection1",
+            storageBucket: "vsprotection1.firebasestorage.app",
+            messagingSenderId: "635122514754",
+            appId: "1:635122514754:web:893417281989495d9066db",
+            measurementId: "G-S4E9KNN7ZY"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const rtdb = firebase.database();
+
+        let currentUser = null;
+        let tgSession = localStorage.getItem('tg_session') || null;
+        let activeGroupId = null;
+        let phoneCodeHash = null;
+
+        // Firebase Auth State Listener
+        auth.onAuthStateChanged(user => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('landingView').classList.add('hidden');
+                document.getElementById('dashboardView').classList.remove('hidden');
+                
+                document.getElementById('userBadge').innerHTML = `
+                    <div class="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-700">
+                        ${user.displayName ? user.displayName[0] : 'U'}
+                    </div>
+                    <span class="text-xs font-bold text-slate-800">${user.email}</span>
+                `;
+
+                document.getElementById('navActionArea').innerHTML = `
+                    <button onclick="auth.signOut()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 font-bold text-xs transition">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                        <span>লগআউট</span>
+                    </button>
+                `;
+                lucide.createIcons();
+            } else {
+                document.getElementById('landingView').classList.remove('hidden');
+                document.getElementById('dashboardView').classList.add('hidden');
+                document.getElementById('navActionArea').innerHTML = `
+                    <button onclick="loginGoogle()" class="flex items-center gap-2.5 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm transition-all shadow-sm">
+                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                        <span>লগইন করুন</span>
+                    </button>
+                `;
+                lucide.createIcons();
+            }
+        });
+
+        function loginGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(err => {
+                Swal.fire('এরর!', err.message, 'error');
+            });
+        }
+
+        // 2. TELEGRAM LOGIN (MTPROTO API FLOW)
+        async function sendTgCode() {
+            const phone = document.getElementById('tgPhone').value.trim();
+            if (!phone) {
+                return Swal.fire('সতর্কবার্তা', 'অনুগ্রহ করে সঠিক ফোন নম্বর দিন!', 'warning');
+            }
+
+            Swal.showLoading();
+            try {
+                const res = await fetch('/api/tg/send-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    phoneCodeHash = data.phoneCodeHash;
+                    document.getElementById('otpInputArea').classList.remove('hidden');
+                    Swal.fire('কোড পাঠানো হয়েছে!', 'আপনার টেলিগ্রাম অ্যাপ চেক করে ওটিপি দিন।', 'success');
+                } else {
+                    Swal.fire('ব্যর্থ!', data.error || 'কোড পাঠানো সম্ভব হয়নি।', 'error');
+                }
+            } catch (e) {
+                Swal.fire('ব্যর্থ!', e.message, 'error');
+            }
+        }
+
+        async function verifyTgCode() {
+            const phone = document.getElementById('tgPhone').value.trim();
+            const code = document.getElementById('tgOtp').value.trim();
+            
+            Swal.showLoading();
+            try {
+                const res = await fetch('/api/tg/verify-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone, code, phoneCodeHash })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    tgSession = data.session;
+                    localStorage.setItem('tg_session', tgSession);
+                    document.getElementById('tgConnectCard').classList.add('hidden');
+                    document.getElementById('groupsSection').classList.remove('hidden');
+                    renderGroups(data.groups);
+                    Swal.fire('সফল!', 'টেলিগ্রাম অ্যাকাউন্ট সংযুক্ত হয়েছে।', 'success');
+                } else {
+                    Swal.fire('যাচাইকরণ ব্যর্থ!', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('ব্যর্থ!', e.message, 'error');
+            }
+        }
+
+        function renderGroups(groups) {
+            const grid = document.getElementById('groupsGrid');
+            grid.innerHTML = '';
+            
+            groups.forEach(g => {
+                const card = document.createElement('div');
+                card.className = "light-card p-6 rounded-3xl flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 text-brand-600 flex items-center justify-center font-bold">
+                                <i data-lucide="users" class="w-5 h-5"></i>
+                            </div>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">ID: ${g.id}</span>
+                        </div>
+                        <h4 class="font-bold text-base text-slate-900 mb-1">${g.title}</h4>
+                        <p class="text-xs text-slate-500 mb-6">মোট মেম্বার: <span class="font-bold text-slate-800">${g.membersCount}</span> জন</p>
+                    </div>
+
+                    <div class="flex gap-2.5">
+                        <button onclick="connectBot('${g.id}')" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                            <i data-lucide="bot" class="w-4 h-4"></i>
+                            <span>বট যুক্ত করুন</span>
+                        </button>
+                        <button onclick="openGroupSettings('${g.id}', '${g.title.replace(/'/g, "\\'")}')" class="px-3.5 py-2.5 border border-slate-300 hover:bg-slate-100 rounded-xl text-slate-700 text-xs transition">
+                            <i data-lucide="sliders" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        async function connectBot(chatId) {
+            Swal.fire({
+                title: 'বট যুক্ত করা হচ্ছে...',
+                text: 'স্বয়ংক্রিয়ভাবে বট গ্রুপে জয়েন হবে এবং পূর্ণ অ্যাডমিন ক্ষমতা পাবে।',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await fetch('/api/tg/connect-group', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ session: tgSession, chatId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('সফল!', data.message, 'success');
+                } else {
+                    Swal.fire('ত্রুটি!', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('ত্রুটি!', e.message, 'error');
+            }
+        }
+
+        // 3. GROUP SETTINGS MODAL & FIREBASE SYNC
+        async function openGroupSettings(chatId, title) {
+            activeGroupId = chatId;
+            document.getElementById('modalGroupName').innerText = title;
+            document.getElementById('modalGroupMeta').innerText = `আইডি: ${chatId}`;
+
+            // Fetch Real-time Settings from Firebase
+            const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
+            const data = snap.val() || {};
+
+            document.getElementById('toggleChatLock').checked = !!data.chatLocked;
+            document.getElementById('toggleAntiLink').checked = !!data.antiLink?.enabled;
+            document.getElementById('toggleAntiForward').checked = !!data.antiForward?.enabled;
+            document.getElementById('toggleBadWords').checked = !!data.badWords?.enabled;
+            document.getElementById('badWordsInput').value = (data.badWords?.words || []).join(', ');
+            document.getElementById('badWordsAction').value = data.badWords?.action || 'delete';
+            document.getElementById('toggleWelcome').checked = !!data.welcome?.enabled;
+            document.getElementById('welcomeTextInput').value = data.welcome?.text || "স্বাগতম {user} আমাদের গ্রুপে!";
+            
+            updateLivePreview();
+
+            document.getElementById('groupModal').classList.remove('hidden');
+        }
+
+        function closeGroupModal() {
+            document.getElementById('groupModal').classList.add('hidden');
+        }
+
+        function updateLivePreview() {
+            const raw = document.getElementById('welcomeTextInput').value;
+            document.getElementById('previewText').innerText = raw
+                .replace('{user}', 'জন ডো')
+                .replace('{chat}', document.getElementById('modalGroupName').innerText);
+        }
+
+        async function saveGroupSettings() {
+            if (!activeGroupId) return;
+            const words = document.getElementById('badWordsInput').value
+                .split(',')
+                .map(w => w.trim())
+                .filter(Boolean);
+
+            const payload = {
+                chatLocked: document.getElementById('toggleChatLock').checked,
+                antiLink: { enabled: document.getElementById('toggleAntiLink').checked },
+                antiForward: { enabled: document.getElementById('toggleAntiForward').checked },
+                badWords: {
+                    enabled: document.getElementById('toggleBadWords').checked,
+                    words: words,
+                    action: document.getElementById('badWordsAction').value
+                },
+                welcome: {
+                    enabled: document.getElementById('toggleWelcome').checked,
+                    text: document.getElementById('welcomeTextInput').value
+                }
+            };
+
+            await rtdb.ref(`groups/${activeGroupId}/settings`).set(payload);
+            Swal.fire('সংরক্ষিত!', 'গ্রুপের কনফিগারেশন রিয়েল-টাইমে আপডেট করা হয়েছে।', 'success');
+            closeGroupModal();
+        }
+
+        // ==========================================================================
+        // 4. THREE.JS 3D CANVAS ANIMATION (LIGHT INTERACTIVE GEOMETRY)
+        // ==========================================================================
+        (function init3D() {
+            const canvas = document.getElementById('threeCanvas');
+            if(!canvas) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            // Torus Knot (Shield Core)
+            const geometry = new THREE.TorusKnotGeometry(9, 2.5, 120, 24);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x6366F1,
+                roughness: 0.2,
+                metalness: 0.8,
+                wireframe: true
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            // Lighting
+            const light = new THREE.DirectionalLight(0xffffff, 1.2);
+            light.position.set(10, 20, 15);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+            camera.position.z = 28;
+
+            // Interactive Mouse Reaction
+            let mouseX = 0, mouseY = 0;
+            window.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX / window.innerWidth) - 0.5;
+                mouseY = (e.clientY / window.innerHeight) - 0.5;
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                mesh.rotation.x += 0.005;
+                mesh.rotation.y += 0.008;
+
+                mesh.rotation.x += mouseY * 0.05;
+                mesh.rotation.y += mouseX * 0.05;
+
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                if(!canvas.parentElement) return;
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
+        })();
+    </script>
+</body>
+</html>
