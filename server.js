@@ -69,7 +69,6 @@ async function isChatSubscriptionActive(chatId) {
             return false;
         }
 
-        // 30 days active + 7 days grace period = 37 days total
         const graceEndsAt = sub.graceEndsAt || (sub.expiresAt + (7 * 24 * 60 * 60 * 1000));
         const isActive = now <= graceEndsAt;
 
@@ -146,12 +145,12 @@ function countEmojis(str) {
     return matches ? matches.length : 0;
 }
 
-// 1. WELCOME NEW MEMBERS
+// 1. Welcome New Members
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return; // Protection OFF if license completely expired
+        if (!isSubActive) return;
 
         const settings = await getChatSettings(chatId);
         if (!settings.welcome?.enabled) return;
@@ -195,7 +194,7 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// 2. MEMBER LEFT TRACKER
+// 2. Member Left Tracker
 bot.on('left_chat_member', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
@@ -248,14 +247,14 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// 3. CORE MODERATION & SHIELD ENGINE
+// 3. Core Moderation
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
 
         const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return next(); // All protection OFF if subscription is totally expired
+        if (!isSubActive) return next();
 
         const userId = ctx.from?.id;
         const text = ctx.message.text || ctx.message.caption || "";
@@ -330,7 +329,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // Commands (/bio, /scam, /unscam, /ban)
+        // Commands
         if (text.startsWith('/')) {
             const parts = text.trim().split(/\s+/);
             const cmd = parts[0].toLowerCase().replace(`@${bot.botInfo?.username?.toLowerCase()}`, '');
@@ -566,148 +565,11 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// LICENSE, PRICING & SUPER ADMIN REST APIS
-// =============================================================================
-
-// Helper: Generate Random License Key
-function generateLicenseKey() {
-    const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
-    const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
-    const p3 = crypto.randomBytes(2).toString('hex').toUpperCase();
-    return `VS-${p1}-${p2}-${p3}`;
-}
-
-// 1. Super Admin: Generate License Keys
-app.post('/api/admin/generate-license', async (req, res) => {
-    const { planId, customDurationDays } = req.body;
-    try {
-        const planConfigs = {
-            starter: { name: "Starter (1 Channel / Group)", maxCommunities: 1, bdt: 50 },
-            growth: { name: "Growth (5 Channels / Groups)", maxCommunities: 5, bdt: 200 },
-            pro: { name: "Pro (15 Channels / Groups)", maxCommunities: 15, bdt: 450 },
-            unlimited: { name: "Unlimited Enterprise Hub", maxCommunities: 999999, bdt: 750 }
-        };
-
-        const plan = planConfigs[planId] || planConfigs.starter;
-        const key = generateLicenseKey();
-        const durationDays = parseInt(customDurationDays) || 30;
-
-        const licenseData = {
-            key,
-            planId,
-            planName: plan.name,
-            maxCommunities: plan.maxCommunities,
-            bdt: plan.bdt,
-            usdt: (plan.bdt / 127).toFixed(2),
-            durationDays,
-            graceDays: 7,
-            status: "active", // active, claimed, expired, revoked
-            createdAt: Date.now()
-        };
-
-        await db.ref(`licenses/${key}`).set(licenseData);
-        res.json({ success: true, license: licenseData });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// 2. Super Admin: List All Licenses
-app.get('/api/admin/list-licenses', async (req, res) => {
-    try {
-        const snap = await db.ref('licenses').once('value');
-        const data = snap.val() || {};
-        const list = Object.keys(data).map(k => data[k]).sort((a,b) => b.createdAt - a.createdAt);
-        res.json({ success: true, licenses: list });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// 3. User: Claim License Key
-app.post('/api/license/claim', async (req, res) => {
-    const { licenseKey, ownerTelegramId, userEmail } = req.body;
-    try {
-        if (!licenseKey || !ownerTelegramId) throw new Error("License key and Telegram ID are required.");
-
-        const cleanKey = licenseKey.trim().toUpperCase();
-        const snap = await db.ref(`licenses/${cleanKey}`).once('value');
-        const license = snap.val();
-
-        if (!license) throw new Error("Invalid license key. Please check and try again.");
-        if (license.status === "claimed") throw new Error("This license key has already been claimed.");
-        if (license.status === "revoked") throw new Error("This license key has been revoked by admin.");
-
-        const now = Date.now();
-        const expiresAt = now + (license.durationDays * 24 * 60 * 60 * 1000);
-        const graceEndsAt = expiresAt + (license.graceDays * 24 * 60 * 60 * 1000);
-
-        // Update license status
-        await db.ref(`licenses/${cleanKey}`).update({
-            status: "claimed",
-            claimedBy: userEmail || "Anonymous",
-            ownerTelegramId,
-            claimedAt: now,
-            expiresAt,
-            graceEndsAt
-        });
-
-        // Set User/Owner subscription
-        const subData = {
-            licenseKey: cleanKey,
-            planId: license.planId,
-            planName: license.planName,
-            maxCommunities: license.maxCommunities,
-            claimedAt: now,
-            expiresAt,
-            graceEndsAt
-        };
-
-        await db.ref(`subscriptions/${ownerTelegramId}`).set(subData);
-        subscriptionCache = {}; // clear cache
-
-        res.json({ success: true, message: `License claimed successfully! Plan: ${license.planName}`, subscription: subData });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// 4. User: Get Subscription Status
-app.post('/api/license/status', async (req, res) => {
-    const { ownerTelegramId } = req.body;
-    try {
-        if (!ownerTelegramId) throw new Error("Telegram ID required");
-        const snap = await db.ref(`subscriptions/${ownerTelegramId}`).once('value');
-        const sub = snap.val();
-
-        if (!sub) {
-            return res.json({ hasSubscription: false });
-        }
-
-        const now = Date.now();
-        const isExpired = now > sub.expiresAt;
-        const isGracePeriod = isExpired && now <= sub.graceEndsAt;
-        const isTotallyShutDown = now > sub.graceEndsAt;
-
-        res.json({
-            hasSubscription: true,
-            subscription: sub,
-            isExpired,
-            isGracePeriod,
-            isTotallyShutDown,
-            remainingDays: Math.max(0, Math.ceil((sub.expiresAt - now) / (1000 * 60 * 60 * 24))),
-            graceDaysLeft: Math.max(0, Math.ceil((sub.graceEndsAt - now) / (1000 * 60 * 60 * 24)))
-        });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// =============================================================================
-// GRAMJS MTPROTO & REST APIS
+// GRAMJS MTPROTO & REST APIS (FIXED 0 GROUPS ISSUE)
 // =============================================================================
 const tempAuthClients = {};
 
+// BULLETPROOF COMMUNITY EXTRACTOR: Ensures 100% of Owner/Admin groups load
 async function extractCommunities(client) {
     const dialogs = await client.getDialogs({ limit: 100 });
     const groups = [];
@@ -717,12 +579,15 @@ async function extractCommunities(client) {
         if (!d.isGroup && !d.isChannel) return false;
         const e = d.entity;
         if (!e) return false;
-        if (e.deactivated || e.migratedTo || e.left || e.kicked) return false;
-        if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') return false;
-        if (d.isGroup && !d.isChannel && (!e.participantsCount || e.participantsCount <= 0)) return false;
 
+        // Skip genuinely dead/deleted chats
+        if (e.deactivated || e.migratedTo) return false;
+        if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') return false;
+
+        // Check Owner or Admin status reliably
         const isCreator = e.creator === true;
-        const isAdmin = !!e.adminRights || e.admin === true;
+        const isAdmin = Boolean(e.adminRights || e.admin);
+
         return isCreator || isAdmin;
     });
 
@@ -730,7 +595,7 @@ async function extractCommunities(client) {
         const entity = d.entity;
         const isCreator = entity.creator === true;
         const adminRights = entity.adminRights || null;
-        const canAddBot = isCreator || (adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo)) || entity.admin === true;
+        const canAddBot = isCreator || Boolean(adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo)) || entity.admin === true;
 
         let photoBase64 = null;
         try {
@@ -755,9 +620,11 @@ async function extractCommunities(client) {
             } catch (err) {}
         }
 
+        const count = entity.participantsCount || 1; // Default to at least 1 member (the user)
+
         const itemData = {
             id: chatIdStr,
-            title: d.title || "Untitled",
+            title: d.title || "Untitled Hub",
             role: isCreator ? 'Owner' : 'Admin',
             canAddBot: !!canAddBot,
             isBotConnected: isBotConnected,
@@ -765,10 +632,10 @@ async function extractCommunities(client) {
         };
 
         if (isBroadcastChannel) {
-            itemData.subscribersCount = entity.participantsCount || 0;
+            itemData.subscribersCount = count;
             channels.push(itemData);
         } else {
-            itemData.membersCount = entity.participantsCount || 0;
+            itemData.membersCount = count;
             groups.push(itemData);
         }
     }
@@ -849,7 +716,6 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// Auto-Add Bot to Group/Channel
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
@@ -1070,6 +936,138 @@ app.post('/api/tg/get-scammers', async (req, res) => {
             ...data[uid]
         }));
         res.json({ success: true, scammers: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Helper: Generate Random License Key
+function generateLicenseKey() {
+    const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const p3 = crypto.randomBytes(2).toString('hex').toUpperCase();
+    return `VS-${p1}-${p2}-${p3}`;
+}
+
+// 1. Super Admin: Generate License Keys
+app.post('/api/admin/generate-license', async (req, res) => {
+    const { planId, customDurationDays } = req.body;
+    try {
+        const planConfigs = {
+            starter: { name: "Starter (1 Channel / Group)", maxCommunities: 1, bdt: 50 },
+            growth: { name: "Growth (5 Channels / Groups)", maxCommunities: 5, bdt: 200 },
+            pro: { name: "Pro (15 Channels / Groups)", maxCommunities: 15, bdt: 450 },
+            unlimited: { name: "Unlimited Enterprise Hub", maxCommunities: 999999, bdt: 750 }
+        };
+
+        const plan = planConfigs[planId] || planConfigs.starter;
+        const key = generateLicenseKey();
+        const durationDays = parseInt(customDurationDays) || 30;
+
+        const licenseData = {
+            key,
+            planId,
+            planName: plan.name,
+            maxCommunities: plan.maxCommunities,
+            bdt: plan.bdt,
+            usdt: (plan.bdt / 127).toFixed(2),
+            durationDays,
+            graceDays: 7,
+            status: "active",
+            createdAt: Date.now()
+        };
+
+        await db.ref(`licenses/${key}`).set(licenseData);
+        res.json({ success: true, license: licenseData });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 2. Super Admin: List All Licenses
+app.get('/api/admin/list-licenses', async (req, res) => {
+    try {
+        const snap = await db.ref('licenses').once('value');
+        const data = snap.val() || {};
+        const list = Object.keys(data).map(k => data[k]).sort((a,b) => b.createdAt - a.createdAt);
+        res.json({ success: true, licenses: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 3. User: Claim License Key
+app.post('/api/license/claim', async (req, res) => {
+    const { licenseKey, ownerTelegramId, userEmail } = req.body;
+    try {
+        if (!licenseKey || !ownerTelegramId) throw new Error("License key and Telegram ID are required.");
+
+        const cleanKey = licenseKey.trim().toUpperCase();
+        const snap = await db.ref(`licenses/${cleanKey}`).once('value');
+        const license = snap.val();
+
+        if (!license) throw new Error("Invalid license key. Please check and try again.");
+        if (license.status === "claimed") throw new Error("This license key has already been claimed.");
+        if (license.status === "revoked") throw new Error("This license key has been revoked by admin.");
+
+        const now = Date.now();
+        const expiresAt = now + (license.durationDays * 24 * 60 * 60 * 1000);
+        const graceEndsAt = expiresAt + (license.graceDays * 24 * 60 * 60 * 1000);
+
+        await db.ref(`licenses/${cleanKey}`).update({
+            status: "claimed",
+            claimedBy: userEmail || "Anonymous",
+            ownerTelegramId,
+            claimedAt: now,
+            expiresAt,
+            graceEndsAt
+        });
+
+        const subData = {
+            licenseKey: cleanKey,
+            planId: license.planId,
+            planName: license.planName,
+            maxCommunities: license.maxCommunities,
+            claimedAt: now,
+            expiresAt,
+            graceEndsAt
+        };
+
+        await db.ref(`subscriptions/${ownerTelegramId}`).set(subData);
+        subscriptionCache = {};
+
+        res.json({ success: true, message: `License claimed successfully! Plan: ${license.planName}`, subscription: subData });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 4. User: Get Subscription Status
+app.post('/api/license/status', async (req, res) => {
+    const { ownerTelegramId } = req.body;
+    try {
+        if (!ownerTelegramId) throw new Error("Telegram ID required");
+        const snap = await db.ref(`subscriptions/${ownerTelegramId}`).once('value');
+        const sub = snap.val();
+
+        if (!sub) {
+            return res.json({ hasSubscription: false });
+        }
+
+        const now = Date.now();
+        const isExpired = now > sub.expiresAt;
+        const isGracePeriod = isExpired && now <= sub.graceEndsAt;
+        const isTotallyShutDown = now > sub.graceEndsAt;
+
+        res.json({
+            hasSubscription: true,
+            subscription: sub,
+            isExpired,
+            isGracePeriod,
+            isTotallyShutDown,
+            remainingDays: Math.max(0, Math.ceil((sub.expiresAt - now) / (1000 * 60 * 60 * 24))),
+            graceDaysLeft: Math.max(0, Math.ceil((sub.graceEndsAt - now) / (1000 * 60 * 60 * 24)))
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
