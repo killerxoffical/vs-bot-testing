@@ -67,7 +67,23 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white">
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white relative">
+
+    <!-- ==========================================================================
+       SPLASH SCREEN / PRELOADER (FIXES FLASH GLITCH ON REFRESH)
+       ========================================================================== -->
+    <div id="splashScreen" class="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="flex flex-col items-center gap-4">
+            <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white shadow-xl shadow-brand-500/30 animate-pulse">
+                <i data-lucide="shield-check" class="w-8 h-8"></i>
+            </div>
+            <div class="text-center">
+                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">VS Protection<span class="text-brand-600">.</span></h2>
+                <p class="text-xs font-semibold text-slate-400 mt-0.5">Initializing Defense Cloud Ecosystem...</p>
+            </div>
+            <div class="w-8 h-8 border-3 border-brand-200 border-t-brand-600 rounded-full animate-spin mt-2"></div>
+        </div>
+    </div>
 
     <!-- NAVBAR -->
     <header class="frosted-nav sticky top-0 z-40">
@@ -92,7 +108,7 @@
     </header>
 
     <!-- SECTION 1: LANDING VIEW -->
-    <div id="landingView">
+    <div id="landingView" class="hidden">
         <section class="max-w-7xl mx-auto px-6 pt-12 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div class="lg:col-span-7 space-y-6 text-left">
                 <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-600 font-semibold text-xs">
@@ -104,7 +120,7 @@
                     <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">For High-Traffic Hubs</span>
                 </h1>
                 <p class="text-slate-600 text-base md:text-lg max-w-xl font-normal leading-relaxed">
-                    Granular security controls for Groups and Broadcast Channels. Real-time link purge, rich interactive welcome media, and instant lockdowns.
+                    Granular security controls for Groups and Broadcast Channels. Real-time scammer tagging, name change history alerts, and slash command managers.
                 </p>
                 <div class="pt-2 flex flex-wrap items-center gap-4">
                     <button onclick="openAuthModal()" class="flex items-center gap-3 px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-xl shadow-brand-500/25 transition">
@@ -123,12 +139,39 @@
                 </div>
             </div>
         </section>
+
+        <!-- Feature Grid -->
+        <section class="max-w-7xl mx-auto px-6 pb-28">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center mb-6">
+                        <i data-lucide="user-check" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Name Change Tracker</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Instantly alerts the group whenever a member changes their Telegram name to stop impersonation.</p>
+                </div>
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-6">
+                        <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Scammer Tagging Engine</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Flag fraudsters with /scam. The bot automatically tags every future message of theirs with scam notices.</p>
+                </div>
+                <div class="light-card p-8 rounded-3xl">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
+                        <i data-lucide="terminal" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Custom Slash Commands</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Create dynamic /slash commands with custom permission levels (Owner, Admin, or All Members).</p>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- SECTION 2: MAIN DASHBOARD VIEW -->
     <div id="dashboardView" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         
-        <!-- SUB-VIEW A: COMMUNITIES LIST -->
+        <!-- SUB-VIEW A: COMMUNITIES OVERVIEW -->
         <div id="communitiesOverviewView" class="space-y-8">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
                 <div>
@@ -254,6 +297,14 @@
                             <i data-lucide="party-popper" class="w-4 h-4"></i>
                             <span>Welcome System</span>
                         </button>
+                        <button onclick="switchTab('commands')" id="tabBtn-commands" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="terminal" class="w-4 h-4"></i>
+                            <span>Slash Commands</span>
+                        </button>
+                        <button onclick="switchTab('scammers')" id="tabBtn-scammers" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
+                            <i data-lucide="user-x" class="w-4 h-4"></i>
+                            <span>Scammer Tagging</span>
+                        </button>
                         <button onclick="switchTab('members')" id="tabBtn-members" class="tab-btn flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                             <i data-lucide="users" class="w-4 h-4"></i>
                             <span>Community Members</span>
@@ -264,12 +315,21 @@
                 <!-- Main Content Pane -->
                 <div class="lg:col-span-9 space-y-6">
 
-                    <!-- TAB 1: SECURITY -->
+                    <!-- TAB 1: SECURITY (CHAT LOCK, ANTI-LINK, ANTI-FORWARD, NAME TRACKER) -->
                     <div id="tabContent-security" class="space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-6">
                             <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">Core Protection Controls</h3>
                             
-                            <!-- 1. CHAT LOCK -->
+                            <!-- Name Change Tracker -->
+                            <div class="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">Name Change History Tracker</h4>
+                                    <p class="text-xs text-slate-500">Alerts the group automatically if a member alters their Telegram name</p>
+                                </div>
+                                <input type="checkbox" id="toggleNameTracker" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <!-- Chat Lock -->
                             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -289,7 +349,7 @@
                                 </button>
                             </div>
 
-                            <!-- 2. ANTI-LINK -->
+                            <!-- Anti-Link -->
                             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -319,7 +379,7 @@
                                 </div>
                             </div>
 
-                            <!-- 3. ANTI-FORWARD -->
+                            <!-- Anti-Forward -->
                             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -352,7 +412,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 2: PROFANITY BLACKLIST (ENHANCED) -->
+                    <!-- TAB 2: PROFANITY BLACKLIST -->
                     <div id="tabContent-profanity" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -408,7 +468,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 3: WELCOME SYSTEM (RICH MEDIA, BUTTONS & TIMERS) -->
+                    <!-- TAB 3: WELCOME SYSTEM -->
                     <div id="tabContent-welcome" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-6">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -419,14 +479,12 @@
                                 <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
-                            <!-- 1. Image Banner URL -->
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Header Image / Banner URL (Optional):</label>
                                 <input id="welcomePhotoUrl" type="url" oninput="updateLivePreview()" placeholder="https://example.com/banner.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
-                                <span class="text-[11px] text-slate-400 mt-1 block">Paste any public direct image link (JPG/PNG). Leave blank for text-only greeting.</span>
+                                <span class="text-[11px] text-slate-400 mt-1 block">Paste any direct public image URL (JPG/PNG).</span>
                             </div>
 
-                            <!-- 2. Message Content -->
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Text Message:</label>
                                 <textarea id="welcomeTextInput" rows="4" oninput="updateLivePreview()" class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
@@ -441,7 +499,7 @@
                                 </div>
                             </div>
 
-                            <!-- 3. Dynamic Inline URL Buttons System -->
+                            <!-- Buttons List -->
                             <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div>
@@ -456,7 +514,6 @@
                                 <div id="welcomeButtonsList" class="space-y-2.5 pt-1"></div>
                             </div>
 
-                            <!-- 4. Auto-Delete Timer Dropdown -->
                             <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
                                     <h4 class="text-xs font-bold text-slate-900">Auto-Delete Welcome Message</h4>
@@ -468,11 +525,9 @@
                                     <option value="30">Auto-Delete after 30 Seconds</option>
                                     <option value="60">Auto-Delete after 1 Minute</option>
                                     <option value="120">Auto-Delete after 2 Minutes</option>
-                                    <option value="300">Auto-Delete after 5 Minutes</option>
                                 </select>
                             </div>
 
-                            <!-- 5. Test Message Button -->
                             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
                                 <button type="button" onclick="sendTestWelcomeMessage()" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                                     <i data-lucide="send" class="w-3.5 h-3.5"></i>
@@ -481,7 +536,7 @@
                                 <span class="text-[11px] text-slate-400">Verifies image, buttons and timers directly in Telegram</span>
                             </div>
 
-                            <!-- 6. Real-time Live Web Simulator -->
+                            <!-- Live Simulation -->
                             <div class="space-y-2 pt-2 border-t border-slate-100">
                                 <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Live Web Simulator</span>
                                 <div class="bg-sky-50/60 p-4 rounded-2xl border border-sky-100 flex items-start gap-3">
@@ -490,15 +545,10 @@
                                     </div>
                                     <div class="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-2.5 max-w-[90%]">
                                         <span class="font-bold text-brand-600 block text-[11px]">VS Protection Guard</span>
-                                        
-                                        <!-- Preview Image -->
                                         <div id="previewImageWrapper" class="hidden rounded-xl overflow-hidden max-h-48 border border-slate-100">
                                             <img id="previewImage" src="" alt="Banner" class="w-full h-full object-cover">
                                         </div>
-
                                         <p id="previewText" class="leading-relaxed text-xs">Welcome John Doe to Community!</p>
-                                        
-                                        <!-- Preview Buttons -->
                                         <div id="previewButtonsWrapper" class="space-y-1.5 pt-1"></div>
                                     </div>
                                 </div>
@@ -506,7 +556,105 @@
                         </div>
                     </div>
 
-                    <!-- TAB 4: COMMUNITY MEMBERS -->
+                    <!-- TAB 4: SLASH COMMANDS MANAGER (NEW!) -->
+                    <div id="tabContent-commands" class="hidden space-y-6">
+                        <div class="light-card p-6 rounded-3xl space-y-6">
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Custom Slash Commands Engine</h3>
+                                <p class="text-xs text-slate-500">Define commands starting with / and specify who is authorized to trigger them</p>
+                            </div>
+
+                            <!-- Built-In /bio Command Box -->
+                            <div class="p-5 rounded-2xl bg-brand-50/50 border border-brand-100 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="px-3 py-1 rounded-xl bg-brand-600 text-white font-mono text-xs font-bold">/bio</span>
+                                        <div>
+                                            <h4 class="text-xs font-bold text-slate-900">User Dossier & Security History</h4>
+                                            <p class="text-[11px] text-slate-500">Replies to a user and outputs their ID, role, warn counts & scammer status</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[11px] font-bold text-slate-500">Allowed Role:</span>
+                                        <select id="cmdBioRole" class="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="all">Everyone (All Members)</option>
+                                            <option value="admin">Admins & Owner</option>
+                                            <option value="owner">Owner Only</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Add New Custom Slash Command -->
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+                                <h4 class="text-xs font-bold text-slate-900">Create New Custom Slash Command</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div class="sm:col-span-4">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Command Trigger</label>
+                                        <div class="flex items-center bg-white border border-slate-300 rounded-xl px-3 py-2">
+                                            <span class="text-xs font-bold text-slate-400 mr-1">/</span>
+                                            <input id="newCmdName" type="text" placeholder="rules" class="w-full text-xs outline-none font-bold text-slate-800">
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-4">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Permission Level</label>
+                                        <select id="newCmdRole" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="all">Everyone (All Members)</option>
+                                            <option value="admin">Admins & Owner</option>
+                                            <option value="owner">Owner Only</option>
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-4 flex items-end">
+                                        <button type="button" onclick="addCustomCommandRow()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                            <i data-lucide="plus" class="w-4 h-4"></i>
+                                            <span>Add Command</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Command Response Text</label>
+                                    <textarea id="newCmdResponse" rows="2" placeholder="Hi {user}, here are our community rules: ..." class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Active Custom Commands List -->
+                            <div class="space-y-3">
+                                <h4 class="text-xs font-bold text-slate-900">Active Custom Commands</h4>
+                                <div id="customCommandsList" class="space-y-2.5"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 5: SCAMMER MANAGEMENT PANEL (NEW!) -->
+                    <div id="tabContent-scammers" class="hidden space-y-6">
+                        <div class="light-card p-6 rounded-3xl space-y-6">
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Scammer Tagging & Blacklist System</h3>
+                                <p class="text-xs text-slate-500">Flag fraudsters. The bot will automatically tag their messages with public scam warnings.</p>
+                            </div>
+
+                            <!-- Custom Warning Message -->
+                            <div class="p-5 rounded-2xl bg-rose-50/50 border border-rose-100 space-y-3">
+                                <label class="text-xs font-bold text-rose-800 uppercase block">Public Scammer Warning Message (Appears on every scammer message):</label>
+                                <textarea id="scammerCustomNotice" rows="2" class="w-full bg-white border border-rose-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-rose-500"></textarea>
+                                <p class="text-[11px] text-slate-400">Admins can also flag users directly inside the group by replying to them with <code class="text-rose-600 font-bold">/scam</code> or unflag with <code class="text-emerald-600 font-bold">/unscam</code>.</p>
+                            </div>
+
+                            <!-- Flagged Users Roster -->
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-xs font-bold text-slate-900">Flagged Scammers in this Group</h4>
+                                    <button onclick="loadScammersList()" class="flex items-center gap-1.5 px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                        <span>Refresh</span>
+                                    </button>
+                                </div>
+                                <div id="scammersListContainer" class="space-y-2.5 max-h-80 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 6: COMMUNITY MEMBERS -->
                     <div id="tabContent-members" class="hidden space-y-6">
                         <div class="light-card p-6 rounded-3xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -602,13 +750,13 @@
         let phoneCodeHash = null;
         let loadedItemsMap = {};
         let activeGroupId = null;
+        let customCommandsMap = {};
 
         function onCountryChange(select) {
             const code = select.options[select.selectedIndex].getAttribute('data-code');
             document.getElementById('selectedFlag').src = `https://flagcdn.com/w40/${code}.png`;
         }
 
-        // Tag helper
         function insertTag(textareaId, tag) {
             const el = document.getElementById(textareaId);
             const start = el.selectionStart;
@@ -621,7 +769,18 @@
         }
 
         // =====================================================================
-        // DYNAMIC BUTTON SYSTEM (ADD / REMOVE / RENDER)
+        // SPLASH SCREEN CONTROLLER
+        // =====================================================================
+        function hideSplashScreen() {
+            const splash = document.getElementById('splashScreen');
+            if (splash) {
+                splash.classList.add('opacity-0');
+                setTimeout(() => splash.classList.add('hidden'), 300);
+            }
+        }
+
+        // =====================================================================
+        // DYNAMIC BUTTON SYSTEM
         // =====================================================================
         function addWelcomeButtonRow(btnText = '', btnUrl = '') {
             const list = document.getElementById('welcomeButtonsList');
@@ -645,21 +804,17 @@
             rows.forEach(r => {
                 const text = r.querySelector('.btn-label-input').value.trim();
                 const url = r.querySelector('.btn-url-input').value.trim();
-                if (text && url) {
-                    buttons.push({ text, url });
-                }
+                if (text && url) buttons.push({ text, url });
             });
             return buttons;
         }
 
         function updateLivePreview() {
-            // Text Preview
             const raw = document.getElementById('welcomeTextInput').value;
             document.getElementById('previewText').innerText = raw
                 .replace(/{user}/g, 'John Doe')
                 .replace(/{chat}/g, document.getElementById('panelGroupName').innerText);
 
-            // Image Preview
             const photoUrl = document.getElementById('welcomePhotoUrl').value.trim();
             const imgWrap = document.getElementById('previewImageWrapper');
             const img = document.getElementById('previewImage');
@@ -670,7 +825,6 @@
                 imgWrap.classList.add('hidden');
             }
 
-            // Buttons Preview
             const btnWrap = document.getElementById('previewButtonsWrapper');
             btnWrap.innerHTML = '';
             const buttons = getWelcomeButtonsData();
@@ -681,6 +835,60 @@
                     </div>
                 `;
             });
+        }
+
+        // =====================================================================
+        // CUSTOM SLASH COMMANDS MANAGER
+        // =====================================================================
+        function addCustomCommandRow() {
+            const name = document.getElementById('newCmdName').value.trim().toLowerCase().replace('/', '');
+            const role = document.getElementById('newCmdRole').value;
+            const response = document.getElementById('newCmdResponse').value.trim();
+
+            if (!name || !response) {
+                return Swal.fire('Incomplete', 'Please provide command name and response text.', 'warning');
+            }
+
+            customCommandsMap[name] = { role, response };
+            document.getElementById('newCmdName').value = '';
+            document.getElementById('newCmdResponse').value = '';
+            renderCustomCommandsList();
+        }
+
+        function removeCustomCommand(cmdName) {
+            delete customCommandsMap[cmdName];
+            renderCustomCommandsList();
+        }
+
+        function renderCustomCommandsList() {
+            const container = document.getElementById('customCommandsList');
+            container.innerHTML = '';
+            const keys = Object.keys(customCommandsMap);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No custom slash commands created yet.</p>`;
+                return;
+            }
+
+            keys.forEach(k => {
+                const item = customCommandsMap[k];
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/70";
+                row.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="px-2.5 py-1 rounded-xl bg-slate-900 text-white font-mono text-xs font-bold">/${k}</span>
+                        <div>
+                            <p class="text-xs text-slate-800 font-semibold line-clamp-1">${item.response}</p>
+                            <span class="text-[10px] text-brand-600 font-bold uppercase">Role: ${item.role}</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="removeCustomCommand('${k}')" class="text-rose-500 hover:text-rose-700 p-1.5">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+            lucide.createIcons();
         }
 
         // =====================================================================
@@ -721,7 +929,7 @@
                     document.getElementById('tgConnectCard').classList.add('hidden');
                     document.getElementById('communitiesContainer').classList.remove('hidden');
                     document.getElementById('btnSync').classList.remove('hidden');
-                    syncCommunities(false);
+                    await syncCommunities(false);
                 } else {
                     document.getElementById('tgConnectCard').classList.remove('hidden');
                     document.getElementById('communitiesContainer').classList.add('hidden');
@@ -737,6 +945,9 @@
                 `;
                 lucide.createIcons();
             }
+
+            // Hide preloader smoothly
+            hideSplashScreen();
         });
 
         function openAuthModal() { document.getElementById('authModal').classList.remove('hidden'); }
@@ -931,9 +1142,7 @@
                 ? `<img src="${item.photo}" alt="${item.title}" class="w-12 h-12 rounded-2xl object-cover border border-slate-100 shadow-sm">`
                 : `<div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-base shadow-sm">${item.title ? item.title[0].toUpperCase() : 'C'}</div>`;
 
-            const metaText = type === 'channel' 
-                ? `${item.subscribersCount} subscribers` 
-                : `${item.membersCount} members`;
+            const metaText = type === 'channel' ? `${item.subscribersCount} subscribers` : `${item.membersCount} members`;
 
             const botBadgeHtml = item.isBotConnected
                 ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60"><i data-lucide="shield-check" class="w-3 h-3"></i> Active Admin</span>`
@@ -1032,7 +1241,8 @@
 
             switchTab('security');
 
-            // Defaults
+            // Set Defaults
+            document.getElementById('toggleNameTracker').checked = true;
             document.getElementById('toggleChatLock').checked = false;
             document.getElementById('chatLockMsg').value = '🔒 *The chat has been locked by an administrator.*';
             document.getElementById('toggleAntiLink').checked = false;
@@ -1046,19 +1256,22 @@
             document.getElementById('badWordsAction').value = 'delete';
             document.getElementById('badWordsAutoDelete').value = '6';
             document.getElementById('badWordsCustomMsg').value = '⚠️ {user}, abusive words are forbidden! ({warns}/{warn_limit})';
+            document.getElementById('cmdBioRole').value = 'all';
+            document.getElementById('scammerCustomNotice').value = '🚨 *WARNING: This user is flagged as a SCAMMER by administrators! Trade at your own risk.*';
             
-            // Rich Welcome Defaults
             document.getElementById('toggleWelcome').checked = true;
             document.getElementById('welcomePhotoUrl').value = '';
             document.getElementById('welcomeTextInput').value = "👋 Welcome {user} to {chat}! Enjoy your stay and follow the group guidelines.";
             document.getElementById('welcomeAutoDelete').value = '0';
             document.getElementById('welcomeButtonsList').innerHTML = '';
+            customCommandsMap = {};
 
             // Load settings asynchronously from Firebase
             try {
                 const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
                 const data = snap.val();
                 if (data) {
+                    if (data.nameTracker?.enabled !== undefined) document.getElementById('toggleNameTracker').checked = !!data.nameTracker.enabled;
                     document.getElementById('toggleChatLock').checked = !!data.chatLocked;
                     if (data.lockMsg) document.getElementById('chatLockMsg').value = data.lockMsg;
                     
@@ -1076,18 +1289,22 @@
                     if (data.badWords?.autoDeleteSeconds !== undefined) document.getElementById('badWordsAutoDelete').value = data.badWords.autoDeleteSeconds;
                     if (data.badWords?.customMsg) document.getElementById('badWordsCustomMsg').value = data.badWords.customMsg;
 
+                    if (data.commands?.bio?.role) document.getElementById('cmdBioRole').value = data.commands.bio.role;
+                    if (data.scammerAlert?.msg) document.getElementById('scammerCustomNotice').value = data.scammerAlert.msg;
+                    if (data.customCommands) customCommandsMap = data.customCommands;
+
                     document.getElementById('toggleWelcome').checked = !!data.welcome?.enabled;
                     if (data.welcome?.photoUrl) document.getElementById('welcomePhotoUrl').value = data.welcome.photoUrl;
                     if (data.welcome?.text) document.getElementById('welcomeTextInput').value = data.welcome.text;
                     if (data.welcome?.autoDeleteSeconds !== undefined) document.getElementById('welcomeAutoDelete').value = data.welcome.autoDeleteSeconds;
 
-                    // Populate saved buttons
                     if (Array.isArray(data.welcome?.buttons)) {
                         data.welcome.buttons.forEach(b => addWelcomeButtonRow(b.text, b.url));
                     }
                 }
             } catch (err) {}
 
+            renderCustomCommandsList();
             updateLivePreview();
         }
 
@@ -1098,25 +1315,27 @@
         }
 
         function switchTab(tabKey) {
-            const tabs = ['security', 'profanity', 'welcome', 'members'];
+            const tabs = ['security', 'profanity', 'welcome', 'commands', 'scammers', 'members'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tabBtn-${t}`);
                 const content = document.getElementById(`tabContent-${t}`);
-                if (t === tabKey) {
-                    btn.classList.add('active', 'bg-brand-600', 'text-white');
-                    btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
-                    content.classList.remove('hidden');
-                } else {
-                    btn.classList.remove('active', 'bg-brand-600', 'text-white');
-                    btn.classList.add('text-slate-600', 'hover:bg-slate-100');
-                    content.classList.add('hidden');
+                if (btn && content) {
+                    if (t === tabKey) {
+                        btn.classList.add('active', 'bg-brand-600', 'text-white');
+                        btn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+                        content.classList.remove('hidden');
+                    } else {
+                        btn.classList.remove('active', 'bg-brand-600', 'text-white');
+                        btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+                        content.classList.add('hidden');
+                    }
                 }
             });
             lucide.createIcons();
             if (tabKey === 'members') loadCommunityMembers();
+            if (tabKey === 'scammers') loadScammersList();
         }
 
-        // Send Rich Live Test Welcome Message (Image + Text + Buttons + Timer)
         async function sendTestWelcomeMessage() {
             if (!activeGroupId) return;
             const photoUrl = document.getElementById('welcomePhotoUrl').value.trim();
@@ -1135,13 +1354,7 @@
                 const res = await fetch('/api/tg/test-welcome', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        chatId: activeGroupId, 
-                        photoUrl, 
-                        text, 
-                        buttons, 
-                        autoDeleteSeconds 
-                    })
+                    body: JSON.stringify({ chatId: activeGroupId, photoUrl, text, buttons, autoDeleteSeconds })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -1176,6 +1389,48 @@
             } catch (e) {
                 saveGroupSettings();
             }
+        }
+
+        // Load Flagged Scammers List
+        async function loadScammersList() {
+            if (!activeGroupId) return;
+            const container = document.getElementById('scammersListContainer');
+            container.innerHTML = `<div class="py-4 text-center text-xs text-slate-400">Loading flagged scammers...</div>`;
+
+            try {
+                const res = await fetch('/api/tg/get-scammers', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ chatId: activeGroupId })
+                });
+                const data = await res.json();
+                container.innerHTML = '';
+
+                if (data.success && data.scammers.length > 0) {
+                    data.scammers.forEach(s => {
+                        const row = document.createElement('div');
+                        row.className = "flex items-center justify-between p-3.5 bg-rose-50/60 rounded-2xl border border-rose-100";
+                        row.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-900">${s.name || 'Telegram User'}</h4>
+                                    <p class="text-[11px] text-slate-500">${s.username ? `@${s.username}` : ''} • ID: ${s.id}</p>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">Flagged</span>
+                        `;
+                        container.appendChild(row);
+                    });
+                } else {
+                    container.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center">No scammers flagged in this group yet. Admins can use /scam on messages.</p>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<p class="text-xs text-rose-500 py-4 text-center">Failed to load scammers.</p>`;
+            }
+            lucide.createIcons();
         }
 
         async function loadCommunityMembers() {
@@ -1216,11 +1471,11 @@
                         container.appendChild(row);
                     });
                 } else {
-                    container.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-6">No participants retrieved or privacy restricts full listing.</p>`;
+                    container.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-6">No participants retrieved.</p>`;
                 }
             } catch (e) {
                 loader.classList.add('hidden');
-                container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Failed to load members: ${e.message}</p>`;
+                container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Failed to load members.</p>`;
             }
             lucide.createIcons();
         }
@@ -1231,6 +1486,7 @@
             const welcomeButtons = getWelcomeButtonsData();
 
             const payload = {
+                nameTracker: { enabled: document.getElementById('toggleNameTracker').checked },
                 chatLocked: document.getElementById('toggleChatLock').checked,
                 lockMsg: document.getElementById('chatLockMsg').value,
                 antiLink: { 
@@ -1256,7 +1512,14 @@
                     text: document.getElementById('welcomeTextInput').value,
                     buttons: welcomeButtons,
                     autoDeleteSeconds: parseInt(document.getElementById('welcomeAutoDelete').value || 0)
-                }
+                },
+                commands: {
+                    bio: { role: document.getElementById('cmdBioRole').value }
+                },
+                scammerAlert: {
+                    msg: document.getElementById('scammerCustomNotice').value
+                },
+                customCommands: customCommandsMap
             };
 
             Swal.fire({
