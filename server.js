@@ -40,8 +40,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
-// Keep-Alive Ping for Cron Jobs
-app.get('/ping', (req, res) => res.status(200).send("OK - RoseX Cloud Engine Active"));
+// Keep-Alive Ping
+app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
 // =============================================================================
 // TELEGRAF MODERATION & SECURITY BOT ENGINE
@@ -50,15 +50,13 @@ const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
 let botUsername = "";
 
-// Resolve Bot Profile
 bot.telegram.getMe().then(info => {
     botUsername = info.username;
-    console.log(`[RoseX] Bot Online: @${botUsername}`);
+    console.log(`[VS Protection] Bot Online: @${botUsername}`);
 }).catch(err => {
-    console.error("[RoseX] Bot Token Verification Failed:", err.message);
+    console.error("[VS Protection] Bot Token Error:", err.message);
 });
 
-// Cache Sync
 async function getChatSettings(chatId) {
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
     try {
@@ -100,7 +98,7 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// Moderation Middleware
+// Message Moderation
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -110,7 +108,6 @@ bot.on('message', async (ctx, next) => {
         const text = ctx.message.text || ctx.message.caption || "";
         const settings = await getChatSettings(chatId);
 
-        // Bypass for Group Administrators & Creator
         try {
             const member = await ctx.getChatMember(userId);
             if (['creator', 'administrator'].includes(member.status)) return next();
@@ -118,19 +115,19 @@ bot.on('message', async (ctx, next) => {
             return next();
         }
 
-        // 1. Chat Lock Enforcement
+        // Chat Lock
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 2. Anti-Forward Enforcement
+        // Anti-Forward
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 3. Anti-Link Enforcement
+        // Anti-Link
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
@@ -139,7 +136,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 4. Bad Words / Profanity Blacklist Enforcement
+        // Profanity Filter
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -158,13 +155,12 @@ bot.on('message', async (ctx, next) => {
                     if (warns >= (settings.warnLimit || 3)) {
                         await ctx.banChatMember(userId).catch(() => {});
                         await warnRef.remove();
-                        ctx.reply(`🚨 User @${ctx.from.username || ctx.from.first_name} has been banned for exceeding warning limits.`);
+                        ctx.reply(`🚨 User @${ctx.from.username || ctx.from.first_name} has been banned for reaching warning limit!`);
                     } else {
-                        ctx.reply(`⚠️ Warning [${ctx.from.first_name}]! Profanity prohibited. (${warns}/${settings.warnLimit || 3})`);
+                        ctx.reply(`⚠️ Warning [${ctx.from.first_name}]! Blacklisted words detected. (${warns}/${settings.warnLimit || 3})`);
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
-                    ctx.reply(`⛔ User @${ctx.from.username || ctx.from.first_name} has been banned for policy violation.`);
                 }
                 return;
             }
@@ -174,11 +170,67 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO API (ONLY OWNER/ADMIN GROUPS + LIVE AVATARS)
+// GRAMJS MTPROTO (SEPARATE GROUPS & CHANNELS + PERMISSION CHECKS)
 // =============================================================================
 const tempAuthClients = {};
 
-// Step 1: Send Telegram OTP
+// Helper: Fetch Communities & Classify
+async function extractCommunities(client) {
+    const dialogs = await client.getDialogs({ limit: 100 });
+    const groups = [];
+    const channels = [];
+
+    for (const d of dialogs) {
+        if (!d.isGroup && !d.isChannel) continue;
+
+        const entity = d.entity;
+        const isCreator = entity.creator === true;
+        const adminRights = entity.adminRights || null;
+        const isAdmin = !!adminRights || entity.admin === true;
+
+        // Filter: Must be Owner or Admin
+        if (!isCreator && !isAdmin) continue;
+
+        // Determine if user can invite/promote bots
+        // Needs Creator or Admin rights with 'addAdmins' or 'inviteUsers'
+        const canAddBot = isCreator || (adminRights && (adminRights.addAdmins || adminRights.inviteUsers || adminRights.changeInfo));
+
+        // Fetch Thumbnail
+        let photoBase64 = null;
+        try {
+            if (entity.photo) {
+                const buffer = await client.downloadProfilePhoto(entity, { isBig: false });
+                if (buffer && buffer.length > 0) {
+                    photoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+                }
+            }
+        } catch (e) {
+            photoBase64 = null;
+        }
+
+        const isBroadcastChannel = d.isChannel && !entity.megagroup;
+
+        const itemData = {
+            id: d.id.toString(),
+            title: d.title || "Untitled",
+            role: isCreator ? 'Owner' : 'Admin',
+            canAddBot: !!canAddBot,
+            photo: photoBase64
+        };
+
+        if (isBroadcastChannel) {
+            itemData.subscribersCount = entity.participantsCount || 0;
+            channels.push(itemData);
+        } else {
+            itemData.membersCount = entity.participantsCount || 0;
+            groups.push(itemData);
+        }
+    }
+
+    return { groups, channels };
+}
+
+// 1. Send OTP
 app.post('/api/tg/send-code', async (req, res) => {
     const { phone } = req.body;
     try {
@@ -192,13 +244,13 @@ app.post('/api/tg/send-code', async (req, res) => {
     }
 });
 
-// Step 2: Verify Code, Filter strictly by Creator/Admin, Download Thumbnails
+// 2. Verify OTP & Return Classified Lists
 app.post('/api/tg/verify-code', async (req, res) => {
     const { phone, code, phoneCodeHash, password } = req.body;
     try {
         const sessionData = tempAuthClients[phone];
         if (!sessionData) {
-            throw new Error("Session expired. Please click 'Send Code' again.");
+            throw new Error("Session expired. Please request code again.");
         }
 
         const client = sessionData.client;
@@ -224,49 +276,30 @@ app.post('/api/tg/verify-code', async (req, res) => {
         }
 
         const stringSession = client.session.save();
-        const dialogs = await client.getDialogs({ limit: 100 });
-        
-        // STRICT FILTER: Only groups where the user is CREATOR (Owner) or has ADMIN rights
-        const adminGroups = [];
-        for (const d of dialogs) {
-            if (!d.isGroup && !d.isChannel) continue;
-
-            const entity = d.entity;
-            const isCreator = entity.creator === true;
-            const isAdmin = !!entity.adminRights || entity.admin === true;
-
-            // সাধারণ মেম্বার হওয়া গ্রুপ বাদ দেওয়া হচ্ছে
-            if (isCreator || isAdmin) {
-                let photoBase64 = null;
-                try {
-                    if (entity.photo) {
-                        const buffer = await client.downloadProfilePhoto(entity, { isBig: false });
-                        if (buffer && buffer.length > 0) {
-                            photoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
-                        }
-                    }
-                } catch (e) {
-                    photoBase64 = null;
-                }
-
-                adminGroups.push({
-                    id: d.id.toString(),
-                    title: d.title || "Community",
-                    membersCount: entity.participantsCount || 0,
-                    role: isCreator ? 'Owner' : 'Admin',
-                    photo: photoBase64
-                });
-            }
-        }
+        const { groups, channels } = await extractCommunities(client);
 
         delete tempAuthClients[phone];
-        res.json({ success: true, session: stringSession, groups: adminGroups });
+        res.json({ success: true, session: stringSession, groups, channels });
     } catch (e) {
         res.status(500).json({ error: e.message || "Invalid Telegram OTP code." });
     }
 });
 
-// Step 3: Automatically Add Bot & Grant Full Admin Privileges
+// 3. Re-Fetch Communities Using Existing Saved Session (No re-login on refresh)
+app.post('/api/tg/fetch-communities', async (req, res) => {
+    const { session } = req.body;
+    if (!session) return res.status(400).json({ error: "Session missing" });
+    try {
+        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, {});
+        await client.connect();
+        const { groups, channels } = await extractCommunities(client);
+        res.json({ success: true, groups, channels });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// 4. Auto-Add Bot to Group/Channel & Promote Admin
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
@@ -290,30 +323,29 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 addAdmins: false,
                 manageCall: true
             }),
-            rank: 'RoseX Guard'
+            rank: 'VS Guardian'
         }));
 
-        res.json({ success: true, message: "Bot promoted to Administrator with full privileges!" });
+        res.json({ success: true, message: "VS Protection Bot deployed & granted Admin rights!" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// Single Page Application Fallback
+// Route Fallback
 app.get('*', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'index.html');
     const p2 = path.join(__dirname, 'index.html');
     if (fs.existsSync(p1)) return res.sendFile(p1);
     if (fs.existsSync(p2)) return res.sendFile(p2);
-    res.status(404).send("<h2>index.html not found. Ensure it is placed in public/ or root directory.</h2>");
+    res.status(404).send("<h2>index.html not found.</h2>");
 });
 
-// Bind Server & Launch Bot
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[RoseX] HTTP Server running on port ${PORT}`);
+    console.log(`[VS Protection] Server listening on port ${PORT}`);
     bot.launch()
-        .then(() => console.log("[RoseX] Telegraf Engine Initialized."))
-        .catch(e => console.error("[RoseX] Polling Error:", e.message));
+        .then(() => console.log("[VS Protection] Telegram Engine Active"))
+        .catch(e => console.error("[VS Protection] Engine Warning:", e.message));
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
