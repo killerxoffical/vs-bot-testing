@@ -4,8 +4,9 @@ const { Telegraf } = require('telegraf');
 const { TelegramClient, Api } = require('telegram');
 const { StringSession } = require('telegram/sessions');
 const path = require('path');
+const fs = require('fs');
 
-// Firebase Web SDK for Node.js (কোনো Service Account JSON ফাইলের ঝামেলা নেই)
+// Firebase Node Setup
 const firebase = require('firebase/compat/app');
 require('firebase/compat/database');
 
@@ -19,13 +20,11 @@ const firebaseConfig = {
     appId: "1:635122514754:web:893417281989495d9066db"
 };
 
-// Initialize Firebase
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.database();
 
-// Constants & Env
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFezVtaNE6D0QF0ss26k2SHj5tW7hCiSN8";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
@@ -34,13 +33,16 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Keep-Alive Ping Route for Cron-Job
-app.get('/ping', (req, res) => res.status(200).send("OK - Bot is Live"));
+// Serve static files from both 'public' and root
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
+
+// Ping route for Cron-job / Keep-alive
+app.get('/ping', (req, res) => res.status(200).send("OK - RoseX Engine Running"));
 
 // ==========================================
-// 1. TELEGRAF BOT ENGINE
+// TELEGRAF ENGINE (MODERATION & WELCOME)
 // ==========================================
 const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
@@ -50,7 +52,7 @@ async function getChatSettings(chatId) {
     try {
         const snap = await db.ref(`groups/${chatId}/settings`).once('value');
         const settings = snap.val() || {
-            welcome: { enabled: true, text: "Welcome {user}!" },
+            welcome: { enabled: true, text: "Welcome {user} to {chat}!" },
             antiLink: { enabled: false },
             antiForward: { enabled: false },
             badWords: { enabled: false, words: [], action: 'delete' },
@@ -64,13 +66,11 @@ async function getChatSettings(chatId) {
     }
 }
 
-// RTDB Realtime Cache Refresh
 db.ref('groups').on('child_changed', (snap) => {
     const val = snap.val();
     if (val && val.settings) chatSettingsCache[snap.key] = val.settings;
 });
 
-// Welcome New Users
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
@@ -87,7 +87,6 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// Security Moderation
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -97,7 +96,6 @@ bot.on('message', async (ctx, next) => {
         const text = ctx.message.text || ctx.message.caption || "";
         const settings = await getChatSettings(chatId);
 
-        // Check if user is admin
         try {
             const member = await ctx.getChatMember(userId);
             if (['creator', 'administrator'].includes(member.status)) return next();
@@ -105,19 +103,19 @@ bot.on('message', async (ctx, next) => {
             return next();
         }
 
-        // 1. Lock Chat Check
+        // 1. Chat Lock
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 2. Anti-Forward Check
+        // 2. Anti-Forward
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 3. Anti-Link Check
+        // 3. Anti-Link
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
@@ -145,9 +143,9 @@ bot.on('message', async (ctx, next) => {
                     if (warns >= (settings.warnLimit || 3)) {
                         await ctx.banChatMember(userId).catch(() => {});
                         await warnRef.remove();
-                        ctx.reply(`🚨 @${ctx.from.username || ctx.from.first_name} কে ব্যান করা হলো!`);
+                        ctx.reply(`🚨 User @${ctx.from.username || ctx.from.first_name} has been banned for reaching warning limit!`);
                     } else {
-                        ctx.reply(`⚠️ [${ctx.from.first_name}] নিষিদ্ধ শব্দ ব্যবহার করায় ওয়ার্নিং দেওয়া হলো (${warns}/${settings.warnLimit || 3})`);
+                        ctx.reply(`⚠️ Warning [${ctx.from.first_name}]! Prohibited words used. (${warns}/${settings.warnLimit || 3})`);
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
@@ -156,12 +154,11 @@ bot.on('message', async (ctx, next) => {
             }
         }
     } catch (e) {}
-
     return next();
 });
 
 // ==========================================
-// 2. GRAMJS (MTPROTO) API ENDPOINTS
+// TELEGRAM MTPROTO (USER SESSION)
 // ==========================================
 const tempAuthClients = {};
 
@@ -182,7 +179,7 @@ app.post('/api/tg/verify-code', async (req, res) => {
     const { phone, code, phoneCodeHash } = req.body;
     try {
         const sessionData = tempAuthClients[phone];
-        if (!sessionData) throw new Error("সেশন পাওয়া যায়নি! পুনরায় ফোন নম্বর দিন।");
+        if (!sessionData) throw new Error("Session expired. Please request OTP again.");
 
         const client = sessionData.client;
         await client.signInUser({ apiId: API_ID, apiHash: API_HASH }, {
@@ -232,29 +229,30 @@ app.post('/api/tg/connect-group', async (req, res) => {
             rank: 'Guardian Core'
         }));
 
-        res.json({ success: true, message: "বট সফলভাবে যুক্ত হয়েছে এবং অ্যাডমিন রোল প্রদান করা হয়েছে!" });
+        res.json({ success: true, message: "Bot successfully promoted as Admin with full rights!" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// Fallback Route for SPA
+// Guaranteed File Delivery (Fixes Render "Not Found")
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    const p1 = path.join(__dirname, 'public', 'index.html');
+    const p2 = path.join(__dirname, 'index.html');
+
+    if (fs.existsSync(p1)) {
+        return res.sendFile(p1);
+    } else if (fs.existsSync(p2)) {
+        return res.sendFile(p2);
+    } else {
+        res.status(404).send("<h2>index.html not found! Please make sure index.html is in root or inside public/ folder.</h2>");
+    }
 });
 
-// ==========================================
-// 3. START SERVER FIRST, THEN BOT
-// ==========================================
+// Listen on all network interfaces
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Web Dashboard is running live on port ${PORT}`);
-    
-    // Launch Telegram bot safely without crashing the web process
+    console.log(`Server listening on port ${PORT}`);
     bot.launch()
-        .then(() => console.log("Telegram Bot Engine is Active!"))
-        .catch(err => console.error("Telegraf Launch Error (Non-Fatal):", err.message));
+        .then(() => console.log("Telegram Bot Engine Active"))
+        .catch(e => console.error("Bot Polling Warning:", e.message));
 });
-
-// Graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
