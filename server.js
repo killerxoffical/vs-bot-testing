@@ -27,8 +27,9 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
-const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFezVtaNE6D0QF0ss26k2SHj5tW7hCiSN8";
-const BOT_USERNAME = "Vareonprotection_bot";
+// NEW UPDATED BOT TOKEN
+const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAF9l54_V5P2lHuk_kvVA1VnucYWMGRY1gk";
+let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
 const PORT = process.env.PORT || 3000;
@@ -52,20 +53,31 @@ app.get('/admin', (req, res) => {
 });
 
 // =============================================================================
-// SUBSCRIPTION & LICENSE CHECKER (FIXED & FULLY DEFINED)
+// SUBSCRIPTION CHECKER WITH AUTO-OWNER RECOVERY
 // =============================================================================
 let subscriptionCache = {};
 
-async function isChatSubscriptionActive(chatId) {
+async function isChatSubscriptionActive(chatId, ctx = null) {
     const now = Date.now();
     if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 20000)) {
         return subscriptionCache[chatId].isActive;
     }
 
     try {
-        // 1. Check if group has a merged owner Telegram ID
-        const ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
-        const ownerTgId = ownerSnap.val();
+        let ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
+        let ownerTgId = ownerSnap.val();
+
+        // Auto-detect group creator if missing
+        if (!ownerTgId && ctx) {
+            try {
+                const admins = await ctx.getChatAdministrators();
+                const creator = admins.find(a => a.status === 'creator');
+                if (creator && creator.user) {
+                    ownerTgId = creator.user.id.toString();
+                    await db.ref(`groups/${chatId}/merged_owner`).set(ownerTgId);
+                }
+            } catch (e) {}
+        }
 
         let sub = null;
         if (ownerTgId) {
@@ -73,12 +85,11 @@ async function isChatSubscriptionActive(chatId) {
             sub = subSnap.val();
         }
 
-        // 2. Check by Firebase User ID subscriptions if not found by Telegram ID
+        // Check if any active user subscription exists
         if (!sub) {
             const allSubsSnap = await db.ref('subscriptions/by_uid').once('value');
             const allSubs = allSubsSnap.val() || {};
             const subKeys = Object.keys(allSubs);
-            
             for (const k of subKeys) {
                 const s = allSubs[k];
                 const grace = s.graceEndsAt || (s.expiresAt + 7 * 86400000);
@@ -100,12 +111,10 @@ async function isChatSubscriptionActive(chatId) {
         subscriptionCache[chatId] = { isActive, cachedAt: now };
         return isActive;
     } catch (e) {
-        console.error("Subscription validation error:", e.message);
-        return true; // Fail-safe
+        return true;
     }
 }
 
-// DEFINED: Resolves getOwnerSubByChat ReferenceError
 async function getOwnerSubByChat(chatId) {
     const active = await isChatSubscriptionActive(chatId);
     if (!active) {
@@ -125,11 +134,13 @@ const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
 let botId = null;
 
+// Dynamically fetch and bind Bot Profile
 bot.telegram.getMe().then(info => {
     botId = info.id;
-    console.log(`[VS Protection] Telegraf Online: @${info.username} (ID: ${botId})`);
+    BOT_USERNAME = info.username;
+    console.log(`[VS Protection] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
 }).catch(err => {
-    console.error("[VS Protection] Bot Token Error:", err.message);
+    console.error("[VS Protection] BOT TOKEN ERROR: Please verify your token with @BotFather:", err.message);
 });
 
 async function getChatSettings(chatId) {
@@ -188,7 +199,7 @@ function countEmojis(str) {
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
-        const isSubActive = await isChatSubscriptionActive(chatId);
+        const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) return;
 
         const settings = await getChatSettings(chatId);
@@ -253,7 +264,7 @@ bot.on('left_chat_member', async (ctx) => {
 
         await db.ref(`groups/${chatId}/left_members/${user.id}`).set(leftData);
 
-        const isSubActive = await isChatSubscriptionActive(chatId);
+        const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) return;
 
         const settings = await getChatSettings(chatId);
@@ -292,11 +303,23 @@ bot.on('message', async (ctx, next) => {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
 
         const chatId = ctx.chat.id;
-        const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return next(); // Sub expired = Bot does not moderate
+        const text = ctx.message.text || ctx.message.caption || "";
+
+        // Instant Health Check in Group: /ping
+        if (text === '/ping') {
+            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Operational & Guarding Community*`);
+        }
+
+        const isSubActive = await isChatSubscriptionActive(chatId, ctx);
+        if (!isSubActive) {
+            // Helpful prompt if unlicensed
+            if (text.startsWith('/bio') || text.startsWith('/scam')) {
+                return ctx.reply("⚠️ VS Protection Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
+            }
+            return next();
+        }
 
         const userId = ctx.from?.id;
-        const text = ctx.message.text || ctx.message.caption || "";
         const settings = await getChatSettings(chatId);
         const userRole = await getUserRole(ctx, userId);
         const isAdmin = ['owner', 'admin'].includes(userRole);
@@ -566,7 +589,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO
+// GRAMJS MTPROTO (STRICT OWNER & PROMOTABLE ADMIN FILTER)
 // =============================================================================
 const tempAuthClients = {};
 
@@ -721,7 +744,7 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// BOT CONNECT
+// BOT AUTO-ADD & PROMOTE (WITH DUAL USER/TELEGRAM BIND)
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId, userId } = req.body;
     try {
@@ -737,7 +760,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }
         } catch (e) {}
 
-        // Validate Subscription by User UID or Telegram ID
+        // Check plan by UID or Telegram ID
         let sub = null;
         if (userId) {
             const sUid = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
@@ -849,7 +872,7 @@ app.post('/api/tg/broadcast', async (req, res) => {
     }
 });
 
-// Section Save (FIXED REFERENCE ERROR)
+// Section Save
 app.post('/api/tg/save-section', async (req, res) => {
     const { chatId, sectionKey, data } = req.body;
     try {
@@ -1056,7 +1079,7 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
-// CLAIM LICENSE
+// CLAIM LICENSE (BINDS TO USER ACCOUNT UID & EMAIL)
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, userId, userEmail, session, ownerTelegramId: providedTgId } = req.body;
     try {
@@ -1210,7 +1233,7 @@ app.get('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`[VS Protection] Server listening on port ${PORT}`);
     bot.launch()
-        .then(() => console.log("[VS Protection] Telegram Engine Active"))
+        .then(() => console.log(`[VS Protection] Telegram Bot Engine Active with Token: ${BOT_TOKEN.slice(0, 10)}...`))
         .catch(e => console.error("[VS Protection] Engine Warning:", e.message));
 });
 
