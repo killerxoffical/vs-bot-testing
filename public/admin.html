@@ -1,1 +1,512 @@
 
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS Protection — Super Admin Master Console</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#EEF2FF',
+                            100: '#E0E7FF',
+                            500: '#6366F1',
+                            600: '#4F46E5',
+                            700: '#4338CA',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Icons & SweetAlert2 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { background-color: #F8FAFC; color: #0F172A; }
+        .light-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease;
+        }
+        .light-card:hover {
+            box-shadow: 0 12px 28px -4px rgba(79, 70, 229, 0.06);
+        }
+        .pane-scroll::-webkit-scrollbar { width: 6px; }
+        .pane-scroll::-webkit-scrollbar-track { background: transparent; }
+        .pane-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white relative">
+
+    <!-- ==========================================================================
+       PIN GATEWAY (PROTECTS MASTER CONSOLE)
+       ========================================================================== -->
+    <div id="pinGateModal" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl border border-slate-200 text-center space-y-4">
+            <div class="w-14 h-14 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mx-auto shadow-sm">
+                <i data-lucide="shield-lock" class="w-7 h-7"></i>
+            </div>
+            <div>
+                <h3 class="text-xl font-extrabold text-slate-900 tracking-tight">Super Admin Gate</h3>
+                <p class="text-xs text-slate-500 mt-1">Enter your master PIN to access system controls</p>
+            </div>
+            <div>
+                <input id="masterPinInput" type="password" placeholder="Enter PIN (Default: admin123)" class="w-full text-center tracking-widest text-lg font-bold bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+            <button onclick="verifyMasterPin()" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-brand-500/25">
+                Unlock Master Console
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN ADMIN INTERFACE -->
+    <div id="adminInterface" class="hidden flex-1 flex flex-col">
+        
+        <!-- HEADER -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-40 h-20 shrink-0">
+            <div class="w-full px-6 md:px-10 h-full flex justify-between items-center">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm flex items-center justify-center bg-white shrink-0">
+                        <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" alt="Logo" class="w-10 h-10 object-cover">
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-base tracking-tight text-slate-900">VS Protection</span>
+                            <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-extrabold uppercase">Super Admin</span>
+                        </div>
+                        <p class="text-xs text-slate-400 font-semibold">Master Governance & License Terminal</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="refreshAllAdminData()" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Sync Live Data</span>
+                    </button>
+                    <a href="/" target="_blank" class="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition">
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                        <span>User Portal</span>
+                    </a>
+                    <button onclick="adminLogout()" class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs transition">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                        <span>Lock</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD BODY -->
+        <main class="flex-1 w-full px-6 md:px-10 py-8 space-y-8 max-w-7xl mx-auto">
+            
+            <!-- 1. LIVE FINANCIAL & SYSTEM KPIS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- KPI 1: Revenue -->
+                <div class="light-card p-6 rounded-3xl space-y-2 border-l-4 border-l-emerald-500">
+                    <div class="flex items-center justify-between text-slate-400">
+                        <span class="text-xs font-bold uppercase tracking-wider">Total Sales Volume</span>
+                        <i data-lucide="badge-dollar-sign" class="w-5 h-5 text-emerald-600"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-slate-900" id="statRevenueBDT">৳0</div>
+                    <div class="text-xs font-bold text-emerald-600 flex items-center gap-1" id="statRevenueUSDT">
+                        <span>≈ $0.00 USDT</span>
+                        <span class="text-[10px] text-slate-400 font-normal">(@127 BDT)</span>
+                    </div>
+                </div>
+
+                <!-- KPI 2: Licenses Claimed -->
+                <div class="light-card p-6 rounded-3xl space-y-2 border-l-4 border-l-brand-500">
+                    <div class="flex items-center justify-between text-slate-400">
+                        <span class="text-xs font-bold uppercase tracking-wider">Active Subscriptions</span>
+                        <i data-lucide="key" class="w-5 h-5 text-brand-600"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-slate-900" id="statLicensesClaimed">0</div>
+                    <span class="text-xs text-slate-500 font-medium">Claimed & running keys</span>
+                </div>
+
+                <!-- KPI 3: Communities -->
+                <div class="light-card p-6 rounded-3xl space-y-2 border-l-4 border-l-indigo-500">
+                    <div class="flex items-center justify-between text-slate-400">
+                        <span class="text-xs font-bold uppercase tracking-wider">Protected Communities</span>
+                        <i data-lucide="shield-check" class="w-5 h-5 text-indigo-600"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-slate-900" id="statTotalGroups">0</div>
+                    <span class="text-xs text-slate-500 font-medium">Active groups & channels</span>
+                </div>
+
+                <!-- KPI 4: Total Users -->
+                <div class="light-card p-6 rounded-3xl space-y-2 border-l-4 border-l-purple-500">
+                    <div class="flex items-center justify-between text-slate-400">
+                        <span class="text-xs font-bold uppercase tracking-wider">Registered Users</span>
+                        <i data-lucide="users" class="w-5 h-5 text-purple-600"></i>
+                    </div>
+                    <div class="text-2xl font-extrabold text-slate-900" id="statTotalUsers">0</div>
+                    <span class="text-xs text-slate-500 font-medium">Stored in security vault</span>
+                </div>
+            </div>
+
+            <!-- 2. TABBED MANAGEMENT SECTIONS -->
+            <div class="space-y-6">
+                <!-- Navigation Tabs -->
+                <div class="flex border-b border-slate-200 gap-3">
+                    <button onclick="switchAdminTab('licenses')" id="adminTabBtn-licenses" class="px-5 py-3 border-b-2 border-brand-600 font-bold text-xs text-brand-600 flex items-center gap-2">
+                        <i data-lucide="key-round" class="w-4 h-4"></i>
+                        <span>License Key Manager</span>
+                    </button>
+                    <button onclick="switchAdminTab('users')" id="adminTabBtn-users" class="px-5 py-3 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                        <span>Users & Password Vault</span>
+                    </button>
+                </div>
+
+                <!-- SUB-PANE 1: LICENSE MANAGER -->
+                <div id="adminTabContent-licenses" class="space-y-6">
+                    <!-- Key Generator -->
+                    <div class="light-card p-6 md:p-8 rounded-3xl space-y-4">
+                        <h4 class="text-sm font-extrabold text-slate-900 uppercase">Generate New Customer License Key</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+                            <div class="sm:col-span-5">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Select Package Tier</label>
+                                <select id="adminGenPlanId" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
+                                    <option value="starter">Starter (1 Channel/Group) — ৳50</option>
+                                    <option value="growth">Growth (5 Channels/Groups) — ৳200</option>
+                                    <option value="pro">Pro Hub (15 Channels/Groups) — ৳450</option>
+                                    <option value="unlimited" selected>Unlimited Enterprise — ৳750</option>
+                                </select>
+                            </div>
+                            <div class="sm:col-span-4">
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Duration (Days)</label>
+                                <input id="adminGenDuration" type="number" value="30" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div class="sm:col-span-3 flex items-end">
+                                <button onclick="adminGenerateLicense()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-brand-500/25">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                    <span>Generate Key</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Licenses Roster -->
+                    <div class="light-card p-6 md:p-8 rounded-3xl space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div>
+                                <h4 class="text-base font-extrabold text-slate-900">All Deployed Licenses</h4>
+                                <p class="text-xs text-slate-500">Track claim state, owner bindings and validity</p>
+                            </div>
+                            <span id="licensesCountBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">0 Total</span>
+                        </div>
+
+                        <div id="adminLicensesTableContainer" class="space-y-2.5 max-h-[500px] overflow-y-auto pane-scroll pr-1"></div>
+                    </div>
+                </div>
+
+                <!-- SUB-PANE 2: USERS & PASSWORD VAULT -->
+                <div id="adminTabContent-users" class="hidden space-y-6">
+                    <div class="light-card p-6 md:p-8 rounded-3xl space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                            <div>
+                                <h4 class="text-base font-extrabold text-slate-900">Client Security Vault</h4>
+                                <p class="text-xs text-slate-500">View registered credentials to support customer recovery</p>
+                            </div>
+                            <input id="userSearchInput" oninput="filterUsersVault()" type="text" placeholder="Search by email or telegram ID..." class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-brand-500 w-full sm:w-64">
+                        </div>
+
+                        <div id="usersVaultContainer" class="space-y-2.5 max-h-[550px] overflow-y-auto pane-scroll pr-1"></div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        lucide.createIcons();
+
+        // 1. PIN GATE VERIFICATION
+        const MASTER_PIN = "admin123"; // Change this PIN anytime
+
+        function verifyMasterPin() {
+            const input = document.getElementById('masterPinInput').value.trim();
+            if (input === MASTER_PIN) {
+                sessionStorage.setItem('vs_admin_auth', 'true');
+                unlockAdmin();
+            } else {
+                Swal.fire('Access Denied', 'Invalid master PIN code.', 'error');
+            }
+        }
+
+        function unlockAdmin() {
+            document.getElementById('pinGateModal').classList.add('hidden');
+            document.getElementById('adminInterface').classList.remove('hidden');
+            refreshAllAdminData();
+        }
+
+        function adminLogout() {
+            sessionStorage.removeItem('vs_admin_auth');
+            location.reload();
+        }
+
+        // Auto-unlock if authenticated in this session
+        if (sessionStorage.getItem('vs_admin_auth') === 'true') {
+            unlockAdmin();
+        }
+
+        // 2. TAB SWITCHER
+        function switchAdminTab(tabKey) {
+            const tabs = ['licenses', 'users'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`adminTabBtn-${t}`);
+                const pane = document.getElementById(`adminTabContent-${t}`);
+                if (t === tabKey) {
+                    btn.className = "px-5 py-3 border-b-2 border-brand-600 font-bold text-xs text-brand-600 flex items-center gap-2";
+                    pane.classList.remove('hidden');
+                } else {
+                    btn.className = "px-5 py-3 border-b-2 border-transparent font-bold text-xs text-slate-500 hover:text-slate-800 flex items-center gap-2";
+                    pane.classList.add('hidden');
+                }
+            });
+            lucide.createIcons();
+        }
+
+        // 3. FETCH MASTER METRICS
+        async function refreshAllAdminData() {
+            loadSystemStats();
+            loadLicensesList();
+            loadUsersVault();
+        }
+
+        async function loadSystemStats() {
+            try {
+                const res = await fetch('/api/admin/system-stats');
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('statRevenueBDT').innerText = '৳' + data.stats.revenueBDT.toLocaleString();
+                    document.getElementById('statRevenueUSDT').innerHTML = `<span>≈ $${data.stats.revenueUSDT} USDT</span><span class="text-[10px] text-slate-400 font-normal">(@127 BDT)</span>`;
+                    document.getElementById('statLicensesClaimed').innerText = data.stats.claimedLicenses;
+                    document.getElementById('statTotalGroups').innerText = data.stats.totalGroups;
+                    document.getElementById('statTotalUsers').innerText = data.stats.totalUsers;
+                }
+            } catch (e) {}
+        }
+
+        // 4. GENERATE LICENSE
+        async function adminGenerateLicense() {
+            const planId = document.getElementById('adminGenPlanId').value;
+            const customDurationDays = document.getElementById('adminGenDuration').value;
+
+            Swal.showLoading();
+            try {
+                const res = await fetch('/api/admin/generate-license', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ planId, customDurationDays })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    Swal.fire({
+                        title: 'License Key Created!',
+                        html: `
+                            <p class="text-xs text-slate-500 mb-2">Tier: <b>${data.license.planName}</b></p>
+                            <div class="p-3 bg-slate-100 rounded-xl font-mono text-base font-extrabold text-slate-900 select-all mb-3">${data.license.key}</div>
+                            <button onclick="navigator.clipboard.writeText('${data.license.key}'); Swal.fire('Copied', 'Key copied to clipboard!', 'success');" class="px-4 py-1.5 bg-brand-600 text-white rounded-lg text-xs font-bold">Copy Key</button>
+                        `,
+                        icon: 'success'
+                    });
+                    loadLicensesList();
+                    loadSystemStats();
+                } else {
+                    Swal.fire('Failed', data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
+        }
+
+        // 5. LOAD ALL LICENSES
+        async function loadLicensesList() {
+            const container = document.getElementById('adminLicensesTableContainer');
+            container.innerHTML = `<div class="py-6 text-center text-xs text-slate-400">Loading licenses...</div>`;
+
+            try {
+                const res = await fetch('/api/admin/list-licenses');
+                const data = await res.json();
+                container.innerHTML = '';
+
+                if (data.success && data.licenses.length > 0) {
+                    document.getElementById('licensesCountBadge').innerText = `${data.licenses.length} Total`;
+
+                    data.licenses.forEach(lic => {
+                        let statusColor = "bg-emerald-50 text-emerald-600 border-emerald-200";
+                        if (lic.status === 'claimed') statusColor = "bg-indigo-50 text-brand-600 border-indigo-200";
+                        if (lic.status === 'revoked') statusColor = "bg-rose-50 text-rose-600 border-rose-200";
+
+                        const row = document.createElement('div');
+                        row.className = "p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3";
+                        row.innerHTML = `
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono font-extrabold text-slate-900 text-sm select-all">${lic.key}</span>
+                                    <button onclick="navigator.clipboard.writeText('${lic.key}'); Swal.fire('Copied', 'Key copied!', 'success');" class="text-slate-400 hover:text-slate-600"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">${lic.status.toUpperCase()}</span>
+                                </div>
+                                <div class="text-[11px] text-slate-500 mt-1">
+                                    Plan: <b class="text-slate-700">${lic.planName}</b> • Price: ৳${lic.bdt} ($${lic.usdt}) • Duration: ${lic.durationDays} Days
+                                    ${lic.claimedBy ? `<br>Claimed By: <span class="text-brand-600 font-semibold">${lic.claimedBy}</span> (TG ID: ${lic.ownerTelegramId || 'N/A'})` : ''}
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button onclick="extendLicenseKey('${lic.key}')" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-700 transition flex items-center gap-1 shadow-sm">
+                                    <i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-brand-600"></i>
+                                    <span>+30 Days</span>
+                                </button>
+                                ${lic.status !== 'revoked' ? `
+                                    <button onclick="revokeLicenseKey('${lic.key}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                                        <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+                                        <span>Revoke</span>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        `;
+                        container.appendChild(row);
+                    });
+                } else {
+                    container.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center italic">No license keys generated yet.</p>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<p class="text-xs text-rose-500 py-6 text-center">Failed to load licenses: ${e.message}</p>`;
+            }
+            lucide.createIcons();
+        }
+
+        async function extendLicenseKey(key) {
+            Swal.fire({
+                title: 'Extend License',
+                text: 'Add 30 extra days to this license?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Extend'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    const res = await fetch('/api/admin/extend-license', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ key, days: 30 })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire('Extended!', data.message, 'success');
+                        loadLicensesList();
+                    } else {
+                        Swal.fire('Failed', data.error, 'error');
+                    }
+                }
+            });
+        }
+
+        async function revokeLicenseKey(key) {
+            Swal.fire({
+                title: 'Revoke License?',
+                text: 'This will invalidate the license and disable bot services.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#E11D48',
+                confirmButtonText: 'Yes, Revoke'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    const res = await fetch('/api/admin/revoke-license', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ key })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        Swal.fire('Revoked!', data.message, 'success');
+                        loadLicensesList();
+                    }
+                }
+            });
+        }
+
+        // 6. LOAD USERS & PASSWORD VAULT
+        let allUsersCache = [];
+
+        async function loadUsersVault() {
+            const container = document.getElementById('usersVaultContainer');
+            container.innerHTML = `<div class="py-6 text-center text-xs text-slate-400">Loading registered users...</div>`;
+
+            try {
+                const res = await fetch('/api/admin/users-list');
+                const data = await res.json();
+                if (data.success) {
+                    allUsersCache = data.users;
+                    renderUsersVault(allUsersCache);
+                }
+            } catch (e) {
+                container.innerHTML = `<p class="text-xs text-rose-500 py-6 text-center">Failed to load users: ${e.message}</p>`;
+            }
+        }
+
+        function renderUsersVault(users) {
+            const container = document.getElementById('usersVaultContainer');
+            container.innerHTML = '';
+
+            if (users.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center italic">No registered users found.</p>`;
+                return;
+            }
+
+            users.forEach(u => {
+                const row = document.createElement('div');
+                row.className = "p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs";
+                row.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-slate-900">${u.email}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">TG ID: ${u.telegramId}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 mt-1">
+                            Password: <code class="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono font-bold text-brand-600 select-all">${u.password}</code> • Active Plan: <b class="text-slate-800">${u.subscription}</b>
+                        </div>
+                    </div>
+                    <button onclick="navigator.clipboard.writeText('${u.password}'); Swal.fire('Copied', 'Password copied!', 'success');" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-700 transition flex items-center gap-1.5 self-start sm:self-auto shadow-sm">
+                        <i data-lucide="key" class="w-3.5 h-3.5 text-brand-600"></i>
+                        <span>Copy Pass</span>
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+            lucide.createIcons();
+        }
+
+        function filterUsersVault() {
+            const query = document.getElementById('userSearchInput').value.toLowerCase().trim();
+            const filtered = allUsersCache.filter(u => 
+                u.email.toLowerCase().includes(query) || 
+                u.telegramId.toLowerCase().includes(query)
+            );
+            renderUsersVault(filtered);
+        }
+    </script>
+</body>
+</html>
