@@ -52,44 +52,43 @@ app.get('/admin', (req, res) => {
 });
 
 // =============================================================================
-// STRICT REAL-TIME SUBSCRIPTION & GATEWAY ENFORCEMENT (ZERO BYPASS)
+// REAL-TIME SUBSCRIPTION VALIDATION (DUAL BIND: USER ID & TELEGRAM ID)
 // =============================================================================
+let subscriptionCache = {};
 
-// Helper: Real-time Check If Chat Has Active Subscription
-async function getOwnerSubByChat(chatId) {
+async function isChatSubscriptionActive(chatId) {
+    const now = Date.now();
+    if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 60000)) {
+        return subscriptionCache[chatId].isActive;
+    }
+
     try {
         const ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
         const ownerTgId = ownerSnap.val();
-        if (!ownerTgId) {
-            return { hasSub: false, reason: "NO_OWNER_LINKED", message: "No owner Telegram account linked to this group." };
+        
+        let sub = null;
+        if (ownerTgId) {
+            const subSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
+            sub = subSnap.val();
         }
 
-        const subSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
-        const sub = subSnap.val();
         if (!sub) {
-            return { hasSub: false, reason: "NO_ACTIVE_LICENSE", message: "You do not have an active subscription plan." };
+            subscriptionCache[chatId] = { isActive: false, cachedAt: now };
+            return false;
         }
 
-        const now = Date.now();
         const graceEndsAt = sub.graceEndsAt || (sub.expiresAt + (7 * 24 * 60 * 60 * 1000));
+        const isActive = now <= graceEndsAt;
 
-        if (now > graceEndsAt) {
-            return { hasSub: false, reason: "SUBSCRIPTION_EXPIRED", message: "Your subscription and 7-day grace period have expired." };
-        }
-
-        return { hasSub: true, sub };
+        subscriptionCache[chatId] = { isActive, cachedAt: now };
+        return isActive;
     } catch (e) {
-        return { hasSub: false, reason: "DATABASE_ERROR", message: e.message };
+        return false;
     }
 }
 
-async function isChatSubscriptionActive(chatId) {
-    const check = await getOwnerSubByChat(chatId);
-    return check.hasSub;
-}
-
 // =============================================================================
-// TELEGRAF BOT ENGINE (ALL FEATURES LOCKED TO ACTIVE PLANS)
+// TELEGRAF BOT ENGINE
 // =============================================================================
 const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
@@ -154,12 +153,12 @@ function countEmojis(str) {
     return matches ? matches.length : 0;
 }
 
-// 1. Welcome New Members (Real-Time Subscription Guard)
+// 1. Welcome New Members
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return; // Strict Lock: Bot remains completely silent if no plan
+        if (!isSubActive) return;
 
         const settings = await getChatSettings(chatId);
         if (!settings.welcome?.enabled) return;
@@ -203,7 +202,7 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// 2. Member Left Tracker (Real-Time Subscription Guard)
+// 2. Member Left Tracker
 bot.on('left_chat_member', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
@@ -224,7 +223,7 @@ bot.on('left_chat_member', async (ctx) => {
         await db.ref(`groups/${chatId}/left_members/${user.id}`).set(leftData);
 
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return; // Strict Lock
+        if (!isSubActive) return;
 
         const settings = await getChatSettings(chatId);
 
@@ -256,14 +255,14 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// 3. Core Moderation Engine (Real-Time Subscription Guard)
+// 3. Core Moderation Engine
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
 
         const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return next(); // Strict Lock: No protection active if unlicenced
+        if (!isSubActive) return next();
 
         const userId = ctx.from?.id;
         const text = ctx.message.text || ctx.message.caption || "";
@@ -421,31 +420,24 @@ bot.on('message', async (ctx, next) => {
 
         if (isAdmin) return next();
 
-        // 1. Chat Lock
+        // Moderation guards
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 2. Anti-Button Messages Block
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.antiButton.silent && settings.antiButton.msg) {
-                    const response = settings.antiButton.msg
-                        .replace(/{mention}/g, userMention)
-                        .replace(/{user}/g, userMention)
-                        .replace(/{name}/g, fullName)
-                        .replace(/{username}/g, usernameTag)
-                        .replace(/{chat}/g, ctx.chat.title);
+                    const response = settings.antiButton.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
                     ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
             }
         }
 
-        // 3. Emoji Spam Guard
         if (settings.emojiSpam?.enabled) {
             const emojiCount = countEmojis(text);
             const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
@@ -453,15 +445,7 @@ bot.on('message', async (ctx, next) => {
             if (emojiCount > maxAllowed) {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.emojiSpam.silent && settings.emojiSpam.msg) {
-                    const response = settings.emojiSpam.msg
-                        .replace(/{mention}/g, userMention)
-                        .replace(/{user}/g, userMention)
-                        .replace(/{name}/g, fullName)
-                        .replace(/{username}/g, usernameTag)
-                        .replace(/{chat}/g, ctx.chat.title)
-                        .replace(/{count}/g, emojiCount)
-                        .replace(/{limit}/g, maxAllowed);
-                    
+                    const response = settings.emojiSpam.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title).replace(/{count}/g, emojiCount).replace(/{limit}/g, maxAllowed);
                     const sentWarn = await ctx.replyWithMarkdown(response).catch(() => {});
                     const delSec = parseInt(settings.emojiSpam.autoDeleteSeconds || 5);
                     if (delSec > 0 && sentWarn && sentWarn.message_id) {
@@ -472,40 +456,27 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 4. Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             if (!settings.antiForward.silent && settings.antiForward.msg) {
-                const response = settings.antiForward.msg
-                    .replace(/{mention}/g, userMention)
-                    .replace(/{user}/g, userMention)
-                    .replace(/{name}/g, fullName)
-                    .replace(/{username}/g, usernameTag)
-                    .replace(/{chat}/g, ctx.chat.title);
+                const response = settings.antiForward.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
                 ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
             }
             return;
         }
 
-        // 5. Anti-Link Check
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.antiLink.silent && settings.antiLink.msg) {
-                    const response = settings.antiLink.msg
-                        .replace(/{mention}/g, userMention)
-                        .replace(/{user}/g, userMention)
-                        .replace(/{name}/g, fullName)
-                        .replace(/{username}/g, usernameTag)
-                        .replace(/{chat}/g, ctx.chat.title);
+                    const response = settings.antiLink.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
                     ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
             }
         }
 
-        // 6. Bad Words Filter
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -529,33 +500,18 @@ bot.on('message', async (ctx, next) => {
                         if (!settings.banSystem?.silent) {
                             const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
                                 .replace(/{mention}/g, `@${ctx.from.username || fullName}`)
-                                .replace(/{user}/g, `@${ctx.from.username || fullName}`)
-                                .replace(/{name}/g, fullName)
-                                .replace(/{username}/g, usernameTag)
                                 .replace(/{chat}/g, ctx.chat.title);
                             warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
                         }
                     } else if (!settings.badWords.silent) {
                         const template = settings.badWords.customMsg || "⚠️ {mention}, prohibited words used! Warnings: ({warns}/{warn_limit})";
-                        const customNotice = template
-                            .replace(/{mention}/g, userMention)
-                            .replace(/{user}/g, userMention)
-                            .replace(/{name}/g, fullName)
-                            .replace(/{username}/g, usernameTag)
-                            .replace(/{chat}/g, ctx.chat.title)
-                            .replace(/{warns}/g, warns)
-                            .replace(/{warn_limit}/g, warnLimit);
+                        const customNotice = template.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title).replace(/{warns}/g, warns).replace(/{warn_limit}/g, warnLimit);
                         warningMsgSent = await ctx.replyWithMarkdown(customNotice).catch(() => {});
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
                     if (!settings.banSystem?.silent) {
-                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
-                            .replace(/{mention}/g, userMention)
-                            .replace(/{user}/g, userMention)
-                            .replace(/{name}/g, fullName)
-                            .replace(/{username}/g, usernameTag)
-                            .replace(/{chat}/g, ctx.chat.title);
+                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.").replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
                         warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
                     }
                 }
@@ -574,7 +530,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (STRICT OWNER & PROMOTABLE ADMIN FILTER)
+// GRAMJS MTPROTO
 // =============================================================================
 const tempAuthClients = {};
 
@@ -709,24 +665,30 @@ app.post('/api/tg/verify-code', async (req, res) => {
     }
 });
 
+// FETCH COMMUNITIES ALWAYS RETURNS TELEGRAM ID
 app.post('/api/tg/fetch-communities', async (req, res) => {
     const { session } = req.body;
     if (!session) return res.status(400).json({ error: "Session missing" });
     try {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
+
+        let myTelegramId = null;
+        try {
+            const me = await client.getMe();
+            if (me && me.id) myTelegramId = me.id.toString();
+        } catch (e) {}
+
         const { groups, channels } = await extractCommunities(client);
-        res.json({ success: true, groups, channels });
+        res.json({ success: true, telegramId: myTelegramId, groups, channels });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// =============================================================================
-// BOT CONNECT (STRICT SUBSCRIPTION VALIDATION)
-// =============================================================================
+// BOT CONNECT
 app.post('/api/tg/connect-group', async (req, res) => {
-    const { session, chatId } = req.body;
+    const { session, chatId, userId } = req.body;
     try {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
@@ -740,46 +702,23 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }
         } catch (e) {}
 
-        // 1. STRICT REAL-TIME SUBSCRIPTION VALIDATION
-        if (!myTgId) {
-            return res.status(403).json({
-                success: false,
-                error: "NO_TELEGRAM_ID",
-                message: "Unable to verify your Telegram identity."
-            });
+        // CHECK SUBSCRIPTION BY UID OR TG ID
+        let sub = null;
+        if (userId) {
+            const sUid = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
+            sub = sUid.val();
+        }
+        if (!sub && myTgId) {
+            const sTg = await db.ref(`subscriptions/${myTgId}`).once('value');
+            sub = sTg.val();
         }
 
-        const subSnap = await db.ref(`subscriptions/${myTgId}`).once('value');
-        const sub = subSnap.val();
         const now = Date.now();
-
         if (!sub || (sub.graceEndsAt && now > sub.graceEndsAt)) {
             return res.status(403).json({
                 success: false,
                 error: "NO_ACTIVE_LICENSE",
-                message: "You do not have an active subscription plan. Please purchase or claim a license key."
-            });
-        }
-
-        // 2. CHECK MAX COMMUNITY LIMIT FOR PLAN
-        const maxAllowed = sub.maxCommunities || 1;
-        const connectedSnap = await db.ref('connected_bots').once('value');
-        const allConnected = connectedSnap.val() || {};
-        
-        let userConnectedCount = 0;
-        const groupKeys = Object.keys(allConnected);
-        for (const gId of groupKeys) {
-            const ownerSnap = await db.ref(`groups/${gId}/merged_owner`).once('value');
-            if (ownerSnap.val() === myTgId && gId !== chatId) {
-                userConnectedCount++;
-            }
-        }
-
-        if (userConnectedCount >= maxAllowed) {
-            return res.status(403).json({
-                success: false,
-                error: "LIMIT_REACHED",
-                message: `Your current tier (${sub.planName}) allows max ${maxAllowed} community. Please upgrade to a higher tier plan.`
+                message: "You need an active subscription license to add VS Protection Bot."
             });
         }
 
@@ -791,99 +730,49 @@ app.post('/api/tg/connect-group', async (req, res) => {
         );
 
         if (!targetDialog) {
-            targetDialog = dialogs.find(d => 
-                d.id.toString() === chatId.toString() ||
-                String(d.entity?.id) === cleanId
-            );
+            targetDialog = dialogs.find(d => d.id.toString() === chatId.toString() || String(d.entity?.id) === cleanId);
         }
 
-        if (!targetDialog || !targetDialog.entity) {
-            throw new Error("Community dialog entity not found. Please sync communities.");
-        }
+        if (!targetDialog || !targetDialog.entity) throw new Error("Community dialog entity not found.");
 
         const targetEntity = targetDialog.entity;
         const botPeer = await client.getInputEntity(BOT_USERNAME);
-        const botInputUser = new Api.InputUser({
-            userId: botPeer.userId,
-            accessHash: botPeer.accessHash
-        });
+        const botInputUser = new Api.InputUser({ userId: botPeer.userId, accessHash: botPeer.accessHash });
 
         let targetInputChannel = null;
 
         if (targetEntity.className === 'Channel') {
-            targetInputChannel = new Api.InputChannel({
-                channelId: targetEntity.id,
-                accessHash: targetEntity.accessHash
-            });
+            targetInputChannel = new Api.InputChannel({ channelId: targetEntity.id, accessHash: targetEntity.accessHash });
         } else if (targetEntity.className === 'Chat') {
             try {
-                await client.invoke(new Api.messages.AddChatUser({
-                    chatId: targetEntity.id,
-                    userId: botInputUser,
-                    fwdLimit: 0
-                }));
+                await client.invoke(new Api.messages.AddChatUser({ chatId: targetEntity.id, userId: botInputUser, fwdLimit: 0 }));
             } catch (e) {}
 
             try {
-                const migrateRes = await client.invoke(new Api.messages.MigrateChat({
-                    chatId: targetEntity.id
-                }));
+                const migrateRes = await client.invoke(new Api.messages.MigrateChat({ chatId: targetEntity.id }));
                 if (migrateRes.chats && migrateRes.chats.length > 0) {
                     const newChan = migrateRes.chats.find(c => c.className === 'Channel');
-                    if (newChan) {
-                        targetInputChannel = new Api.InputChannel({
-                            channelId: newChan.id,
-                            accessHash: newChan.accessHash
-                        });
-                    }
+                    if (newChan) targetInputChannel = new Api.InputChannel({ channelId: newChan.id, accessHash: newChan.accessHash });
                 }
             } catch (migErr) {}
 
             if (!targetInputChannel) {
                 const freshDialogs = await client.getDialogs({ limit: 30 });
                 const fresh = freshDialogs.find(d => d.isChannel && d.title === targetEntity.title);
-                if (fresh && fresh.entity) {
-                    targetInputChannel = new Api.InputChannel({
-                        channelId: fresh.entity.id,
-                        accessHash: fresh.entity.accessHash
-                    });
-                }
+                if (fresh && fresh.entity) targetInputChannel = new Api.InputChannel({ channelId: fresh.entity.id, accessHash: fresh.entity.accessHash });
             }
         }
 
-        if (!targetInputChannel) {
-            throw new Error("Could not resolve target channel entity for admin promotion.");
-        }
+        if (!targetInputChannel) throw new Error("Could not resolve target channel entity.");
 
         try {
-            await client.invoke(new Api.channels.InviteToChannel({
-                channel: targetInputChannel,
-                users: [botInputUser]
-            }));
+            await client.invoke(new Api.channels.InviteToChannel({ channel: targetInputChannel, users: [botInputUser] }));
         } catch (invErr) {}
 
         const isBroadcast = (targetEntity.className === 'Channel' && !targetEntity.megagroup);
         const adminRights = isBroadcast
-            ? new Api.ChatAdminRights({
-                changeInfo: true,
-                postMessages: true,
-                editMessages: true,
-                deleteMessages: true,
-                inviteUsers: true,
-                addAdmins: false,
-                manageCall: true
-            })
-            : new Api.ChatAdminRights({
-                changeInfo: true,
-                deleteMessages: true,
-                banUsers: true,
-                inviteUsers: true,
-                pinMessages: true,
-                addAdmins: false,
-                anonymous: false,
-                manageCall: true,
-                other: true
-            });
+            ? new Api.ChatAdminRights({ changeInfo: true, postMessages: true, editMessages: true, deleteMessages: true, inviteUsers: true, addAdmins: false, manageCall: true })
+            : new Api.ChatAdminRights({ changeInfo: true, deleteMessages: true, banUsers: true, inviteUsers: true, pinMessages: true, addAdmins: false, anonymous: false, manageCall: true, other: true });
 
         await client.invoke(new Api.channels.EditAdmin({
             channel: targetInputChannel,
@@ -892,30 +781,23 @@ app.post('/api/tg/connect-group', async (req, res) => {
             rank: 'VS Guardian'
         }));
 
-        await db.ref(`connected_bots/${chatId}`).set({
-            connected: true,
-            chatId: chatId,
-            updatedAt: Date.now()
-        });
+        await db.ref(`connected_bots/${chatId}`).set({ connected: true, chatId: chatId, updatedAt: Date.now() });
 
-        res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers successfully!` });
+        res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers!` });
     } catch (e) {
         console.error("Connect Group Error:", e);
         res.status(500).json({ error: e.message || "Failed to add bot as admin" });
     }
 });
 
-// Broadcast (LOCKED TO ACTIVE PLAN)
+// Broadcast
 app.post('/api/tg/broadcast', async (req, res) => {
     const { chatId, text, photoUrl, buttons } = req.body;
     try {
         const check = await getOwnerSubByChat(chatId);
-        if (!check.hasSub) {
-            return res.status(403).json({ success: false, error: check.reason, message: check.message });
-        }
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
         if (!text && !photoUrl) throw new Error("Message content or image required");
-
         const keyboard = buildInlineButtons(buttons);
         const extra = { parse_mode: 'Markdown' };
         if (keyboard) extra.reply_markup = keyboard.reply_markup;
@@ -926,51 +808,39 @@ app.post('/api/tg/broadcast', async (req, res) => {
         } else {
             await bot.telegram.sendMessage(chatId, text, extra);
         }
-
         res.json({ success: true, message: "Announcement broadcasted successfully to the group!" });
     } catch (e) {
         res.status(500).json({ error: e.message || "Failed to send broadcast announcement" });
     }
 });
 
-// Section Save (LOCKED TO ACTIVE PLAN)
+// Section Save
 app.post('/api/tg/save-section', async (req, res) => {
     const { chatId, sectionKey, data } = req.body;
     try {
         if (!chatId || !sectionKey) throw new Error("Missing parameters");
-
         const check = await getOwnerSubByChat(chatId);
-        if (!check.hasSub) {
-            return res.status(403).json({ success: false, error: check.reason, message: check.message });
-        }
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
         await db.ref(`groups/${chatId}/settings/${sectionKey}`).set(data);
-        if (chatSettingsCache[chatId]) {
-            chatSettingsCache[chatId][sectionKey] = data;
-        }
+        if (chatSettingsCache[chatId]) chatSettingsCache[chatId][sectionKey] = data;
         res.json({ success: true, message: "Section policy saved successfully!" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// Test Welcome (LOCKED TO ACTIVE PLAN)
+// Test Welcome
 app.post('/api/tg/test-welcome', async (req, res) => {
     const { chatId, photoUrl, text, buttons, autoDeleteSeconds } = req.body;
     try {
         const check = await getOwnerSubByChat(chatId);
-        if (!check.hasSub) {
-            return res.status(403).json({ success: false, error: check.reason, message: check.message });
-        }
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
         const testUser = `[Admin (Test)](tg://user?id=${botId || 0})`;
         const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
         const formatted = (text || "Welcome {mention} to {chat}!")
-            .replace(/{mention}/g, testUser)
-            .replace(/{user}/g, testUser)
-            .replace(/{name}/g, "Admin User")
-            .replace(/{username}/g, "@AdminUser")
-            .replace(/{chat}/g, chatInfo.title);
+            .replace(/{mention}/g, testUser).replace(/{user}/g, testUser).replace(/{name}/g, "Admin User").replace(/{username}/g, "@AdminUser").replace(/{chat}/g, chatInfo.title);
 
         const keyboard = buildInlineButtons(buttons);
         const extra = { parse_mode: 'Markdown' };
@@ -978,12 +848,8 @@ app.post('/api/tg/test-welcome', async (req, res) => {
 
         let sentMsg;
         const validPhoto = (photoUrl || "").trim();
-
         if (validPhoto && (validPhoto.startsWith('http://') || validPhoto.startsWith('https://'))) {
-            sentMsg = await bot.telegram.sendPhoto(chatId, validPhoto, {
-                caption: `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`,
-                ...extra
-            }).catch(async () => {
+            sentMsg = await bot.telegram.sendPhoto(chatId, validPhoto, { caption: `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, ...extra }).catch(async () => {
                 return await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, extra);
             });
         } else {
@@ -992,31 +858,23 @@ app.post('/api/tg/test-welcome', async (req, res) => {
 
         const sec = parseInt(autoDeleteSeconds || 0);
         if (sec > 0 && sentMsg && sentMsg.message_id) {
-            setTimeout(() => {
-                bot.telegram.deleteMessage(chatId, sentMsg.message_id).catch(() => {});
-            }, sec * 1000);
+            setTimeout(() => { bot.telegram.deleteMessage(chatId, sentMsg.message_id).catch(() => {}); }, sec * 1000);
         }
-
         res.json({ success: true, message: `Test welcome delivered! ${sec > 0 ? `(Auto-deletes in ${sec}s)` : ''}` });
     } catch (e) {
         res.status(500).json({ error: e.message || "Failed to send test message." });
     }
 });
 
-// Announce Lock (LOCKED TO ACTIVE PLAN)
+// Announce Lock
 app.post('/api/tg/announce-lock', async (req, res) => {
     const { chatId, locked, message } = req.body;
     try {
         const check = await getOwnerSubByChat(chatId);
-        if (!check.hasSub) {
-            return res.status(403).json({ success: false, error: check.reason, message: check.message });
-        }
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
-        const defaultMsg = locked 
-            ? "🔒 *This conversation has been temporarily muted by community administrators.*" 
-            : "🔓 *Conversation restriction lifted. Members may now post messages.*";
+        const defaultMsg = locked ? "🔒 *This conversation has been temporarily muted by community administrators.*" : "🔓 *Conversation restriction lifted. Members may now post messages.*";
         const broadcast = message && message.trim() ? message.trim() : defaultMsg;
-
         await bot.telegram.sendMessage(chatId, broadcast, { parse_mode: 'Markdown' });
         res.json({ success: true });
     } catch (e) {
@@ -1024,39 +882,32 @@ app.post('/api/tg/announce-lock', async (req, res) => {
     }
 });
 
-// Get Left Members
+// Left Members & Scammers
 app.post('/api/tg/get-left-members', async (req, res) => {
     const { chatId } = req.body;
     try {
         const snap = await db.ref(`groups/${chatId}/left_members`).once('value');
         const data = snap.val() || {};
-        const list = Object.keys(data).map(uid => ({
-            id: uid,
-            ...data[uid]
-        })).sort((a,b) => b.timestamp - a.timestamp);
+        const list = Object.keys(data).map(uid => ({ id: uid, ...data[uid] })).sort((a,b) => b.timestamp - a.timestamp);
         res.json({ success: true, leftMembers: list });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// Get Scammers List
 app.post('/api/tg/get-scammers', async (req, res) => {
     const { chatId } = req.body;
     try {
         const snap = await db.ref(`groups/${chatId}/scammers`).once('value');
         const data = snap.val() || {};
-        const list = Object.keys(data).map(uid => ({
-            id: uid,
-            ...data[uid]
-        }));
+        const list = Object.keys(data).map(uid => ({ id: uid, ...data[uid] }));
         res.json({ success: true, scammers: list });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// Helper: Generate Random License Key
+// Helper: License Key Generator
 function generateLicenseKey() {
     const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -1064,7 +915,7 @@ function generateLicenseKey() {
     return `VS-${p1}-${p2}-${p3}`;
 }
 
-// 1. Super Admin: Generate License Keys
+// Admin APIs
 app.post('/api/admin/generate-license', async (req, res) => {
     const { planId, customDurationDays } = req.body;
     try {
@@ -1099,7 +950,6 @@ app.post('/api/admin/generate-license', async (req, res) => {
     }
 });
 
-// 2. Super Admin: List All Licenses
 app.get('/api/admin/list-licenses', async (req, res) => {
     try {
         const snap = await db.ref('licenses').once('value');
@@ -1111,7 +961,6 @@ app.get('/api/admin/list-licenses', async (req, res) => {
     }
 });
 
-// 3. Super Admin: Revoke License
 app.post('/api/admin/revoke-license', async (req, res) => {
     const { key } = req.body;
     try {
@@ -1122,7 +971,6 @@ app.post('/api/admin/revoke-license', async (req, res) => {
     }
 });
 
-// 4. Super Admin: Extend License
 app.post('/api/admin/extend-license', async (req, res) => {
     const { key, days } = req.body;
     try {
@@ -1135,7 +983,10 @@ app.post('/api/admin/extend-license', async (req, res) => {
         const newGrace = newExp + (7 * 24 * 60 * 60 * 1000);
 
         await db.ref(`licenses/${key}`).update({ expiresAt: newExp, graceEndsAt: newGrace });
-        if (lic.ownerTelegramId) {
+        if (lic.claimedUserId) {
+            await db.ref(`subscriptions/by_uid/${lic.claimedUserId}`).update({ expiresAt: newExp, graceEndsAt: newGrace });
+        }
+        if (lic.ownerTelegramId && lic.ownerTelegramId !== 'Unlinked') {
             await db.ref(`subscriptions/${lic.ownerTelegramId}`).update({ expiresAt: newExp, graceEndsAt: newGrace });
         }
         res.json({ success: true, message: `License extended by ${days} days!` });
@@ -1144,23 +995,21 @@ app.post('/api/admin/extend-license', async (req, res) => {
     }
 });
 
-// 5. Super Admin: List All Users & Passwords for Recovery
 app.get('/api/admin/users-list', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
-        const subsSnap = await db.ref('subscriptions').once('value');
+        const subsSnap = await db.ref('subscriptions/by_uid').once('value');
         const usersData = usersSnap.val() || {};
         const subsData = subsSnap.val() || {};
 
         const list = Object.keys(usersData).map(uid => {
             const u = usersData[uid];
-            const tgId = u.owner_tg_id;
-            const sub = tgId && subsData[tgId] ? subsData[tgId] : null;
+            const sub = subsData[uid] || null;
             return {
                 uid,
                 email: u.security_vault?.email || 'N/A',
                 password: u.security_vault?.password || 'N/A',
-                telegramId: tgId || 'Not Linked',
+                telegramId: u.owner_tg_id || 'Not Linked',
                 subscription: sub ? sub.planName : 'No Active License',
                 expiresAt: sub ? sub.expiresAt : null
             };
@@ -1171,11 +1020,14 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
-// 6. User: Claim License Key
+// =============================================================================
+// CLAIM LICENSE (BINDS TO USER ACCOUNT UID & EMAIL - NO TELEGRAM ID REQUIRED)
+// =============================================================================
 app.post('/api/license/claim', async (req, res) => {
-    const { licenseKey, ownerTelegramId, userEmail } = req.body;
+    const { licenseKey, userId, userEmail, session, ownerTelegramId: providedTgId } = req.body;
     try {
-        if (!licenseKey || !ownerTelegramId) throw new Error("License key and Telegram ID are required.");
+        if (!licenseKey) throw new Error("License key is required.");
+        if (!userId && !userEmail && !providedTgId) throw new Error("User account required.");
 
         const cleanKey = licenseKey.trim().toUpperCase();
         const snap = await db.ref(`licenses/${cleanKey}`).once('value');
@@ -1185,14 +1037,26 @@ app.post('/api/license/claim', async (req, res) => {
         if (license.status === "claimed") throw new Error("This license key has already been claimed.");
         if (license.status === "revoked") throw new Error("This license key has been revoked by admin.");
 
+        // Auto-extract Telegram ID from session if missing
+        let ownerTelegramId = providedTgId;
+        if ((!ownerTelegramId || ownerTelegramId === 'null') && session) {
+            try {
+                const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 3 });
+                await client.connect();
+                const me = await client.getMe();
+                if (me && me.id) ownerTelegramId = me.id.toString();
+            } catch (e) {}
+        }
+
         const now = Date.now();
         const expiresAt = now + (license.durationDays * 24 * 60 * 60 * 1000);
         const graceEndsAt = expiresAt + (license.graceDays * 24 * 60 * 60 * 1000);
 
         await db.ref(`licenses/${cleanKey}`).update({
             status: "claimed",
-            claimedBy: userEmail || "Anonymous",
-            ownerTelegramId,
+            claimedBy: userEmail || userId || "Anonymous",
+            claimedUserId: userId || '',
+            ownerTelegramId: ownerTelegramId || 'Unlinked',
             claimedAt: now,
             expiresAt,
             graceEndsAt
@@ -1203,27 +1067,45 @@ app.post('/api/license/claim', async (req, res) => {
             planId: license.planId,
             planName: license.planName,
             maxCommunities: license.maxCommunities,
+            userEmail: userEmail || '',
             claimedAt: now,
             expiresAt,
             graceEndsAt
         };
 
-        await db.ref(`subscriptions/${ownerTelegramId}`).set(subData);
-        subscriptionCache = {};
+        // Binds to Firebase Account (Primary!)
+        if (userId) {
+            await db.ref(`subscriptions/by_uid/${userId}`).set(subData);
+        }
+        if (ownerTelegramId && ownerTelegramId !== 'Unlinked') {
+            await db.ref(`subscriptions/${ownerTelegramId}`).set(subData);
+            if (userId) {
+                await db.ref(`users/${userId}/owner_tg_id`).set(ownerTelegramId);
+            }
+        }
 
-        res.json({ success: true, message: `License claimed successfully! Plan: ${license.planName}`, subscription: subData });
+        subscriptionCache = {};
+        res.json({ success: true, message: `License activated! Plan: ${license.planName}`, subscription: subData, telegramId: ownerTelegramId });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// 7. User: Get Subscription Status
+// GET SUBSCRIPTION STATUS (CHECKS USER ID FIRST, THEN TG ID)
 app.post('/api/license/status', async (req, res) => {
-    const { ownerTelegramId } = req.body;
+    const { userId, ownerTelegramId } = req.body;
     try {
-        if (!ownerTelegramId) throw new Error("Telegram ID required");
-        const snap = await db.ref(`subscriptions/${ownerTelegramId}`).once('value');
-        const sub = snap.val();
+        let sub = null;
+
+        if (userId) {
+            const snapUid = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
+            sub = snapUid.val();
+        }
+
+        if (!sub && ownerTelegramId && ownerTelegramId !== 'null') {
+            const snapTg = await db.ref(`subscriptions/${ownerTelegramId}`).once('value');
+            sub = snapTg.val();
+        }
 
         if (!sub) {
             return res.json({ hasSubscription: false });
@@ -1248,7 +1130,7 @@ app.post('/api/license/status', async (req, res) => {
     }
 });
 
-// 8. Super Admin: Global System Statistics
+// System Stats
 app.get('/api/admin/system-stats', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
