@@ -583,6 +583,10 @@ async function extractCommunities(client) {
     const groups = [];
     const channels = [];
 
+    // Fetch live connected groups from Firebase
+    const connectedSnap = await db.ref('connected_bots').once('value');
+    const connectedMap = connectedSnap.val() || {};
+
     for (const d of dialogs) {
         if (!d.isGroup && !d.isChannel) continue;
         const e = d.entity;
@@ -591,7 +595,6 @@ async function extractCommunities(client) {
         if (e.deactivated || e.migratedTo) continue;
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') continue;
 
-        // কঠোর ফিল্টারিং: ইউজারকে অবশ্যই ওনার অথবা বট অ্যাড করার মতো অ্যাডমিন হতে হবে
         const isCreator = Boolean(e.creator);
         const hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo));
         const isBasicAdmin = Boolean(e.admin);
@@ -613,8 +616,8 @@ async function extractCommunities(client) {
         const isBroadcastChannel = d.isChannel && !e.megagroup;
         const chatIdStr = d.id.toString();
 
-        let isBotConnected = false;
-        if (botId) {
+        let isBotConnected = Boolean(connectedMap[chatIdStr] || connectedMap[`-100${e.id}`]);
+        if (!isBotConnected && botId) {
             try {
                 const botMember = await bot.telegram.getChatMember(chatIdStr, botId);
                 if (botMember && ['administrator', 'creator'].includes(botMember.status)) {
@@ -721,7 +724,7 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
 });
 
 // =============================================================================
-// BOT AUTO-ADD & PROMOTE (100% FIXED - ZERO CASTING ERRORS)
+// BOT AUTO-ADD & PROMOTE (WITH SUBSCRIPTION VALIDATION)
 // =============================================================================
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
@@ -729,16 +732,54 @@ app.post('/api/tg/connect-group', async (req, res) => {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
 
+        let myTgId = null;
         try {
             const me = await client.getMe();
             if (me && me.id) {
-                await db.ref(`groups/${chatId}/merged_owner`).set(me.id.toString());
+                myTgId = me.id.toString();
+                await db.ref(`groups/${chatId}/merged_owner`).set(myTgId);
             }
         } catch (e) {}
 
+        // CHECK USER'S SUBSCRIPTION BEFORE ADDING BOT
+        if (myTgId) {
+            const subSnap = await db.ref(`subscriptions/${myTgId}`).once('value');
+            const sub = subSnap.val();
+            const now = Date.now();
+
+            if (!sub || (sub.graceEndsAt && now > sub.graceEndsAt)) {
+                return res.status(403).json({
+                    success: false,
+                    error: "NO_ACTIVE_LICENSE",
+                    message: "You need an active subscription license to add VS Protection Bot. Please purchase or claim a license."
+                });
+            }
+
+            // Check Plan Community Limit
+            const maxAllowed = sub.maxCommunities || 1;
+            const connectedSnap = await db.ref('connected_bots').once('value');
+            const allConnected = connectedSnap.val() || {};
+            
+            // Count how many groups this owner already connected
+            let userConnectedCount = 0;
+            const groupKeys = Object.keys(allConnected);
+            for (const gId of groupKeys) {
+                const ownerSnap = await db.ref(`groups/${gId}/merged_owner`).once('value');
+                if (ownerSnap.val() === myTgId && gId !== chatId) {
+                    userConnectedCount++;
+                }
+            }
+
+            if (userConnectedCount >= maxAllowed) {
+                return res.status(403).json({
+                    success: false,
+                    error: "LIMIT_REACHED",
+                    message: `Your current plan (${sub.planName}) allows max ${maxAllowed} community. Please upgrade to a higher tier plan.`
+                });
+            }
+        }
+
         const dialogs = await client.getDialogs({ limit: 100 });
-        
-        // ১. নিখুঁতভাবে চ্যানেল বা গ্রুপ সত্তা বের করা
         const cleanId = chatId.toString().replace('-100', '').replace('-', '');
         let targetDialog = dialogs.find(d => 
             (d.isChannel || d.entity?.className === 'Channel') &&
@@ -757,8 +798,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
         }
 
         const targetEntity = targetDialog.entity;
-
-        // ২. বটের ইউজার সত্তা আনা
         const botPeer = await client.getInputEntity(BOT_USERNAME);
         const botInputUser = new Api.InputUser({
             userId: botPeer.userId,
@@ -767,14 +806,12 @@ app.post('/api/tg/connect-group', async (req, res) => {
 
         let targetInputChannel = null;
 
-        // ৩. সুপারগ্রুপ বা চ্যানেল হলে সরাসরি InputChannel তৈরি করা
         if (targetEntity.className === 'Channel') {
             targetInputChannel = new Api.InputChannel({
                 channelId: targetEntity.id,
                 accessHash: targetEntity.accessHash
             });
         } else if (targetEntity.className === 'Chat') {
-            // সাধারণ বেসিক গ্রুপ হলে মাইগ্রেশন
             try {
                 await client.invoke(new Api.messages.AddChatUser({
                     chatId: targetEntity.id,
@@ -814,7 +851,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             throw new Error("Could not resolve target channel entity for admin promotion.");
         }
 
-        // ৪. ইনভাইট পাঠানো
         try {
             await client.invoke(new Api.channels.InviteToChannel({
                 channel: targetInputChannel,
@@ -822,7 +858,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }));
         } catch (invErr) {}
 
-        // ৫. চ্যানেল বনাম মেগাগ্ৰুপের সঠিক পারমিশন সেট
         const isBroadcast = (targetEntity.className === 'Channel' && !targetEntity.megagroup);
         const adminRights = isBroadcast
             ? new Api.ChatAdminRights({
@@ -846,7 +881,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 other: true
             });
 
-        // ৬. ফুল অ্যাডমিন পারমিশন প্রদান (নো কাস্টিং এরর!)
         await client.invoke(new Api.channels.EditAdmin({
             channel: targetInputChannel,
             userId: botInputUser,
@@ -854,8 +888,10 @@ app.post('/api/tg/connect-group', async (req, res) => {
             rank: 'VS Guardian'
         }));
 
+        // Permanent save into Firebase to prevent reverting on back/refresh
         await db.ref(`connected_bots/${chatId}`).set({
             connected: true,
+            chatId: chatId,
             updatedAt: Date.now()
         });
 
@@ -1004,7 +1040,7 @@ function generateLicenseKey() {
     return `VS-${p1}-${p2}-${p3}`;
 }
 
-// 1. Super Admin: Generate License Keys
+// Super Admin APIs
 app.post('/api/admin/generate-license', async (req, res) => {
     const { planId, customDurationDays } = req.body;
     try {
@@ -1039,7 +1075,6 @@ app.post('/api/admin/generate-license', async (req, res) => {
     }
 });
 
-// 2. Super Admin: List All Licenses
 app.get('/api/admin/list-licenses', async (req, res) => {
     try {
         const snap = await db.ref('licenses').once('value');
@@ -1051,7 +1086,6 @@ app.get('/api/admin/list-licenses', async (req, res) => {
     }
 });
 
-// 3. Super Admin: Revoke License
 app.post('/api/admin/revoke-license', async (req, res) => {
     const { key } = req.body;
     try {
@@ -1062,7 +1096,6 @@ app.post('/api/admin/revoke-license', async (req, res) => {
     }
 });
 
-// 4. Super Admin: Extend License
 app.post('/api/admin/extend-license', async (req, res) => {
     const { key, days } = req.body;
     try {
@@ -1084,7 +1117,6 @@ app.post('/api/admin/extend-license', async (req, res) => {
     }
 });
 
-// 5. Super Admin: List All Users & Passwords for Recovery
 app.get('/api/admin/users-list', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
@@ -1111,7 +1143,6 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
-// 6. User: Claim License Key
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, ownerTelegramId, userEmail } = req.body;
     try {
@@ -1157,7 +1188,6 @@ app.post('/api/license/claim', async (req, res) => {
     }
 });
 
-// 7. User: Get Subscription Status
 app.post('/api/license/status', async (req, res) => {
     const { ownerTelegramId } = req.body;
     try {
@@ -1188,7 +1218,6 @@ app.post('/api/license/status', async (req, res) => {
     }
 });
 
-// 8. Super Admin: Global System Statistics
 app.get('/api/admin/system-stats', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
