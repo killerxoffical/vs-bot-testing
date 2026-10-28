@@ -42,9 +42,7 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
-// =============================================================================
-// SEPARATE ADMIN ROUTE (/admin -> admin.html)
-// =============================================================================
+// Separate Admin Route (/admin -> admin.html)
 app.get('/admin', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'admin.html');
     const p2 = path.join(__dirname, 'admin.html');
@@ -423,7 +421,7 @@ bot.on('message', async (ctx, next) => {
 
         if (isAdmin) return next();
 
-        // 1. Chat Lock
+        // 1. Chat Lock Check
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
@@ -576,7 +574,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (RELIABLE ZERO-DROP COMMUNITY FETCHER)
+// GRAMJS MTPROTO (STRICT OWNER & PROMOTABLE ADMIN FILTER)
 // =============================================================================
 const tempAuthClients = {};
 
@@ -585,19 +583,24 @@ async function extractCommunities(client) {
     const groups = [];
     const channels = [];
 
-    const validDialogs = dialogs.filter(d => {
-        if (!d.isGroup && !d.isChannel) return false;
+    for (const d of dialogs) {
+        if (!d.isGroup && !d.isChannel) continue;
         const e = d.entity;
-        if (!e) return false;
-        if (e.deactivated || e.migratedTo) return false;
-        if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') return false;
-        return true;
-    });
+        if (!e) continue;
 
-    for (const d of validDialogs) {
-        const entity = d.entity;
-        const isCreator = Boolean(entity.creator);
-        const isAdmin = Boolean(entity.adminRights || entity.admin);
+        // Skip dead/deactivated/migrated chats
+        if (e.deactivated || e.migratedTo) continue;
+        if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') continue;
+
+        // কঠোর ফিল্টারিং: ইউজারকে অবশ্যই Creator/Owner হতে হবে অথবা বট অ্যাড করার পারমিশন থাকতে হবে
+        const isCreator = Boolean(e.creator);
+        const hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo));
+        const isBasicAdmin = Boolean(e.admin);
+
+        // সাধারণ মেম্বার বা পারমিশনহীন চ্যাট পুরোপুরি বাদ দেওয়া হলো
+        if (!isCreator && !hasAdminRights && !isBasicAdmin) {
+            continue;
+        }
 
         let photoBase64 = null;
         try {
@@ -607,9 +610,9 @@ async function extractCommunities(client) {
                     photoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
                 }
             }
-        } catch (e) {}
+        } catch (err) {}
 
-        const isBroadcastChannel = d.isChannel && !entity.megagroup;
+        const isBroadcastChannel = d.isChannel && !e.megagroup;
         const chatIdStr = d.id.toString();
 
         let isBotConnected = false;
@@ -622,14 +625,14 @@ async function extractCommunities(client) {
             } catch (err) {}
         }
 
-        const count = entity.participantsCount || 1;
-        const role = isCreator ? 'Owner' : (isAdmin ? 'Admin' : 'Member');
+        const count = e.participantsCount || 1;
+        const role = isCreator ? 'Owner' : 'Admin';
 
         const itemData = {
             id: chatIdStr,
             title: d.title || "Community Hub",
             role: role,
-            canAddBot: isCreator || isAdmin || true,
+            canAddBot: true,
             isBotConnected: isBotConnected,
             photo: photoBase64
         };
@@ -944,9 +947,7 @@ app.post('/api/tg/get-scammers', async (req, res) => {
     }
 });
 
-// =============================================================================
-// SUPER ADMIN MASTER CONTROL REST APIS
-// =============================================================================
+// Helper: Generate Random License Key
 function generateLicenseKey() {
     const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -954,7 +955,7 @@ function generateLicenseKey() {
     return `VS-${p1}-${p2}-${p3}`;
 }
 
-// 1. Generate Key
+// 1. Super Admin: Generate License Keys
 app.post('/api/admin/generate-license', async (req, res) => {
     const { planId, customDurationDays } = req.body;
     try {
@@ -989,7 +990,7 @@ app.post('/api/admin/generate-license', async (req, res) => {
     }
 });
 
-// 2. List Licenses
+// 2. Super Admin: List All Licenses
 app.get('/api/admin/list-licenses', async (req, res) => {
     try {
         const snap = await db.ref('licenses').once('value');
@@ -1001,7 +1002,7 @@ app.get('/api/admin/list-licenses', async (req, res) => {
     }
 });
 
-// 3. Revoke License
+// 3. Super Admin: Revoke License
 app.post('/api/admin/revoke-license', async (req, res) => {
     const { key } = req.body;
     try {
@@ -1012,7 +1013,7 @@ app.post('/api/admin/revoke-license', async (req, res) => {
     }
 });
 
-// 4. Extend License
+// 4. Super Admin: Extend License
 app.post('/api/admin/extend-license', async (req, res) => {
     const { key, days } = req.body;
     try {
@@ -1034,7 +1035,7 @@ app.post('/api/admin/extend-license', async (req, res) => {
     }
 });
 
-// 5. List All Users & Passwords for Admin Recovery
+// 5. Super Admin: List All Users & Passwords for Recovery
 app.get('/api/admin/users-list', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
@@ -1174,7 +1175,7 @@ app.get('/api/admin/system-stats', async (req, res) => {
     }
 });
 
-// Fallback Route (SPA Route for Users)
+// Fallback Route
 app.get('*', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'index.html');
     const p2 = path.join(__dirname, 'index.html');
