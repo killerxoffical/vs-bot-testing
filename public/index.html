@@ -185,7 +185,7 @@
                             <span id="subPlanName" class="text-xs font-extrabold text-slate-900">Subscription Verification</span>
                             <span id="subStatusBadge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Checking...</span>
                         </div>
-                        <p id="subTimingMeta" class="text-[11px] text-slate-500 mt-0.5">Please claim a license key or contact admin to activate protection.</p>
+                        <p id="subTimingMeta" class="text-[11px] text-slate-500 mt-0.5">Verifying subscription status with cloud server...</p>
                     </div>
                 </div>
 
@@ -672,7 +672,7 @@
         </div>
     </div>
 
-    <!-- MODAL: CLAIM LICENSE KEY -->
+    <!-- MODAL: CLAIM LICENSE KEY (NO TELEGRAM ID REQUIRED) -->
     <div id="claimLicenseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-200 relative text-left">
             <button onclick="closeClaimLicenseModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
@@ -752,7 +752,7 @@
 
         let cachedGroupsList = [];
         let cachedChannelsList = [];
-        let isUserSubscribed = false; // Real-time subscription state
+        let isUserSubscribed = false;
 
         function renderPricingCards(containerId) {
             const container = document.getElementById(containerId);
@@ -922,10 +922,11 @@
             document.getElementById('claimLicenseModal').classList.add('hidden');
         }
 
+        // 1-CLICK CLAIM LICENSE (NO TELEGRAM ID REQUIRED)
         async function submitClaimLicense() {
             const key = document.getElementById('inputClaimKey').value.trim();
             if (!key) return Swal.fire('License Required', 'Please enter your license key.', 'warning');
-            if (!userTelegramId) return Swal.fire('Telegram Required', 'Please connect your Telegram account first to bind the license.', 'warning');
+            if (!currentUser) return Swal.fire('Login Required', 'Please login to your account first.', 'warning');
 
             Swal.showLoading();
             try {
@@ -934,8 +935,10 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         licenseKey: key,
-                        ownerTelegramId: userTelegramId,
-                        userEmail: currentUser?.email || 'Anonymous'
+                        userId: currentUser.uid,
+                        userEmail: currentUser.email,
+                        session: tgSession,
+                        ownerTelegramId: userTelegramId
                     })
                 });
                 const data = await res.json();
@@ -943,6 +946,10 @@
 
                 if (data.success) {
                     closeClaimLicenseModal();
+                    if (data.telegramId) {
+                        userTelegramId = data.telegramId;
+                        localStorage.setItem('vs_owner_tg_id', userTelegramId);
+                    }
                     Swal.fire('Activated!', data.message, 'success');
                     await checkSubscriptionStatus(false);
                 } else {
@@ -953,14 +960,17 @@
             }
         }
 
-        // REAL-TIME SUBSCRIPTION CHECKER WITH GATEWAY
+        // REAL-TIME SUBSCRIPTION CHECKER (VERIFIES BY USER ID & TELEGRAM ID)
         async function checkSubscriptionStatus(showGatePopup = true) {
-            if (!userTelegramId) return;
+            if (!currentUser) return;
             try {
                 const res = await fetch('/api/license/status', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ ownerTelegramId: userTelegramId })
+                    body: JSON.stringify({
+                        userId: currentUser.uid,
+                        ownerTelegramId: userTelegramId
+                    })
                 });
                 const data = await res.json();
                 const banner = document.getElementById('licenseStatusBanner');
@@ -978,9 +988,9 @@
                         metaEl.innerHTML = `<span class="text-rose-600 font-bold">Subscription expired. All bot protection is OFF. Renew with @Blackmoney54.</span>`;
                         banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-rose-50/60 border-rose-200";
 
-                        if (showGatePopup) promptSubscriptionGate("Your subscription and grace period have expired! All bot protection is shut off.");
+                        if (showGatePopup) promptSubscriptionGate("Your subscription and grace period have expired! Bot protection is shut off.");
                     } else if (data.isGracePeriod) {
-                        isUserSubscribed = true; // Still within 7 days grace
+                        isUserSubscribed = true;
                         badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse";
                         badgeEl.innerText = "GRACE PERIOD ACTIVE";
                         metaEl.innerHTML = `<span class="text-amber-700 font-bold">${data.graceDaysLeft} days left in grace period before protection automatically shuts off!</span>`;
@@ -1170,7 +1180,7 @@
                     document.getElementById('communitiesContainer').classList.remove('hidden');
                     document.getElementById('btnSync').classList.remove('hidden');
                     await syncCommunities(false);
-                    await checkSubscriptionStatus(true); // Gated alert on login
+                    await checkSubscriptionStatus(true);
                 } else {
                     document.getElementById('tgConnectCard').classList.remove('hidden');
                     document.getElementById('communitiesContainer').classList.add('hidden');
@@ -1341,6 +1351,10 @@
                 if (showPopup) Swal.close();
 
                 if (data.success) {
+                    if (data.telegramId) {
+                        userTelegramId = data.telegramId;
+                        localStorage.setItem('vs_owner_tg_id', userTelegramId);
+                    }
                     renderCommunities(data.groups, data.channels);
                     if (showPopup) Swal.fire('Synced!', 'Community lists verified.', 'success');
                 }
@@ -1433,11 +1447,10 @@
 
         // CONNECT BOT WITH REAL-TIME GATEWAY
         async function connectBot(chatId) {
-            if (!userTelegramId) {
-                return Swal.fire('Telegram Required', 'Please connect your Telegram account first.', 'warning');
+            if (!currentUser) {
+                return Swal.fire('Login Required', 'Please login to your account first.', 'warning');
             }
 
-            // Gated Subscription Check
             if (!isUserSubscribed) {
                 return promptSubscriptionGate("You need an active subscription license to deploy VS Protection Bot. View our packages?");
             }
@@ -1453,7 +1466,11 @@
                 const res = await fetch('/api/tg/connect-group', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ session: tgSession, chatId })
+                    body: JSON.stringify({ 
+                        session: tgSession, 
+                        chatId, 
+                        userId: currentUser.uid 
+                    })
                 });
                 const data = await res.json();
                 
@@ -1635,4 +1652,3 @@
     </script>
 </body>
 </html>
-3. **কানেক্টেড স্ট্যাটাস পার্মানেন্ট:** কানেক্ট করার পর ব্যাক বাটনে চাপলে কখনোই আর রিভার্ট হয়ে "Auto-Add" হবে না।
