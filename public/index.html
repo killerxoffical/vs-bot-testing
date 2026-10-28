@@ -155,7 +155,7 @@
             </div>
         </section>
 
-        <!-- PRICING SECTION IN LANDING -->
+        <!-- PRICING SECTION -->
         <section class="w-full bg-slate-100/60 py-16 px-6 border-t border-slate-200">
             <div class="max-w-7xl mx-auto space-y-10 text-center">
                 <div class="space-y-2">
@@ -196,11 +196,7 @@
                     </button>
                     <button onclick="openClaimLicenseModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                         <i data-lucide="key" class="w-3.5 h-3.5"></i>
-                        <span>Claim Key</span>
-                    </button>
-                    <button onclick="openSuperAdminModal()" id="btnSuperAdmin" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-                        <span>Admin Keys</span>
+                        <span>Claim License Key</span>
                     </button>
                 </div>
             </div>
@@ -283,10 +279,10 @@
             </div>
         </div>
 
-        <!-- SUB-VIEW B: FULL GROUP PANEL (FULL-SCREEN WORKSPACE) -->
+        <!-- SUB-VIEW B: FULL GROUP PANEL (FULL SCREEN WORKSPACE) -->
         <div id="dedicatedGroupPanelView" class="hidden flex-1 w-full h-full overflow-hidden flex flex-col">
             
-            <!-- PANEL HEADER (TOP BAR) -->
+            <!-- GROUP PANEL HEADER BAR -->
             <div class="frosted-nav px-5 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-30 shadow-sm">
                 <div class="flex items-center gap-3.5">
                     <button onclick="backToCommunities()" class="w-9 h-9 rounded-xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition shrink-0 shadow-sm">
@@ -360,7 +356,7 @@
                     <div id="tabContent-security" class="space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
                             
-                            <!-- Emoji Spam Guard -->
+                            <!-- 1. Emoji Spam Guard -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -382,12 +378,12 @@
 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Max Emojis Allowed:</label>
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Max Emojis Allowed Per Message:</label>
                                         <input id="emojiMaxCount" type="number" min="0" max="50" value="2" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                         <span class="text-[10px] text-slate-400 mt-0.5 block">0 = Block all emojis completely.</span>
                                     </div>
                                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Warning Auto-Delete Timer:</label>
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Auto-Delete Warning Timer:</label>
                                         <select id="emojiAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                             <option value="0">Never Delete</option>
                                             <option value="5" selected>5 Seconds</option>
@@ -421,7 +417,7 @@
                                 </div>
                             </div>
 
-                            <!-- Anti-Button Messages Block -->
+                            <!-- 2. Anti-Button Messages Block -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -464,7 +460,7 @@
                                 </div>
                             </div>
 
-                            <!-- Name Change Tracker -->
+                            <!-- 3. Name Change Tracker -->
                             <div class="section-divider flex items-center justify-between p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100">
                                 <div class="flex items-center gap-2.5">
                                     <div class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center">
@@ -481,7 +477,7 @@
                                 </div>
                             </div>
 
-                            <!-- Chat Lock -->
+                            <!-- 4. Chat Lock -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -495,10 +491,12 @@
                                     </div>
                                     <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
+                                
                                 <div>
                                     <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Broadcast Message:</label>
                                     <textarea id="chatLockMsg" rows="2" oninput="updateChatLockPreview()" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                                 </div>
+
                                 <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
                                     <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
                                     <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
@@ -506,6 +504,7 @@
                                         <p id="chatLockPreviewText" class="leading-relaxed text-xs">🔒 This conversation has been temporarily muted by community administrators.</p>
                                     </div>
                                 </div>
+
                                 <div class="flex justify-end gap-2">
                                     <button type="button" onclick="saveChatLockSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Lock Policy</button>
                                     <button type="button" onclick="broadcastLockState()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
@@ -515,7 +514,7 @@
                                 </div>
                             </div>
 
-                            <!-- Anti-Link -->
+                            <!-- 5. Anti-Link -->
                             <div class="space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -529,10 +528,31 @@
                                     </div>
                                     <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
+
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="antiLinkSilent" onchange="updateAntiLinkPreview()" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    <label for="antiLinkSilent" class="text-xs font-semibold text-slate-600">Silent Mode (Purge without warning notification)</label>
+                                </div>
+
                                 <div>
                                     <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notification Message:</label>
                                     <textarea id="antiLinkMsg" rows="2" oninput="updateAntiLinkPreview()" placeholder="⚠️ {mention}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    <div class="flex flex-wrap gap-1 mt-1.5">
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{name}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {name}</button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{mention}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{username}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {username}</button>
+                                        <button type="button" onclick="insertTag('antiLinkMsg', '{chat}')" class="px-2 py-0.5 rounded-lg bg-indigo-50 text-brand-600 text-[10px] font-bold border border-indigo-100">+ {chat}</button>
+                                    </div>
                                 </div>
+
+                                <div class="bg-sky-50/60 p-3 rounded-xl border border-sky-100 flex items-start gap-2.5">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-7 h-7 rounded-full object-cover shrink-0">
+                                    <div class="bg-white p-2.5 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 text-xs text-slate-800 space-y-1 max-w-[90%]">
+                                        <span class="font-bold text-brand-600 block text-[10px]">VS Protection Guard</span>
+                                        <p id="antiLinkPreviewText" class="leading-relaxed text-xs">⚠️ John Doe, external links are restricted in Community!</p>
+                                    </div>
+                                </div>
+
                                 <div class="flex justify-end">
                                     <button type="button" onclick="saveAntiLinkSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Link Policy</button>
                                 </div>
@@ -560,7 +580,7 @@
                             </div>
 
                             <div>
-                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Broadcast Message Body:</label>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Announcement Message Body:</label>
                                 <textarea id="broadcastText" rows="3" oninput="updateBroadcastPreview()" placeholder="📢 Attention Members! We have an important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
                             </div>
 
@@ -664,9 +684,9 @@
                                     <div class="sm:col-span-4">
                                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Allowed Sender Role</label>
                                         <select id="newReplyTarget" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="everyone">Everyone</option>
-                                            <option value="admin_owner">Only Admin & Owner</option>
-                                            <option value="owner_only">Only Owner</option>
+                                            <option value="everyone">Everyone (এভরিওয়ান)</option>
+                                            <option value="admin_owner">Only Admin & Owner (অনলি অ্যাডমিন ও ওনার)</option>
+                                            <option value="owner_only">Only Owner (অনলি ওনার)</option>
                                         </select>
                                     </div>
                                     <div class="sm:col-span-3 flex items-end">
@@ -679,16 +699,6 @@
                                 <div>
                                     <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot's Response Message</label>
                                     <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
-                                </div>
-
-                                <div class="pt-1">
-                                    <div class="flex items-center justify-between mb-1.5">
-                                        <span class="text-[10px] font-bold text-slate-600 uppercase">Attach URL Buttons (Optional)</span>
-                                        <button type="button" onclick="addAutoReplyButtonRow()" class="text-brand-600 hover:text-brand-700 text-[10px] font-bold flex items-center gap-0.5">
-                                            <i data-lucide="plus" class="w-3 h-3"></i> Add Button
-                                        </button>
-                                    </div>
-                                    <div id="newReplyButtonsList" class="space-y-1.5"></div>
                                 </div>
                             </div>
 
@@ -726,7 +736,12 @@
 
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Blacklisted Words (Comma separated):</label>
-                                <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive, hack" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Custom Warning Notification:</label>
+                                <textarea id="badWordsCustomMsg" rows="2" oninput="updateBadWordsPreview()" placeholder="⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                             </div>
 
                             <div class="flex justify-end">
@@ -777,7 +792,7 @@
                         </div>
                     </div>
 
-                    <!-- TAB 8: SCAMMER MANAGEMENT PANEL -->
+                    <!-- TAB 8: SCAMMERS -->
                     <div id="tabContent-scammers" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="border-b border-slate-100 pb-3">
@@ -804,7 +819,6 @@
                             <div id="leftMembersListContainer" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
                         </div>
                     </div>
-
                 </main>
             </div>
         </div>
@@ -882,39 +896,6 @@
                     <button onclick="closeClaimLicenseModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
                     <button onclick="submitClaimLicense()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition">Activate License</button>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: SUPER ADMIN GENERATOR -->
-    <div id="superAdminModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-        <div class="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-2xl border border-slate-200 relative text-left max-h-[90vh] overflow-hidden flex flex-col">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                <h3 class="text-base font-bold text-slate-900">Super Admin License Generator</h3>
-                <button onclick="closeSuperAdminModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div class="overflow-y-auto pane-scroll space-y-4 flex-1">
-                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                        <div class="sm:col-span-6">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Select Tier</label>
-                            <select id="genPlanId" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
-                                <option value="starter">Starter (1 Chat) — ৳50</option>
-                                <option value="growth">Growth (5 Chats) — ৳200</option>
-                                <option value="pro">Pro Hub (15 Chats) — ৳450</option>
-                                <option value="unlimited" selected>Unlimited — ৳750</option>
-                            </select>
-                        </div>
-                        <div class="sm:col-span-3">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Duration</label>
-                            <input id="genDuration" type="number" value="30" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
-                        </div>
-                        <div class="sm:col-span-3 flex items-end">
-                            <button onclick="submitGenerateLicense()" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Generate</button>
-                        </div>
-                    </div>
-                </div>
-                <div id="adminLicensesList" class="space-y-2"></div>
             </div>
         </div>
     </div>
@@ -1209,81 +1190,9 @@
                     planNameEl.innerText = "No Active License Key";
                     badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
                     badgeEl.innerText = "UNLICENSED";
-                    metaEl.innerText = "Please purchase a license key from admin @Blackmoney54 and click 'Claim Key'.";
+                    metaEl.innerText = "Please purchase a license key from admin @Blackmoney54 and click 'Claim License Key'.";
                 }
             } catch (e) {}
-        }
-
-        function openSuperAdminModal() {
-            document.getElementById('superAdminModal').classList.remove('hidden');
-            loadAdminLicenses();
-        }
-
-        function closeSuperAdminModal() {
-            document.getElementById('superAdminModal').classList.add('hidden');
-        }
-
-        async function submitGenerateLicense() {
-            const planId = document.getElementById('genPlanId').value;
-            const customDurationDays = document.getElementById('genDuration').value;
-
-            Swal.showLoading();
-            try {
-                const res = await fetch('/api/admin/generate-license', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ planId, customDurationDays })
-                });
-                const data = await res.json();
-                Swal.close();
-
-                if (data.success) {
-                    Swal.fire({
-                        title: 'License Generated!',
-                        html: `<div class="p-3 bg-slate-100 rounded-xl font-mono text-base font-bold text-slate-900 select-all mb-2">${data.license.key}</div><p class="text-xs text-slate-500">Plan: ${data.license.planName}</p>`,
-                        icon: 'success'
-                    });
-                    loadAdminLicenses();
-                } else {
-                    Swal.fire('Failed', data.error, 'error');
-                }
-            } catch (e) {
-                Swal.fire('Error', e.message, 'error');
-            }
-        }
-
-        async function loadAdminLicenses() {
-            const listContainer = document.getElementById('adminLicensesList');
-            listContainer.innerHTML = `<div class="py-4 text-center text-xs text-slate-400">Loading licenses...</div>`;
-            try {
-                const res = await fetch('/api/admin/list-licenses');
-                const data = await res.json();
-                listContainer.innerHTML = '';
-
-                if (data.success && data.licenses.length > 0) {
-                    data.licenses.forEach(lic => {
-                        const isClaimed = lic.status === 'claimed';
-                        const badgeColor = isClaimed ? 'bg-indigo-50 text-brand-600 border-indigo-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200';
-
-                        const row = document.createElement('div');
-                        row.className = "p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs";
-                        row.innerHTML = `
-                            <div>
-                                <span class="font-mono font-bold text-slate-900 select-all">${lic.key}</span>
-                                <div class="text-[10px] text-slate-500 mt-0.5">${lic.planName} • ${lic.durationDays} Days • ${isClaimed ? `Claimed by: ${lic.claimedBy}` : 'Ready for sale'}</div>
-                            </div>
-                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}">
-                                ${lic.status.toUpperCase()}
-                            </span>
-                        `;
-                        listContainer.appendChild(row);
-                    });
-                } else {
-                    listContainer.innerHTML = `<p class="text-xs text-slate-400 py-3 italic">No licenses generated yet.</p>`;
-                }
-            } catch (e) {
-                listContainer.innerHTML = `<p class="text-xs text-rose-500 py-2">Failed to load licenses.</p>`;
-            }
         }
 
         // Modular Save Handlers
@@ -1311,6 +1220,7 @@
         function saveEmojiSection() {
             saveSection('emojiSpam', {
                 enabled: document.getElementById('toggleEmojiSpam').checked,
+                silent: document.getElementById('emojiSpamSilent').checked,
                 maxCount: parseInt(document.getElementById('emojiMaxCount').value || 0),
                 autoDeleteSeconds: parseInt(document.getElementById('emojiAutoDelete').value || 5),
                 msg: document.getElementById('emojiWarningMsg').value
@@ -1344,6 +1254,7 @@
             const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
             saveSection('badWords', {
                 enabled: document.getElementById('toggleBadWords').checked,
+                silent: document.getElementById('badWordsSilent').checked,
                 words: words
             }, 'Profanity Blacklist Policy');
         }
@@ -1385,7 +1296,7 @@
             }
         }
 
-        // Firebase Auth State
+        // Firebase Auth State Listener
         auth.onAuthStateChanged(async (user) => {
             currentUser = user;
             if (user) {
@@ -1608,7 +1519,7 @@
             document.getElementById('channelCountBadge').innerText = `${channels.length} Channels`;
 
             if (groups.length === 0) {
-                groupsGrid.innerHTML = `<p class="col-span-3 text-xs text-slate-400 italic py-4">No groups found where you have Admin or Owner privileges.</p>`;
+                groupsGrid.innerHTML = `<p class="col-span-3 text-xs text-slate-400 italic py-4">No groups found in your Telegram account.</p>`;
             } else {
                 groups.forEach(g => {
                     loadedItemsMap[g.id] = g;
@@ -1617,7 +1528,7 @@
             }
 
             if (channels.length === 0) {
-                channelsGrid.innerHTML = `<p class="col-span-3 text-xs text-slate-400 italic py-4">No broadcast channels found where you have Administrator status.</p>`;
+                channelsGrid.innerHTML = `<p class="col-span-3 text-xs text-slate-400 italic py-4">No broadcast channels found in your account.</p>`;
             } else {
                 channels.forEach(c => {
                     loadedItemsMap[c.id] = c;
@@ -1640,9 +1551,7 @@
 
             const botBadgeHtml = item.isBotConnected
                 ? `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60"><i data-lucide="shield-check" class="w-3 h-3"></i> Active Admin</span>`
-                : (item.canAddBot 
-                    ? `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"><i data-lucide="plus-circle" class="w-3 h-3"></i> Ready to Add</span>`
-                    : `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 border border-rose-200"><i data-lucide="shield-x" class="w-3 h-3"></i> Missing Rights</span>`);
+                : `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"><i data-lucide="plus-circle" class="w-3 h-3"></i> Ready to Add</span>`;
 
             const actionBtnHtml = item.isBotConnected
                 ? `<button onclick="openGroupSettings('${item.id}')" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
