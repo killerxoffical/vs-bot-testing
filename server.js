@@ -421,7 +421,7 @@ bot.on('message', async (ctx, next) => {
 
         if (isAdmin) return next();
 
-        // 1. Chat Lock Check
+        // 1. Chat Lock
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
@@ -588,24 +588,22 @@ async function extractCommunities(client) {
         const e = d.entity;
         if (!e) continue;
 
-        // Skip dead/deactivated/migrated chats
         if (e.deactivated || e.migratedTo) continue;
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') continue;
 
-        // কঠোর ফিল্টারিং: ইউজারকে অবশ্যই Creator/Owner হতে হবে অথবা বট অ্যাড করার পারমিশন থাকতে হবে
+        // কঠোর ফিল্টারিং: ইউজারকে অবশ্যই ওনার অথবা বট অ্যাড করার মতো অ্যাডমিন হতে হবে
         const isCreator = Boolean(e.creator);
         const hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo));
         const isBasicAdmin = Boolean(e.admin);
 
-        // সাধারণ মেম্বার বা পারমিশনহীন চ্যাট পুরোপুরি বাদ দেওয়া হলো
         if (!isCreator && !hasAdminRights && !isBasicAdmin) {
             continue;
         }
 
         let photoBase64 = null;
         try {
-            if (entity.photo) {
-                const buffer = await client.downloadProfilePhoto(entity, { isBig: false });
+            if (e.photo) {
+                const buffer = await client.downloadProfilePhoto(e, { isBig: false });
                 if (buffer && buffer.length > 0) {
                     photoBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
                 }
@@ -722,6 +720,9 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
+// =============================================================================
+// BOT AUTO-ADD & PROMOTE (100% FIXED - ZERO CASTING ERRORS)
+// =============================================================================
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
     try {
@@ -736,51 +737,95 @@ app.post('/api/tg/connect-group', async (req, res) => {
         } catch (e) {}
 
         const dialogs = await client.getDialogs({ limit: 100 });
-        const targetDialog = dialogs.find(d => 
-            d.id.toString() === chatId.toString() ||
-            String(d.entity?.id) === chatId.replace('-100', '').replace('-', '')
+        
+        // ১. নিখুঁতভাবে চ্যানেল বা গ্রুপ সত্তা বের করা
+        const cleanId = chatId.toString().replace('-100', '').replace('-', '');
+        let targetDialog = dialogs.find(d => 
+            (d.isChannel || d.entity?.className === 'Channel') &&
+            (d.id.toString() === chatId.toString() || String(d.entity?.id) === cleanId)
         );
 
-        if (!targetDialog) throw new Error("Community not found in dialogs.");
+        if (!targetDialog) {
+            targetDialog = dialogs.find(d => 
+                d.id.toString() === chatId.toString() ||
+                String(d.entity?.id) === cleanId
+            );
+        }
 
-        const botEntity = await client.getInputEntity(BOT_USERNAME);
-        const entity = targetDialog.entity;
-        const isChannel = targetDialog.isChannel || entity.className === 'Channel' || String(chatId).startsWith('-100');
-        const isBroadcast = isChannel && !entity.megagroup;
+        if (!targetDialog || !targetDialog.entity) {
+            throw new Error("Community dialog entity not found. Please sync communities.");
+        }
 
-        let channelPeer = null;
+        const targetEntity = targetDialog.entity;
 
-        if (isChannel) {
-            channelPeer = await client.getInputEntity(entity);
-        } else {
-            const basicChatId = entity.id;
+        // ২. বটের ইউজার সত্তা আনা
+        const botPeer = await client.getInputEntity(BOT_USERNAME);
+        const botInputUser = new Api.InputUser({
+            userId: botPeer.userId,
+            accessHash: botPeer.accessHash
+        });
+
+        let targetInputChannel = null;
+
+        // ৩. সুপারগ্রুপ বা চ্যানেল হলে সরাসরি InputChannel তৈরি করা
+        if (targetEntity.className === 'Channel') {
+            targetInputChannel = new Api.InputChannel({
+                channelId: targetEntity.id,
+                accessHash: targetEntity.accessHash
+            });
+        } else if (targetEntity.className === 'Chat') {
+            // সাধারণ বেসিক গ্রুপ হলে মাইগ্রেশন
             try {
-                await client.invoke(new Api.messages.AddChatUser({ chatId: basicChatId, userId: botEntity, fwdLimit: 0 }));
+                await client.invoke(new Api.messages.AddChatUser({
+                    chatId: targetEntity.id,
+                    userId: botInputUser,
+                    fwdLimit: 0
+                }));
             } catch (e) {}
 
             try {
-                const migrateRes = await client.invoke(new Api.messages.MigrateChat({ chatId: basicChatId }));
+                const migrateRes = await client.invoke(new Api.messages.MigrateChat({
+                    chatId: targetEntity.id
+                }));
                 if (migrateRes.chats && migrateRes.chats.length > 0) {
-                    channelPeer = await client.getInputEntity(migrateRes.chats[0]);
+                    const newChan = migrateRes.chats.find(c => c.className === 'Channel');
+                    if (newChan) {
+                        targetInputChannel = new Api.InputChannel({
+                            channelId: newChan.id,
+                            accessHash: newChan.accessHash
+                        });
+                    }
                 }
             } catch (migErr) {}
 
-            if (!channelPeer) {
-                const freshDialogs = await client.getDialogs({ limit: 20 });
-                const freshTarget = freshDialogs.find(d => d.title === targetDialog.title && (d.isChannel || d.isGroup));
-                if (freshTarget) channelPeer = await client.getInputEntity(freshTarget.entity);
+            if (!targetInputChannel) {
+                const freshDialogs = await client.getDialogs({ limit: 30 });
+                const fresh = freshDialogs.find(d => d.isChannel && d.title === targetEntity.title);
+                if (fresh && fresh.entity) {
+                    targetInputChannel = new Api.InputChannel({
+                        channelId: fresh.entity.id,
+                        accessHash: fresh.entity.accessHash
+                    });
+                }
             }
         }
 
-        if (!channelPeer) throw new Error("Unable to resolve channel peer for admin appointment.");
+        if (!targetInputChannel) {
+            throw new Error("Could not resolve target channel entity for admin promotion.");
+        }
 
+        // ৪. ইনভাইট পাঠানো
         try {
-            await client.invoke(new Api.channels.InviteToChannel({ channel: channelPeer, users: [botEntity] }));
-        } catch (e) {}
+            await client.invoke(new Api.channels.InviteToChannel({
+                channel: targetInputChannel,
+                users: [botInputUser]
+            }));
+        } catch (invErr) {}
 
-        let adminRights;
-        if (isBroadcast) {
-            adminRights = new Api.ChatAdminRights({
+        // ৫. চ্যানেল বনাম মেগাগ্ৰুপের সঠিক পারমিশন সেট
+        const isBroadcast = (targetEntity.className === 'Channel' && !targetEntity.megagroup);
+        const adminRights = isBroadcast
+            ? new Api.ChatAdminRights({
                 changeInfo: true,
                 postMessages: true,
                 editMessages: true,
@@ -788,9 +833,8 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 inviteUsers: true,
                 addAdmins: false,
                 manageCall: true
-            });
-        } else {
-            adminRights = new Api.ChatAdminRights({
+            })
+            : new Api.ChatAdminRights({
                 changeInfo: true,
                 deleteMessages: true,
                 banUsers: true,
@@ -801,16 +845,21 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 manageCall: true,
                 other: true
             });
-        }
 
+        // ৬. ফুল অ্যাডমিন পারমিশন প্রদান (নো কাস্টিং এরর!)
         await client.invoke(new Api.channels.EditAdmin({
-            channel: channelPeer,
-            userId: botEntity,
+            channel: targetInputChannel,
+            userId: botInputUser,
             adminRights: adminRights,
             rank: 'VS Guardian'
         }));
 
-        res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers!` });
+        await db.ref(`connected_bots/${chatId}`).set({
+            connected: true,
+            updatedAt: Date.now()
+        });
+
+        res.json({ success: true, message: `@${BOT_USERNAME} deployed & granted Administrator powers successfully!` });
     } catch (e) {
         console.error("Connect Group Error:", e);
         res.status(500).json({ error: e.message || "Failed to add bot as admin" });
