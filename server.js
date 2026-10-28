@@ -52,44 +52,44 @@ app.get('/admin', (req, res) => {
 });
 
 // =============================================================================
-// SUBSCRIPTION & LICENSE VALIDATION ENGINE
+// STRICT REAL-TIME SUBSCRIPTION & GATEWAY ENFORCEMENT (ZERO BYPASS)
 // =============================================================================
-let subscriptionCache = {};
 
-async function isChatSubscriptionActive(chatId) {
-    const now = Date.now();
-    if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 60000)) {
-        return subscriptionCache[chatId].isActive;
-    }
-
+// Helper: Real-time Check If Chat Has Active Subscription
+async function getOwnerSubByChat(chatId) {
     try {
         const ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
         const ownerTgId = ownerSnap.val();
         if (!ownerTgId) {
-            subscriptionCache[chatId] = { isActive: true, cachedAt: now };
-            return true;
+            return { hasSub: false, reason: "NO_OWNER_LINKED", message: "No owner Telegram account linked to this group." };
         }
 
-        const userSubSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
-        const sub = userSubSnap.val();
-
+        const subSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
+        const sub = subSnap.val();
         if (!sub) {
-            subscriptionCache[chatId] = { isActive: false, cachedAt: now };
-            return false;
+            return { hasSub: false, reason: "NO_ACTIVE_LICENSE", message: "You do not have an active subscription plan." };
         }
 
+        const now = Date.now();
         const graceEndsAt = sub.graceEndsAt || (sub.expiresAt + (7 * 24 * 60 * 60 * 1000));
-        const isActive = now <= graceEndsAt;
 
-        subscriptionCache[chatId] = { isActive, cachedAt: now };
-        return isActive;
+        if (now > graceEndsAt) {
+            return { hasSub: false, reason: "SUBSCRIPTION_EXPIRED", message: "Your subscription and 7-day grace period have expired." };
+        }
+
+        return { hasSub: true, sub };
     } catch (e) {
-        return true;
+        return { hasSub: false, reason: "DATABASE_ERROR", message: e.message };
     }
 }
 
+async function isChatSubscriptionActive(chatId) {
+    const check = await getOwnerSubByChat(chatId);
+    return check.hasSub;
+}
+
 // =============================================================================
-// TELEGRAF BOT ENGINE
+// TELEGRAF BOT ENGINE (ALL FEATURES LOCKED TO ACTIVE PLANS)
 // =============================================================================
 const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
@@ -154,12 +154,12 @@ function countEmojis(str) {
     return matches ? matches.length : 0;
 }
 
-// 1. Welcome New Members
+// 1. Welcome New Members (Real-Time Subscription Guard)
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return;
+        if (!isSubActive) return; // Strict Lock: Bot remains completely silent if no plan
 
         const settings = await getChatSettings(chatId);
         if (!settings.welcome?.enabled) return;
@@ -203,7 +203,7 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// 2. Member Left Tracker
+// 2. Member Left Tracker (Real-Time Subscription Guard)
 bot.on('left_chat_member', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
@@ -224,7 +224,7 @@ bot.on('left_chat_member', async (ctx) => {
         await db.ref(`groups/${chatId}/left_members/${user.id}`).set(leftData);
 
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return;
+        if (!isSubActive) return; // Strict Lock
 
         const settings = await getChatSettings(chatId);
 
@@ -256,14 +256,14 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// 3. Core Moderation Engine
+// 3. Core Moderation Engine (Real-Time Subscription Guard)
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
 
         const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return next();
+        if (!isSubActive) return next(); // Strict Lock: No protection active if unlicenced
 
         const userId = ctx.from?.id;
         const text = ctx.message.text || ctx.message.caption || "";
@@ -583,7 +583,6 @@ async function extractCommunities(client) {
     const groups = [];
     const channels = [];
 
-    // Fetch live connected groups from Firebase
     const connectedSnap = await db.ref('connected_bots').once('value');
     const connectedMap = connectedSnap.val() || {};
 
@@ -724,7 +723,7 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
 });
 
 // =============================================================================
-// BOT AUTO-ADD & PROMOTE (WITH SUBSCRIPTION VALIDATION)
+// BOT CONNECT (STRICT SUBSCRIPTION VALIDATION)
 // =============================================================================
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId } = req.body;
@@ -741,42 +740,47 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }
         } catch (e) {}
 
-        // CHECK USER'S SUBSCRIPTION BEFORE ADDING BOT
-        if (myTgId) {
-            const subSnap = await db.ref(`subscriptions/${myTgId}`).once('value');
-            const sub = subSnap.val();
-            const now = Date.now();
+        // 1. STRICT REAL-TIME SUBSCRIPTION VALIDATION
+        if (!myTgId) {
+            return res.status(403).json({
+                success: false,
+                error: "NO_TELEGRAM_ID",
+                message: "Unable to verify your Telegram identity."
+            });
+        }
 
-            if (!sub || (sub.graceEndsAt && now > sub.graceEndsAt)) {
-                return res.status(403).json({
-                    success: false,
-                    error: "NO_ACTIVE_LICENSE",
-                    message: "You need an active subscription license to add VS Protection Bot. Please purchase or claim a license."
-                });
-            }
+        const subSnap = await db.ref(`subscriptions/${myTgId}`).once('value');
+        const sub = subSnap.val();
+        const now = Date.now();
 
-            // Check Plan Community Limit
-            const maxAllowed = sub.maxCommunities || 1;
-            const connectedSnap = await db.ref('connected_bots').once('value');
-            const allConnected = connectedSnap.val() || {};
-            
-            // Count how many groups this owner already connected
-            let userConnectedCount = 0;
-            const groupKeys = Object.keys(allConnected);
-            for (const gId of groupKeys) {
-                const ownerSnap = await db.ref(`groups/${gId}/merged_owner`).once('value');
-                if (ownerSnap.val() === myTgId && gId !== chatId) {
-                    userConnectedCount++;
-                }
-            }
+        if (!sub || (sub.graceEndsAt && now > sub.graceEndsAt)) {
+            return res.status(403).json({
+                success: false,
+                error: "NO_ACTIVE_LICENSE",
+                message: "You do not have an active subscription plan. Please purchase or claim a license key."
+            });
+        }
 
-            if (userConnectedCount >= maxAllowed) {
-                return res.status(403).json({
-                    success: false,
-                    error: "LIMIT_REACHED",
-                    message: `Your current plan (${sub.planName}) allows max ${maxAllowed} community. Please upgrade to a higher tier plan.`
-                });
+        // 2. CHECK MAX COMMUNITY LIMIT FOR PLAN
+        const maxAllowed = sub.maxCommunities || 1;
+        const connectedSnap = await db.ref('connected_bots').once('value');
+        const allConnected = connectedSnap.val() || {};
+        
+        let userConnectedCount = 0;
+        const groupKeys = Object.keys(allConnected);
+        for (const gId of groupKeys) {
+            const ownerSnap = await db.ref(`groups/${gId}/merged_owner`).once('value');
+            if (ownerSnap.val() === myTgId && gId !== chatId) {
+                userConnectedCount++;
             }
+        }
+
+        if (userConnectedCount >= maxAllowed) {
+            return res.status(403).json({
+                success: false,
+                error: "LIMIT_REACHED",
+                message: `Your current tier (${sub.planName}) allows max ${maxAllowed} community. Please upgrade to a higher tier plan.`
+            });
         }
 
         const dialogs = await client.getDialogs({ limit: 100 });
@@ -888,7 +892,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             rank: 'VS Guardian'
         }));
 
-        // Permanent save into Firebase to prevent reverting on back/refresh
         await db.ref(`connected_bots/${chatId}`).set({
             connected: true,
             chatId: chatId,
@@ -902,10 +905,15 @@ app.post('/api/tg/connect-group', async (req, res) => {
     }
 });
 
-// Broadcast
+// Broadcast (LOCKED TO ACTIVE PLAN)
 app.post('/api/tg/broadcast', async (req, res) => {
     const { chatId, text, photoUrl, buttons } = req.body;
     try {
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) {
+            return res.status(403).json({ success: false, error: check.reason, message: check.message });
+        }
+
         if (!text && !photoUrl) throw new Error("Message content or image required");
 
         const keyboard = buildInlineButtons(buttons);
@@ -925,11 +933,17 @@ app.post('/api/tg/broadcast', async (req, res) => {
     }
 });
 
-// Section Save
+// Section Save (LOCKED TO ACTIVE PLAN)
 app.post('/api/tg/save-section', async (req, res) => {
     const { chatId, sectionKey, data } = req.body;
     try {
         if (!chatId || !sectionKey) throw new Error("Missing parameters");
+
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) {
+            return res.status(403).json({ success: false, error: check.reason, message: check.message });
+        }
+
         await db.ref(`groups/${chatId}/settings/${sectionKey}`).set(data);
         if (chatSettingsCache[chatId]) {
             chatSettingsCache[chatId][sectionKey] = data;
@@ -940,10 +954,15 @@ app.post('/api/tg/save-section', async (req, res) => {
     }
 });
 
-// Test Welcome
+// Test Welcome (LOCKED TO ACTIVE PLAN)
 app.post('/api/tg/test-welcome', async (req, res) => {
     const { chatId, photoUrl, text, buttons, autoDeleteSeconds } = req.body;
     try {
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) {
+            return res.status(403).json({ success: false, error: check.reason, message: check.message });
+        }
+
         const testUser = `[Admin (Test)](tg://user?id=${botId || 0})`;
         const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
         const formatted = (text || "Welcome {mention} to {chat}!")
@@ -984,10 +1003,15 @@ app.post('/api/tg/test-welcome', async (req, res) => {
     }
 });
 
-// Announce Lock
+// Announce Lock (LOCKED TO ACTIVE PLAN)
 app.post('/api/tg/announce-lock', async (req, res) => {
     const { chatId, locked, message } = req.body;
     try {
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) {
+            return res.status(403).json({ success: false, error: check.reason, message: check.message });
+        }
+
         const defaultMsg = locked 
             ? "🔒 *This conversation has been temporarily muted by community administrators.*" 
             : "🔓 *Conversation restriction lifted. Members may now post messages.*";
@@ -1040,7 +1064,7 @@ function generateLicenseKey() {
     return `VS-${p1}-${p2}-${p3}`;
 }
 
-// Super Admin APIs
+// 1. Super Admin: Generate License Keys
 app.post('/api/admin/generate-license', async (req, res) => {
     const { planId, customDurationDays } = req.body;
     try {
@@ -1075,6 +1099,7 @@ app.post('/api/admin/generate-license', async (req, res) => {
     }
 });
 
+// 2. Super Admin: List All Licenses
 app.get('/api/admin/list-licenses', async (req, res) => {
     try {
         const snap = await db.ref('licenses').once('value');
@@ -1086,6 +1111,7 @@ app.get('/api/admin/list-licenses', async (req, res) => {
     }
 });
 
+// 3. Super Admin: Revoke License
 app.post('/api/admin/revoke-license', async (req, res) => {
     const { key } = req.body;
     try {
@@ -1096,6 +1122,7 @@ app.post('/api/admin/revoke-license', async (req, res) => {
     }
 });
 
+// 4. Super Admin: Extend License
 app.post('/api/admin/extend-license', async (req, res) => {
     const { key, days } = req.body;
     try {
@@ -1117,6 +1144,7 @@ app.post('/api/admin/extend-license', async (req, res) => {
     }
 });
 
+// 5. Super Admin: List All Users & Passwords for Recovery
 app.get('/api/admin/users-list', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
@@ -1143,6 +1171,7 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
+// 6. User: Claim License Key
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, ownerTelegramId, userEmail } = req.body;
     try {
@@ -1188,6 +1217,7 @@ app.post('/api/license/claim', async (req, res) => {
     }
 });
 
+// 7. User: Get Subscription Status
 app.post('/api/license/status', async (req, res) => {
     const { ownerTelegramId } = req.body;
     try {
@@ -1218,6 +1248,7 @@ app.post('/api/license/status', async (req, res) => {
     }
 });
 
+// 8. Super Admin: Global System Statistics
 app.get('/api/admin/system-stats', async (req, res) => {
     try {
         const usersSnap = await db.ref('users').once('value');
