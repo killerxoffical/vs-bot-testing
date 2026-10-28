@@ -282,7 +282,7 @@
         <!-- SUB-VIEW B: FULL GROUP PANEL -->
         <div id="dedicatedGroupPanelView" class="hidden flex-1 w-full h-full overflow-hidden flex flex-col">
             
-            <!-- GROUP PANEL HEADER BAR -->
+            <!-- PANEL HEADER -->
             <div class="frosted-nav px-5 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-30 shadow-sm">
                 <div class="flex items-center gap-3.5">
                     <button onclick="backToCommunities()" class="w-9 h-9 rounded-xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition shrink-0 shadow-sm">
@@ -348,7 +348,8 @@
                 </aside>
 
                 <main class="flex-1 h-full overflow-y-auto pane-scroll p-5 md:p-8 space-y-6">
-                    <!-- Tab 1: Security -->
+
+                    <!-- TAB 1: SECURITY -->
                     <div id="tabContent-security" class="space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
                             
@@ -501,7 +502,7 @@
                                     <div class="sm:col-span-4">
                                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sender Role</label>
                                         <select id="newReplyTarget" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="everyone">Everyone (All)</option>
+                                            <option value="everyone">Everyone</option>
                                             <option value="admin_owner">Only Admin & Owner</option>
                                             <option value="owner_only">Only Owner</option>
                                         </select>
@@ -749,9 +750,9 @@
         let customCommandsMap = {};
         let autoRepliesMap = {};
 
-        // Cached lists to prevent disappearing on back button
         let cachedGroupsList = [];
         let cachedChannelsList = [];
+        let isUserSubscribed = false; // Real-time subscription state
 
         function renderPricingCards(containerId) {
             const container = document.getElementById(containerId);
@@ -943,7 +944,7 @@
                 if (data.success) {
                     closeClaimLicenseModal();
                     Swal.fire('Activated!', data.message, 'success');
-                    checkSubscriptionStatus();
+                    await checkSubscriptionStatus(false);
                 } else {
                     Swal.fire('Claim Failed', data.error || 'Invalid license key.', 'error');
                 }
@@ -952,7 +953,8 @@
             }
         }
 
-        async function checkSubscriptionStatus() {
+        // REAL-TIME SUBSCRIPTION CHECKER WITH GATEWAY
+        async function checkSubscriptionStatus(showGatePopup = true) {
             if (!userTelegramId) return;
             try {
                 const res = await fetch('/api/license/status', {
@@ -970,33 +972,63 @@
                     planNameEl.innerText = data.subscription.planName;
                     
                     if (data.isTotallyShutDown) {
+                        isUserSubscribed = false;
                         badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700";
                         badgeEl.innerText = "EXPIRED & OFF";
                         metaEl.innerHTML = `<span class="text-rose-600 font-bold">Subscription expired. All bot protection is OFF. Renew with @Blackmoney54.</span>`;
                         banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-rose-50/60 border-rose-200";
+
+                        if (showGatePopup) promptSubscriptionGate("Your subscription and grace period have expired! All bot protection is shut off.");
                     } else if (data.isGracePeriod) {
+                        isUserSubscribed = true; // Still within 7 days grace
                         badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse";
                         badgeEl.innerText = "GRACE PERIOD ACTIVE";
                         metaEl.innerHTML = `<span class="text-amber-700 font-bold">${data.graceDaysLeft} days left in grace period before protection automatically shuts off!</span>`;
                         banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-amber-50/60 border-amber-200";
                     } else {
+                        isUserSubscribed = true;
                         badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700";
                         badgeEl.innerText = "PROTECTION ACTIVE";
                         metaEl.innerText = `${data.remainingDays} days remaining in current active period (+7 days renewal grace included).`;
                         banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-emerald-50/40 border-emerald-200";
                     }
                 } else {
+                    isUserSubscribed = false;
                     planNameEl.innerText = "No Active License Key";
                     badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
                     badgeEl.innerText = "UNLICENSED";
                     metaEl.innerText = "Please purchase a license key from admin @Blackmoney54 and click 'Claim License Key'.";
+                    banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-white border-slate-200";
+
+                    if (showGatePopup) promptSubscriptionGate("You do not have an active subscription license to use VS Protection.");
                 }
             } catch (e) {}
+        }
+
+        function promptSubscriptionGate(message) {
+            Swal.fire({
+                title: 'Subscription Required',
+                text: message,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'View Pricing & Buy',
+                cancelButtonText: 'Claim Key'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    openPricingModal();
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    openClaimLicenseModal();
+                }
+            });
         }
 
         // Modular Save Handlers
         async function saveSection(sectionKey, data, successLabel) {
             if (!activeGroupId) return;
+            if (!isUserSubscribed) {
+                return promptSubscriptionGate("Active subscription required to save protection policies.");
+            }
+
             Swal.showLoading();
             try {
                 const res = await fetch('/api/tg/save-section', {
@@ -1009,7 +1041,11 @@
                 if (resData.success) {
                     Swal.fire({ title: 'Saved!', text: `${successLabel} updated successfully.`, icon: 'success', timer: 1400, showConfirmButton: false });
                 } else {
-                    Swal.fire('Save Failed', resData.error || 'Server error', 'error');
+                    if (resData.error === "NO_ACTIVE_LICENSE" || resData.error === "SUBSCRIPTION_EXPIRED") {
+                        promptSubscriptionGate(resData.message);
+                    } else {
+                        Swal.fire('Save Failed', resData.message || resData.error, 'error');
+                    }
                 }
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');
@@ -1070,6 +1106,10 @@
 
         async function sendGroupBroadcast() {
             if (!activeGroupId) return;
+            if (!isUserSubscribed) {
+                return promptSubscriptionGate("Broadcasting announcements requires an active subscription.");
+            }
+
             const text = document.getElementById('broadcastText').value.trim();
             const photoUrl = document.getElementById('broadcastPhotoUrl').value.trim();
             if (!text && !photoUrl) return Swal.fire('Incomplete', 'Please enter announcement text or image URL.', 'warning');
@@ -1086,7 +1126,11 @@
                 if (data.success) {
                     Swal.fire('Delivered!', data.message, 'success');
                 } else {
-                    Swal.fire('Failed', data.error, 'error');
+                    if (data.error === "NO_ACTIVE_LICENSE") {
+                        promptSubscriptionGate(data.message);
+                    } else {
+                        Swal.fire('Failed', data.message || data.error, 'error');
+                    }
                 }
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');
@@ -1126,7 +1170,7 @@
                     document.getElementById('communitiesContainer').classList.remove('hidden');
                     document.getElementById('btnSync').classList.remove('hidden');
                     await syncCommunities(false);
-                    checkSubscriptionStatus();
+                    await checkSubscriptionStatus(true); // Gated alert on login
                 } else {
                     document.getElementById('tgConnectCard').classList.remove('hidden');
                     document.getElementById('communitiesContainer').classList.add('hidden');
@@ -1274,7 +1318,7 @@
 
                     renderCommunities(data.groups, data.channels);
                     Swal.fire('Connected!', 'Telegram synchronization complete.', 'success');
-                    checkSubscriptionStatus();
+                    await checkSubscriptionStatus(true);
                 } else {
                     Swal.fire('Verification Failed', data.error || 'Invalid OTP code.', 'error');
                 }
@@ -1298,7 +1342,7 @@
 
                 if (data.success) {
                     renderCommunities(data.groups, data.channels);
-                    if (showPopup) Swal.fire('Synced!', 'Community lists and bot statuses verified.', 'success');
+                    if (showPopup) Swal.fire('Synced!', 'Community lists verified.', 'success');
                 }
             } catch (e) {
                 if (showPopup) Swal.fire('Sync Error', e.message, 'error');
@@ -1387,42 +1431,17 @@
             return card;
         }
 
-        // CONNECT BOT WITH SUBSCRIPTION VALIDATION FIRST!
+        // CONNECT BOT WITH REAL-TIME GATEWAY
         async function connectBot(chatId) {
             if (!userTelegramId) {
                 return Swal.fire('Telegram Required', 'Please connect your Telegram account first.', 'warning');
             }
 
-            // 1. Verify User's Active License Before Anything
-            Swal.showLoading();
-            let subData = null;
-            try {
-                const subRes = await fetch('/api/license/status', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ ownerTelegramId: userTelegramId })
-                });
-                subData = await subRes.json();
-            } catch (e) {}
-
-            Swal.close();
-
-            if (!subData || !subData.hasSubscription || subData.isTotallyShutDown) {
-                return Swal.fire({
-                    title: 'Subscription Required',
-                    text: 'You do not have an active subscription license to add VS Protection Bot. Would you like to view our packages?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'View Pricing & Buy',
-                    cancelButtonText: 'Cancel'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        openPricingModal();
-                    }
-                });
+            // Gated Subscription Check
+            if (!isUserSubscribed) {
+                return promptSubscriptionGate("You need an active subscription license to deploy VS Protection Bot. View our packages?");
             }
 
-            // 2. If License is Active, Proceed to Deploy Bot
             Swal.fire({
                 title: 'Deploying @Vareonprotection_bot...',
                 text: 'Adding bot and granting full Administrator rights...',
@@ -1439,7 +1458,6 @@
                 const data = await res.json();
                 
                 if (data.success) {
-                    // Update state permanently in memory & UI!
                     if (loadedItemsMap[chatId]) {
                         loadedItemsMap[chatId].isBotConnected = true;
                     }
@@ -1455,18 +1473,9 @@
                     setTimeout(() => openGroupSettings(chatId), 1200);
                 } else {
                     if (data.error === "NO_ACTIVE_LICENSE" || data.error === "LIMIT_REACHED") {
-                        Swal.fire({
-                            title: 'Plan Limit Exceeded',
-                            text: data.message,
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Upgrade Plan',
-                            cancelButtonText: 'Close'
-                        }).then((result) => {
-                            if (result.isConfirmed) openPricingModal();
-                        });
+                        promptSubscriptionGate(data.message);
                     } else {
-                        Swal.fire('Action Failed', data.error || data.message, 'error');
+                        Swal.fire('Action Failed', data.message || data.error, 'error');
                     }
                 }
             } catch (e) {
@@ -1474,8 +1483,12 @@
             }
         }
 
-        // Open Dedicated Full Page
+        // GATED ACCESS TO GROUP SETTINGS
         async function openGroupSettings(chatId) {
+            if (!isUserSubscribed) {
+                return promptSubscriptionGate("Active subscription license required to access community settings.");
+            }
+
             const item = loadedItemsMap[chatId] || { title: "Community", role: "Admin", photo: null };
             activeGroupId = chatId;
 
@@ -1508,7 +1521,6 @@
             document.getElementById('dedicatedGroupPanelView').classList.add('hidden');
             document.getElementById('communitiesOverviewView').classList.remove('hidden');
             
-            // Re-render so connected cards stay green
             renderCommunities(cachedGroupsList, cachedChannelsList);
         }
 
@@ -1623,3 +1635,4 @@
     </script>
 </body>
 </html>
+3. **কানেক্টেড স্ট্যাটাস পার্মানেন্ট:** কানেক্ট করার পর ব্যাক বাটনে চাপলে কখনোই আর রিভার্ট হয়ে "Auto-Add" হবে না।
