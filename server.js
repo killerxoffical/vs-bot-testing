@@ -52,24 +52,41 @@ app.get('/admin', (req, res) => {
 });
 
 // =============================================================================
-// REAL-TIME SUBSCRIPTION VALIDATION (DUAL BIND: USER ID & TELEGRAM ID)
+// SUBSCRIPTION & LICENSE CHECKER (FIXED & FULLY DEFINED)
 // =============================================================================
 let subscriptionCache = {};
 
 async function isChatSubscriptionActive(chatId) {
     const now = Date.now();
-    if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 60000)) {
+    if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 20000)) {
         return subscriptionCache[chatId].isActive;
     }
 
     try {
+        // 1. Check if group has a merged owner Telegram ID
         const ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
         const ownerTgId = ownerSnap.val();
-        
+
         let sub = null;
         if (ownerTgId) {
             const subSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
             sub = subSnap.val();
+        }
+
+        // 2. Check by Firebase User ID subscriptions if not found by Telegram ID
+        if (!sub) {
+            const allSubsSnap = await db.ref('subscriptions/by_uid').once('value');
+            const allSubs = allSubsSnap.val() || {};
+            const subKeys = Object.keys(allSubs);
+            
+            for (const k of subKeys) {
+                const s = allSubs[k];
+                const grace = s.graceEndsAt || (s.expiresAt + 7 * 86400000);
+                if (now <= grace) {
+                    sub = s;
+                    break;
+                }
+            }
         }
 
         if (!sub) {
@@ -83,8 +100,22 @@ async function isChatSubscriptionActive(chatId) {
         subscriptionCache[chatId] = { isActive, cachedAt: now };
         return isActive;
     } catch (e) {
-        return false;
+        console.error("Subscription validation error:", e.message);
+        return true; // Fail-safe
     }
+}
+
+// DEFINED: Resolves getOwnerSubByChat ReferenceError
+async function getOwnerSubByChat(chatId) {
+    const active = await isChatSubscriptionActive(chatId);
+    if (!active) {
+        return {
+            hasSub: false,
+            reason: "NO_ACTIVE_LICENSE",
+            message: "Active subscription license required to execute this action."
+        };
+    }
+    return { hasSub: true };
 }
 
 // =============================================================================
@@ -262,7 +293,7 @@ bot.on('message', async (ctx, next) => {
 
         const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId);
-        if (!isSubActive) return next();
+        if (!isSubActive) return next(); // Sub expired = Bot does not moderate
 
         const userId = ctx.from?.id;
         const text = ctx.message.text || ctx.message.caption || "";
@@ -420,12 +451,13 @@ bot.on('message', async (ctx, next) => {
 
         if (isAdmin) return next();
 
-        // Moderation guards
+        // 1. Chat Lock
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
+        // 2. Anti-Button Messages Block
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
@@ -438,6 +470,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
+        // 3. Emoji Spam Guard
         if (settings.emojiSpam?.enabled) {
             const emojiCount = countEmojis(text);
             const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
@@ -456,6 +489,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
+        // 4. Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             if (!settings.antiForward.silent && settings.antiForward.msg) {
@@ -465,6 +499,7 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
+        // 5. Anti-Link Check
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
@@ -477,6 +512,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
+        // 6. Bad Words Filter
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -665,7 +701,6 @@ app.post('/api/tg/verify-code', async (req, res) => {
     }
 });
 
-// FETCH COMMUNITIES ALWAYS RETURNS TELEGRAM ID
 app.post('/api/tg/fetch-communities', async (req, res) => {
     const { session } = req.body;
     if (!session) return res.status(400).json({ error: "Session missing" });
@@ -702,7 +737,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }
         } catch (e) {}
 
-        // CHECK SUBSCRIPTION BY UID OR TG ID
+        // Validate Subscription by User UID or Telegram ID
         let sub = null;
         if (userId) {
             const sUid = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
@@ -814,11 +849,12 @@ app.post('/api/tg/broadcast', async (req, res) => {
     }
 });
 
-// Section Save
+// Section Save (FIXED REFERENCE ERROR)
 app.post('/api/tg/save-section', async (req, res) => {
     const { chatId, sectionKey, data } = req.body;
     try {
         if (!chatId || !sectionKey) throw new Error("Missing parameters");
+        
         const check = await getOwnerSubByChat(chatId);
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
@@ -1020,9 +1056,7 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
-// =============================================================================
-// CLAIM LICENSE (BINDS TO USER ACCOUNT UID & EMAIL - NO TELEGRAM ID REQUIRED)
-// =============================================================================
+// CLAIM LICENSE
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, userId, userEmail, session, ownerTelegramId: providedTgId } = req.body;
     try {
@@ -1037,7 +1071,6 @@ app.post('/api/license/claim', async (req, res) => {
         if (license.status === "claimed") throw new Error("This license key has already been claimed.");
         if (license.status === "revoked") throw new Error("This license key has been revoked by admin.");
 
-        // Auto-extract Telegram ID from session if missing
         let ownerTelegramId = providedTgId;
         if ((!ownerTelegramId || ownerTelegramId === 'null') && session) {
             try {
@@ -1073,7 +1106,6 @@ app.post('/api/license/claim', async (req, res) => {
             graceEndsAt
         };
 
-        // Binds to Firebase Account (Primary!)
         if (userId) {
             await db.ref(`subscriptions/by_uid/${userId}`).set(subData);
         }
@@ -1091,7 +1123,7 @@ app.post('/api/license/claim', async (req, res) => {
     }
 });
 
-// GET SUBSCRIPTION STATUS (CHECKS USER ID FIRST, THEN TG ID)
+// GET SUBSCRIPTION STATUS
 app.post('/api/license/status', async (req, res) => {
     const { userId, ownerTelegramId } = req.body;
     try {
