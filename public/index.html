@@ -171,7 +171,7 @@
     <!-- SECTION 2: MAIN DASHBOARD VIEW -->
     <div id="dashboardView" class="hidden flex-1 w-full h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
         
-        <!-- SUB-VIEW A: COMMUNITIES LIST -->
+        <!-- SUB-VIEW A: COMMUNITIES OVERVIEW -->
         <div id="communitiesOverviewView" class="flex-1 w-full overflow-y-auto pane-scroll px-6 md:px-10 py-6 space-y-6">
             
             <!-- LICENSE STATUS BANNER -->
@@ -279,7 +279,7 @@
             </div>
         </div>
 
-        <!-- SUB-VIEW B: FULL GROUP PANEL -->
+        <!-- SUB-VIEW B: FULL COMMUNITY PANEL -->
         <div id="dedicatedGroupPanelView" class="hidden flex-1 w-full h-full overflow-hidden flex flex-col">
             
             <!-- PANEL HEADER -->
@@ -291,7 +291,7 @@
                     <div id="panelGroupAvatarContainer" class="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-sm border border-slate-200"></div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h2 id="panelGroupName" class="text-base font-bold text-slate-900 leading-tight truncate">Group Name</h2>
+                            <h2 id="panelGroupName" class="text-base font-bold text-slate-900 leading-tight truncate">Community Name</h2>
                             <span id="panelGroupRoleBadge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-100">Owner</span>
                         </div>
                         <p id="panelGroupMeta" class="text-[10px] text-slate-500">ID: -</p>
@@ -339,7 +339,7 @@
                     </button>
                     <button onclick="switchTab('commands')" id="tabBtn-commands" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
-                        <span>Slash Commands & Tracking</span>
+                        <span>Commands & Trackers</span>
                     </button>
                     <button onclick="switchTab('scammers')" id="tabBtn-scammers" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="shield-ban" class="w-4 h-4"></i>
@@ -353,20 +353,48 @@
 
                 <main class="flex-1 h-full overflow-y-auto pane-scroll p-5 md:p-8 space-y-6">
 
-                    <!-- TAB 1: SECURITY -->
+                    <!-- TAB 1: SECURITY & DEFENSE -->
                     <div id="tabContent-security" class="space-y-6 max-w-5xl">
+                        
+                        <!-- GLOBAL LANGUAGE & LOCALIZATION SELECTOR -->
+                        <div class="light-card p-5 rounded-2xl border-2 border-indigo-100 bg-gradient-to-r from-indigo-50/40 to-white space-y-3">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold">
+                                        <i data-lucide="globe-2" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-extrabold text-slate-900">Global Country & Language Preset Hub</h4>
+                                        <p class="text-[11px] text-slate-500">বটের সকল রিপ্লাই দেশের ভাষা অনুযায়ী লোড করুন অথবা অটো-ডিটেক্ট চালু রাখুন</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <select id="groupLanguageSelector" onchange="applyGlobalLanguagePreset(this.value)" class="bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-brand-500">
+                                        <option value="auto">🌐 Auto-Detect by User Country (স্মার্ট ডিটেক্ট)</option>
+                                        <option value="bn">🇧🇩 Bengali (বাংলাদেশ / বাংলা)</option>
+                                        <option value="en" selected>🇺🇸 English (Global International)</option>
+                                        <option value="hi">🇮🇳 Hindi (India / भारत)</option>
+                                        <option value="ar">🇸🇦 Arabic (العربية / الشرق الأوسط)</option>
+                                        <option value="ru">🇷🇺 Russian (Русский)</option>
+                                    </select>
+                                    <button onclick="saveLanguagePreference()" class="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition shadow-sm">Save</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             
                             <!-- 0. Anti-Raid & SMM Bot Shield -->
                             <div class="section-box border-brand-200 bg-brand-50/20">
                                 <div class="flex items-center justify-between pb-3 border-b border-brand-100">
                                     <div class="flex items-center gap-2">
-                                        <i data-lucide="shield-alert" class="w-5 h-5 text-brand-600"></i>
+                                        <i data-lucide="zap" class="w-5 h-5 text-brand-600"></i>
                                         <h4 class="text-sm font-bold text-slate-900">Anti-Raid SMM Bot Shield (Public Channels & Groups)</h4>
                                     </div>
                                     <input type="checkbox" id="toggleAntiRaid" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-                                <p class="text-xs text-slate-500 mt-2">বট মেম্বার ফ্লাড হলে স্বয়ংক্রিয়ভাবে শনাক্ত করে কিক/ব্যান করে বের করে দেয়।</p>
+                                <p class="text-xs text-slate-500 mt-2">গিভওয়ের সময় এসএমএম প্যানেল দিয়ে বট মেম্বার ফ্লাড করলে সাথে সাথে কিক/ব্যান করে বের করে দেয়।</p>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                                     <div>
                                         <label class="text-[10px] font-bold text-slate-600 uppercase block mb-1">Raid Detection (Joins in 5 Seconds):</label>
@@ -486,7 +514,7 @@
                                 </div>
                             </div>
 
-                            <!-- 4. Anti-Forward & Anti-Button & Media Spam -->
+                            <!-- 4. Anti-Forward, Anti-Button & Media Spam -->
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div class="section-box mb-0 space-y-2">
                                     <div class="flex items-center justify-between">
@@ -1000,6 +1028,11 @@
             lucide.createIcons();
         }
 
+        function onCountryChange(select) {
+            const code = select.options[select.selectedIndex].getAttribute('data-code');
+            document.getElementById('selectedFlag').src = `https://flagcdn.com/w40/${code}.png`;
+        }
+
         function hideSplashScreen() {
             const splash = document.getElementById('splashScreen');
             if (splash) {
@@ -1073,6 +1106,9 @@
                 const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
                 const s = snap.val() || {};
 
+                // Preferred Language
+                document.getElementById('groupLanguageSelector').value = s.preferredLanguage || 'auto';
+
                 // Anti-Raid
                 document.getElementById('toggleAntiRaid').checked = s.antiRaid ? s.antiRaid.enabled : true;
                 document.getElementById('antiRaidThreshold').value = (s.antiRaid && s.antiRaid.threshold) || 5;
@@ -1144,6 +1180,80 @@
             } catch (e) {
                 console.error("Settings load error:", e);
             }
+        }
+
+        // ==========================================
+        // GLOBAL LANGUAGE PRESETS HANDLER
+        // ==========================================
+        const LANGUAGE_PRESETS = {
+            bn: {
+                antiLink: "⚠️ {mention}, আমাদের {chat} গ্রুপে কোনো প্রকার লিংক শেয়ার করা নিষেধ!",
+                emoji: "⚠️ {mention}, অতিরিক্ত ইমোজি পাঠানো এই গ্রুপে নিষেধ!",
+                ban: "⛔ {name} কে নিয়মলঙ্ঘনের দায়ে {chat} থেকে ব্যান করা হয়েছে।",
+                lock: "🔒 *গ্রুপ অ্যাডমিন কর্তৃক চ্যাট সাময়িকভাবে লক করা হয়েছে।*",
+                welcome: "👋 স্বাগতম {mention}! আমাদের {chat} পরিবারে আপনাকে স্বাগতম।"
+            },
+            en: {
+                antiLink: "⚠️ {mention}, external links are restricted in {chat}!",
+                emoji: "⚠️ {mention}, excessive emojis are prohibited in {chat}!",
+                ban: "⛔ {name} has been permanently removed from {chat}.",
+                lock: "🔒 *This conversation has been temporarily muted by administrators.*",
+                welcome: "👋 Welcome {mention} to {chat}! Please follow our guidelines."
+            },
+            hi: {
+                antiLink: "⚠️ {mention}, {chat} में बाहरी लिंक भेजना सख्त मना है!",
+                emoji: "⚠️ {mention}, अत्यधिक इमोजी का उपयोग प्रतिबंधित है!",
+                ban: "⛔ {name} को {chat} से निष्कासित कर दिया गया है।",
+                lock: "🔒 *एडमिन द्वारा चैट को कुछ समय के लिए म्यूट कर दिया गया है।*",
+                welcome: "👋 {chat} में आपका स्वागत है {mention}!"
+            },
+            ar: {
+                antiLink: "⚠️ {mention}، يمنع نشر الروابط في {chat}!",
+                emoji: "⚠️ {mention}، استخدام الرموز التعبيرية بكثرة ممنوع!",
+                ban: "⛔ تم حظر {name} نهائيًا من {chat}.",
+                lock: "🔒 *تم قفل المحادثة مؤقتًا بواسطة المسؤولين.*",
+                welcome: "👋 أهلاً بك {mention} في {chat}!"
+            },
+            ru: {
+                antiLink: "⚠️ {mention}, внешние ссылки в {chat} запрещены!",
+                emoji: "⚠️ {mention}, спам эмодзи запрещен!",
+                ban: "⛔ {name} был навсегда заблокирован в {chat}.",
+                lock: "🔒 *Чат временно закрыт администратором.*",
+                welcome: "👋 Добро пожаловать, {mention}, в {chat}!"
+            }
+        };
+
+        function applyGlobalLanguagePreset(langKey) {
+            if (langKey === 'auto') {
+                Swal.fire({
+                    title: 'Auto-Country Mode Active',
+                    text: 'বট এখন স্বয়ংক্রিয়ভাবে মেম্বারের টেলিগ্রাম কান্ট্রি কোড অনুযায়ী তার ভাষায় রিপ্লাই পাঠাবে।',
+                    icon: 'info'
+                });
+                return;
+            }
+
+            const preset = LANGUAGE_PRESETS[langKey];
+            if (preset) {
+                document.getElementById('antiLinkMsg').value = preset.antiLink;
+                document.getElementById('emojiWarningMsg').value = preset.emoji;
+                document.getElementById('banSystemMsg').value = preset.ban;
+                document.getElementById('chatLockMsg').value = preset.lock;
+                document.getElementById('welcomeTextInput').value = preset.welcome;
+
+                Swal.fire({
+                    title: 'Language Preset Loaded!',
+                    text: 'টেমপ্লেট পরিবর্তিত হয়েছে। পরিবর্তন স্থায়ী করতে "Save" বাটনে ক্লিক করুন।',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
+        }
+
+        async function saveLanguagePreference() {
+            const lang = document.getElementById('groupLanguageSelector').value;
+            saveSection('preferredLanguage', lang, 'Group Country Language');
         }
 
         // Modular Save Handlers
@@ -1599,9 +1709,7 @@
             document.getElementById('panelGroupRoleBadge').innerText = item.role || 'Admin';
             document.getElementById('panelGroupMeta').innerText = `ID: ${chatId}`;
 
-            // Load all settings directly into UI checkboxes & inputs
             await loadGroupSettingsIntoUI(chatId);
-
             switchTab('security');
         }
 
@@ -1683,6 +1791,45 @@
                 }
             } catch (e) {}
         }
+
+        // 3D Canvas Visualizer
+        (function() {
+            const canvas = document.getElementById('threeCanvas');
+            if (!canvas) return;
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const geometry = new THREE.TorusKnotGeometry(9, 2.5, 120, 24);
+            const material = new THREE.MeshStandardMaterial({ color: 0x4F46E5, roughness: 0.2, metalness: 0.8, wireframe: true });
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            const light = new THREE.DirectionalLight(0xffffff, 1.2);
+            light.position.set(10, 20, 15);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+            camera.position.z = 28;
+
+            let mouseX = 0, mouseY = 0;
+            window.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX / window.innerWidth) - 0.5;
+                mouseY = (e.clientY / window.innerHeight) - 0.5;
+            });
+
+            function animate() {
+                requestAnimationFrame(animate);
+                mesh.rotation.x += 0.005 + mouseY * 0.03;
+                mesh.rotation.y += 0.008 + mouseX * 0.03;
+                renderer.render(scene, camera);
+            }
+            animate();
+        })();
     </script>
 </body>
 </html>
