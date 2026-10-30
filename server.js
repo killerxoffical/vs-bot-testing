@@ -30,10 +30,13 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 
 // =============================================================================
-// APP & BOT CREDENTIALS
+// DEFAULT FALLBACK CREDENTIALS
 // =============================================================================
-const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAF9l54_V5P2lHuk_kvVA1VnucYWMGRY1gk";
+let CURRENT_BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAF9l54_V5P2lHuk_kvVA1VnucYWMGRY1gk";
 let BOT_USERNAME = "Vareonprotection_bot";
+let botId = null;
+let bot = null; // Telegraf instance holder
+
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
 const PORT = process.env.PORT || 3000;
@@ -56,7 +59,7 @@ app.get('/admin', (req, res) => {
 });
 
 // =============================================================================
-// GLOBAL MULTI-LANGUAGE / COUNTRY PRESET REPOSITORY
+// GLOBAL MULTI-LANGUAGE PRESETS
 // =============================================================================
 const GLOBAL_LOCALES = {
     en: {
@@ -132,7 +135,6 @@ const GLOBAL_LOCALES = {
 };
 
 function resolveLocalizedText(settings, eventKey, userLangCode, params = {}) {
-    // ১. অ্যাডমিনের নিজস্ব কাস্টম টেক্সট থাকলে
     if (settings[eventKey] && typeof settings[eventKey].msg === 'string' && settings[eventKey].msg.trim()) {
         return formatTemplate(settings[eventKey].msg, params);
     }
@@ -140,7 +142,6 @@ function resolveLocalizedText(settings, eventKey, userLangCode, params = {}) {
         return formatTemplate(settings[eventKey].text, params);
     }
 
-    // ২. গ্রুপের নির্বাচিত ভাষা অথবা ইউজারের দেশ/ভাষা
     let lang = settings.preferredLanguage || 'auto';
     if (lang === 'auto') {
         lang = (userLangCode || 'en').slice(0, 2).toLowerCase();
@@ -239,19 +240,9 @@ async function getOwnerSubByChat(chatId) {
 }
 
 // =============================================================================
-// TELEGRAF BOT ENGINE
+// CHAT SETTINGS & HELPERS
 // =============================================================================
-const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
-let botId = null;
-
-bot.telegram.getMe().then(info => {
-    botId = info.id;
-    BOT_USERNAME = info.username;
-    console.log(`[VS Protection] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
-}).catch(err => {
-    console.error("[VS Protection] BOT TOKEN ERROR:", err.message);
-});
 
 async function getChatSettings(chatId) {
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
@@ -323,465 +314,517 @@ async function getUserRole(ctx, userId) {
 }
 
 // =============================================================================
-// 1. CHANNEL JOIN REQUEST + MULTILINGUAL CAPTCHA (SMM BOT DEFENSE)
-// =============================================================================
-bot.on('chat_join_request', async (ctx) => {
-    try {
-        const chatId = ctx.chat.id;
-        const userId = ctx.from.id;
-        const userLang = ctx.from.language_code;
-        const fullName = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim() || ctx.from.first_name;
-
-        const isSubActive = await isChatSubscriptionActive(chatId, ctx);
-        if (!isSubActive) return;
-
-        const settings = await getChatSettings(chatId);
-
-        if (settings.channelCaptcha?.enabled !== false) {
-            const n1 = Math.floor(Math.random() * 8) + 1;
-            const n2 = Math.floor(Math.random() * 8) + 1;
-            const ans = n1 + n2;
-
-            const opts = [ans, ans + 2, Math.max(1, ans - 2)].sort(() => Math.random() - 0.5);
-            const buttons = opts.map(o => 
-                Markup.button.callback(`${o}`, `cpt_${chatId}_${userId}_${o === ans ? 'ok' : 'fl'}`)
-            );
-
-            const prompt = resolveLocalizedText(settings, 'captchaMsg', userLang, {
-                name: fullName,
-                n1,
-                n2
-            });
-
-            await bot.telegram.sendMessage(userId, prompt, {
-                parse_mode: 'Markdown',
-                ...Markup.inlineKeyboard([buttons])
-            }).catch(() => {
-                console.log(`[Captcha] User ${userId} blocked DMs or not started bot.`);
-            });
-        } else {
-            await ctx.approveChatJoinRequest(userId).catch(() => {});
-        }
-    } catch (err) {
-        console.error("[Join Request Error]:", err.message);
-    }
-});
-
-bot.action(/cpt_(-?\d+)_(\d+)_(ok|fl)/, async (ctx) => {
-    try {
-        const parts = ctx.match[0].split('_');
-        const targetChatId = parts[1];
-        const targetUserId = parseInt(parts[2]);
-        const status = parts[3];
-
-        if (ctx.from.id !== targetUserId) {
-            return ctx.answerCbQuery("⚠️ This verification is not for your account.", { show_alert: true });
-        }
-
-        if (status === 'ok') {
-            await ctx.telegram.approveChatJoinRequest(targetChatId, targetUserId);
-            await ctx.editMessageText("✅ *Verification Successful!* You have been approved to join.", { parse_mode: 'Markdown' });
-        } else {
-            await ctx.telegram.declineChatJoinRequest(targetChatId, targetUserId);
-            await ctx.editMessageText("❌ *Incorrect Answer.* Your join request was declined.", { parse_mode: 'Markdown' });
-        }
-    } catch (e) {
-        ctx.reply("⚠️ Verification session expired. Please send join request again.").catch(() => {});
-    }
-});
-
-// =============================================================================
-// 2. ANTI-RAID MEMBER DETECTOR (DIRECT PUBLIC JOINS)
+// DYNAMIC BOT BOOTSTRAPPER (RELOADS WHEN TOKEN CHANGES)
 // =============================================================================
 const joinTracker = new Map();
 
-bot.on('chat_member', async (ctx) => {
+async function bootBotEngine(token) {
     try {
-        const chatId = ctx.chat.id;
-        const newStatus = ctx.chatMember?.new_chat_member?.status;
-        const oldStatus = ctx.chatMember?.old_chat_member?.status;
-        const user = ctx.chatMember?.new_chat_member?.user;
+        if (bot) {
+            console.log("[Bot Engine] Gracefully stopping previous bot session...");
+            try { await bot.stop(); } catch (e) {}
+        }
 
-        if (newStatus === 'member' && oldStatus !== 'member' && user && !user.is_bot) {
-            const isSubActive = await isChatSubscriptionActive(chatId, ctx);
-            if (!isSubActive) return;
+        const newBot = new Telegraf(token);
+        const botInfo = await newBot.telegram.getMe();
 
-            const settings = await getChatSettings(chatId);
-            if (!settings.antiRaid?.enabled) return;
+        bot = newBot;
+        CURRENT_BOT_TOKEN = token;
+        BOT_USERNAME = botInfo.username;
+        botId = botInfo.id;
 
-            const now = Date.now();
-            if (!joinTracker.has(chatId)) joinTracker.set(chatId, []);
+        console.log(`[Bot Engine] Successfully Connected: @${BOT_USERNAME} (ID: ${botId})`);
 
-            const list = joinTracker.get(chatId).filter(t => (now - t) < 5000);
-            list.push(now);
-            joinTracker.set(chatId, list);
+        // 1. Join Request Captcha
+        bot.on('chat_join_request', async (ctx) => {
+            try {
+                const chatId = ctx.chat.id;
+                const userId = ctx.from.id;
+                const userLang = ctx.from.language_code;
+                const fullName = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim() || ctx.from.first_name;
 
-            const limit = parseInt(settings.antiRaid.threshold || 5);
+                const isSubActive = await isChatSubscriptionActive(chatId, ctx);
+                if (!isSubActive) return;
 
-            if (list.length >= limit) {
-                console.log(`[SMM RAID TRIGGERED] Chat: ${chatId}, Purging: ${user.id}`);
-                const action = settings.antiRaid.action || 'kick';
+                const settings = await getChatSettings(chatId);
 
-                if (action === 'kick') {
-                    await ctx.banChatMember(user.id).catch(() => {});
-                    setTimeout(() => ctx.unbanChatMember(user.id).catch(() => {}), 1500);
+                if (settings.channelCaptcha?.enabled !== false) {
+                    const n1 = Math.floor(Math.random() * 8) + 1;
+                    const n2 = Math.floor(Math.random() * 8) + 1;
+                    const ans = n1 + n2;
+
+                    const opts = [ans, ans + 2, Math.max(1, ans - 2)].sort(() => Math.random() - 0.5);
+                    const buttons = opts.map(o => Markup.button.callback(`${o}`, `cpt_${chatId}_${userId}_${o === ans ? 'ok' : 'fl'}`));
+
+                    const prompt = resolveLocalizedText(settings, 'captchaMsg', userLang, { name: fullName, n1, n2 });
+
+                    await bot.telegram.sendMessage(userId, prompt, {
+                        parse_mode: 'Markdown',
+                        ...Markup.inlineKeyboard([buttons])
+                    }).catch(() => {});
                 } else {
-                    await ctx.banChatMember(user.id).catch(() => {});
+                    await ctx.approveChatJoinRequest(userId).catch(() => {});
                 }
-            }
-        }
-    } catch (e) {}
-});
-
-// =============================================================================
-// 3. WELCOME & GOODBYE GREETINGS
-// =============================================================================
-bot.on('new_chat_members', async (ctx) => {
-    try {
-        const chatId = ctx.chat.id;
-        const isSubActive = await isChatSubscriptionActive(chatId, ctx);
-        if (!isSubActive) return;
-
-        const settings = await getChatSettings(chatId);
-        if (!settings.welcome?.enabled) return;
-
-        for (const member of ctx.message.new_chat_members) {
-            if (member.is_bot) continue;
-
-            const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.first_name;
-            const userMention = `[${fullName}](tg://user?id=${member.id})`;
-            const usernameTag = member.username ? `@${member.username}` : fullName;
-            const userLang = member.language_code;
-
-            const msg = resolveLocalizedText(settings, 'welcome', userLang, {
-                mention: userMention,
-                name: fullName,
-                username: usernameTag,
-                chat: ctx.chat.title || "Community"
-            });
-
-            const keyboard = buildInlineButtons(settings.welcome.buttons);
-            const extra = { parse_mode: 'Markdown' };
-            if (keyboard) extra.reply_markup = keyboard.reply_markup;
-
-            let sentWelcome;
-            const photoUrl = (settings.welcome.photoUrl || "").trim();
-
-            if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
-                sentWelcome = await ctx.replyWithPhoto(photoUrl, { caption: msg, ...extra }).catch(async () => {
-                    return await ctx.replyWithMarkdown(msg, extra).catch(() => {});
-                });
-            } else {
-                sentWelcome = await ctx.replyWithMarkdown(msg, extra).catch(() => {});
-            }
-
-            const deleteSec = parseInt(settings.welcome.autoDeleteSeconds || 0);
-            if (deleteSec > 0 && sentWelcome && sentWelcome.message_id) {
-                setTimeout(() => ctx.deleteMessage(sentWelcome.message_id).catch(() => {}), deleteSec * 1000);
-            }
-        }
-    } catch (err) {}
-});
-
-bot.on('left_chat_member', async (ctx) => {
-    try {
-        const chatId = ctx.chat.id;
-        const user = ctx.message.left_chat_member;
-        if (!user || user.is_bot) return;
-
-        const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.first_name;
-        const userMention = `[${fullName}](tg://user?id=${user.id})`;
-        const usernameTag = user.username ? `@${user.username}` : fullName;
-
-        await db.ref(`groups/${chatId}/left_members/${user.id}`).set({
-            id: user.id.toString(),
-            name: fullName,
-            username: user.username ? `@${user.username}` : 'No username',
-            timestamp: Date.now()
+            } catch (err) {}
         });
 
-        const isSubActive = await isChatSubscriptionActive(chatId, ctx);
-        if (!isSubActive) return;
+        bot.action(/cpt_(-?\d+)_(\d+)_(ok|fl)/, async (ctx) => {
+            try {
+                const parts = ctx.match[0].split('_');
+                const targetChatId = parts[1];
+                const targetUserId = parseInt(parts[2]);
+                const status = parts[3];
 
-        const settings = await getChatSettings(chatId);
-        if (settings.goodbye?.enabled !== false) {
-            const goodbyeMsg = resolveLocalizedText(settings, 'goodbye', user.language_code, {
-                mention: userMention,
-                name: fullName,
-                username: usernameTag,
-                chat: ctx.chat.title || "Community"
+                if (ctx.from.id !== targetUserId) {
+                    return ctx.answerCbQuery("⚠️ This verification is not for you.", { show_alert: true });
+                }
+
+                if (status === 'ok') {
+                    await ctx.telegram.approveChatJoinRequest(targetChatId, targetUserId);
+                    await ctx.editMessageText("✅ *Verification Successful!* You have been approved.", { parse_mode: 'Markdown' });
+                } else {
+                    await ctx.telegram.declineChatJoinRequest(targetChatId, targetUserId);
+                    await ctx.editMessageText("❌ *Incorrect Answer.* Request was declined.", { parse_mode: 'Markdown' });
+                }
+            } catch (e) {}
+        });
+
+        // 2. Anti-Raid SMM Guard
+        bot.on('chat_member', async (ctx) => {
+            try {
+                const chatId = ctx.chat.id;
+                const newStatus = ctx.chatMember?.new_chat_member?.status;
+                const oldStatus = ctx.chatMember?.old_chat_member?.status;
+                const user = ctx.chatMember?.new_chat_member?.user;
+
+                if (newStatus === 'member' && oldStatus !== 'member' && user && !user.is_bot) {
+                    const isSubActive = await isChatSubscriptionActive(chatId, ctx);
+                    if (!isSubActive) return;
+
+                    const settings = await getChatSettings(chatId);
+                    if (!settings.antiRaid?.enabled) return;
+
+                    const now = Date.now();
+                    if (!joinTracker.has(chatId)) joinTracker.set(chatId, []);
+
+                    const list = joinTracker.get(chatId).filter(t => (now - t) < 5000);
+                    list.push(now);
+                    joinTracker.set(chatId, list);
+
+                    const limit = parseInt(settings.antiRaid.threshold || 5);
+                    if (list.length >= limit) {
+                        const action = settings.antiRaid.action || 'kick';
+                        if (action === 'kick') {
+                            await ctx.banChatMember(user.id).catch(() => {});
+                            setTimeout(() => ctx.unbanChatMember(user.id).catch(() => {}), 1500);
+                        } else {
+                            await ctx.banChatMember(user.id).catch(() => {});
+                        }
+                    }
+                }
+            } catch (e) {}
+        });
+
+        // 3. Welcome & Goodbye
+        bot.on('new_chat_members', async (ctx) => {
+            try {
+                const chatId = ctx.chat.id;
+                const isSubActive = await isChatSubscriptionActive(chatId, ctx);
+                if (!isSubActive) return;
+
+                const settings = await getChatSettings(chatId);
+                if (!settings.welcome?.enabled) return;
+
+                for (const member of ctx.message.new_chat_members) {
+                    if (member.is_bot) continue;
+
+                    const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.first_name;
+                    const userMention = `[${fullName}](tg://user?id=${member.id})`;
+                    const usernameTag = member.username ? `@${member.username}` : fullName;
+
+                    const msg = resolveLocalizedText(settings, 'welcome', member.language_code, {
+                        mention: userMention,
+                        name: fullName,
+                        username: usernameTag,
+                        chat: ctx.chat.title || "Community"
+                    });
+
+                    const keyboard = buildInlineButtons(settings.welcome.buttons);
+                    const extra = { parse_mode: 'Markdown' };
+                    if (keyboard) extra.reply_markup = keyboard.reply_markup;
+
+                    let sentWelcome;
+                    const photoUrl = (settings.welcome.photoUrl || "").trim();
+
+                    if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+                        sentWelcome = await ctx.replyWithPhoto(photoUrl, { caption: msg, ...extra }).catch(async () => {
+                            return await ctx.replyWithMarkdown(msg, extra).catch(() => {});
+                        });
+                    } else {
+                        sentWelcome = await ctx.replyWithMarkdown(msg, extra).catch(() => {});
+                    }
+
+                    const deleteSec = parseInt(settings.welcome.autoDeleteSeconds || 0);
+                    if (deleteSec > 0 && sentWelcome?.message_id) {
+                        setTimeout(() => ctx.deleteMessage(sentWelcome.message_id).catch(() => {}), deleteSec * 1000);
+                    }
+                }
+            } catch (err) {}
+        });
+
+        bot.on('left_chat_member', async (ctx) => {
+            try {
+                const chatId = ctx.chat.id;
+                const user = ctx.message.left_chat_member;
+                if (!user || user.is_bot) return;
+
+                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.first_name;
+                const userMention = `[${fullName}](tg://user?id=${user.id})`;
+                const usernameTag = user.username ? `@${user.username}` : fullName;
+
+                await db.ref(`groups/${chatId}/left_members/${user.id}`).set({
+                    id: user.id.toString(),
+                    name: fullName,
+                    username: user.username ? `@${user.username}` : 'No username',
+                    timestamp: Date.now()
+                });
+
+                const isSubActive = await isChatSubscriptionActive(chatId, ctx);
+                if (!isSubActive) return;
+
+                const settings = await getChatSettings(chatId);
+                if (settings.goodbye?.enabled !== false) {
+                    const goodbyeMsg = resolveLocalizedText(settings, 'goodbye', user.language_code, {
+                        mention: userMention,
+                        name: fullName,
+                        username: usernameTag,
+                        chat: ctx.chat.title || "Community"
+                    });
+
+                    const sent = await ctx.replyWithMarkdown(goodbyeMsg).catch(() => {});
+                    const delSec = parseInt(settings.goodbye?.autoDeleteSeconds || 10);
+                    if (delSec > 0 && sent?.message_id) {
+                        setTimeout(() => ctx.deleteMessage(sent.message_id).catch(() => {}), delSec * 1000);
+                    }
+                }
+            } catch (e) {}
+        });
+
+        // 4. Message Moderation
+        bot.on('message', async (ctx, next) => {
+            try {
+                if (!ctx.chat || ctx.chat.type === 'private') return next();
+
+                const chatId = ctx.chat.id;
+                const text = ctx.message.text || ctx.message.caption || "";
+
+                if (text === '/ping') {
+                    return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Defense: *Active & Defending*`);
+                }
+
+                const isSubActive = await isChatSubscriptionActive(chatId, ctx);
+                if (!isSubActive) return next();
+
+                const userId = ctx.from?.id;
+                const userLang = ctx.from?.language_code;
+                const settings = await getChatSettings(chatId);
+                const userRole = await getUserRole(ctx, userId);
+                const isAdmin = ['owner', 'admin'].includes(userRole);
+
+                const fullName = `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim() || (ctx.from ? ctx.from.first_name : 'Member');
+                const userMention = `[${fullName}](tg://user?id=${userId})`;
+                const usernameTag = ctx.from?.username ? `@${ctx.from.username}` : fullName;
+
+                // Name Change Tracker
+                if (settings.nameTracker?.enabled !== false && ctx.from) {
+                    const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
+                    const snap = await userHistoryRef.once('value');
+                    const storedName = snap.val();
+
+                    if (storedName && storedName !== fullName) {
+                        ctx.replyWithMarkdown(
+                            `📝 *[SECURITY: NAME CHANGE DETECTED]*\n` +
+                            `User: [${fullName}](tg://user?id=${userId})\n` +
+                            `🔄 *Old Name:* \`${storedName}\`\n` +
+                            `✨ *New Name:* \`${fullName}\``
+                        ).catch(() => {});
+                    }
+                    await userHistoryRef.set(fullName);
+                }
+
+                // Scammer Tagging
+                const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
+                if (scammerSnap.val()) {
+                    const scamNotice = settings.scammerAlert?.msg || "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER!*";
+                    ctx.replyWithMarkdown(scamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+                }
+
+                // Auto-Replies
+                if (text && settings.autoReplies && typeof settings.autoReplies === 'object') {
+                    const clean = text.trim().toLowerCase();
+                    for (const key of Object.keys(settings.autoReplies)) {
+                        const rule = settings.autoReplies[key];
+                        if (!rule || !rule.trigger || !rule.response) continue;
+
+                        const trg = rule.trigger.trim().toLowerCase();
+                        if (clean === trg || clean.includes(trg)) {
+                            let allowed = false;
+                            if (rule.target === 'everyone') allowed = true;
+                            else if (rule.target === 'admin_owner' && isAdmin) allowed = true;
+                            else if (rule.target === 'owner_only' && userRole === 'owner') allowed = true;
+
+                            if (allowed) {
+                                const formatted = formatTemplate(rule.response, { mention: userMention, name: fullName, username: usernameTag, chat: ctx.chat.title });
+                                const kb = buildInlineButtons(rule.buttons);
+                                const extra = { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' };
+                                if (kb) extra.reply_markup = kb.reply_markup;
+                                ctx.reply(formatted, extra).catch(() => {});
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Slash Commands
+                if (text.startsWith('/')) {
+                    const parts = text.trim().split(/\s+/);
+                    const cmd = parts[0].toLowerCase().replace(`@${bot.botInfo?.username?.toLowerCase()}`, '');
+
+                    if (cmd === '/ban' && isAdmin) {
+                        let targetUser = ctx.message.reply_to_message?.from;
+                        if (!targetUser) return ctx.reply("⚠️ Reply to a user's message with `/ban`.");
+
+                        await ctx.banChatMember(targetUser.id).catch(() => {});
+                        const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
+
+                        if (settings.banSystem?.sendMsg !== false) {
+                            const banMsg = resolveLocalizedText(settings, 'banMsg', userLang, { name: tName, chat: ctx.chat.title });
+                            return ctx.replyWithMarkdown(banMsg);
+                        }
+                        return;
+                    }
+
+                    if (cmd === '/bio') {
+                        const bioRoleAllowed = settings.commands?.bio?.role || 'all';
+                        if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
+                        if (bioRoleAllowed === 'admin' && !isAdmin) return;
+
+                        let targetUser = ctx.message.reply_to_message?.from || ctx.from;
+                        const tRole = await getUserRole(ctx, targetUser.id);
+                        const warnSnap = await db.ref(`groups/${chatId}/warns/${targetUser.id}`).once('value');
+                        const isScammer = (await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).once('value')).val();
+
+                        const bioMessage = 
+                            `📋 *User Dossier & Security Evaluation*\n\n` +
+                            `👤 *Name:* [${targetUser.first_name}](tg://user?id=${targetUser.id})\n` +
+                            `🆔 *User ID:* \`${targetUser.id}\`\n` +
+                            `🎖 *Assigned Role:* \`${tRole.toUpperCase()}\`\n` +
+                            `⚠️ *Active Infractions:* \`${warnSnap.val() || 0}/${settings.warnLimit || 3}\`\n` +
+                            `🛡 *Trust Score:* ${isScammer ? '🚨 *CONFIRMED SCAMMER*' : '✅ *Safe*'}`;
+
+                        return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
+                    }
+
+                    if (cmd === '/scam' && isAdmin) {
+                        let targetUser = ctx.message.reply_to_message?.from;
+                        if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/scam`.");
+
+                        await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).set({
+                            name: `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim(),
+                            username: targetUser.username || '',
+                            flaggedAt: Date.now()
+                        });
+                        return ctx.replyWithMarkdown(`🚨 [${targetUser.first_name}](tg://user?id=${targetUser.id}) added to Scammer Blacklist.`);
+                    }
+
+                    if (cmd === '/unscam' && isAdmin) {
+                        let targetUser = ctx.message.reply_to_message?.from;
+                        if (!targetUser) return ctx.reply("⚠️ Reply with `/unscam`.");
+                        await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).remove();
+                        return ctx.replyWithMarkdown(`✅ Scam flag cleared for [${targetUser.first_name}](tg://user?id=${targetUser.id}).`);
+                    }
+                }
+
+                if (isAdmin) return next();
+
+                // 1. Chat Lock
+                if (settings.chatLocked) {
+                    await ctx.deleteMessage().catch(() => {});
+                    return;
+                }
+
+                // 2. Anti-Button
+                if (settings.antiButton?.enabled) {
+                    const hasButtons = ctx.message.reply_markup?.inline_keyboard?.length > 0;
+                    if (hasButtons || ctx.from.is_bot) {
+                        await ctx.deleteMessage().catch(() => {});
+                        if (settings.antiButton.sendMsg !== false) {
+                            const notice = resolveLocalizedText(settings, 'antiButton', userLang, { mention: userMention, chat: ctx.chat.title });
+                            ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiButton.autoDeleteSeconds || 5) * 1000));
+                        }
+                        return;
+                    }
+                }
+
+                // 3. Image Spam
+                const isMedia = Boolean(ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.animation || ctx.message.sticker);
+                if (settings.imageSpam?.enabled && isMedia) {
+                    await ctx.deleteMessage().catch(() => {});
+                    if (settings.imageSpam.sendMsg !== false) {
+                        const notice = resolveLocalizedText(settings, 'imageSpam', userLang, { mention: userMention, chat: ctx.chat.title });
+                        ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.imageSpam.autoDeleteSeconds || 5) * 1000));
+                    }
+                    return;
+                }
+
+                // 4. Emoji Spam
+                if (settings.emojiSpam?.enabled) {
+                    const count = countEmojis(text);
+                    const max = parseInt(settings.emojiSpam.maxCount ?? 2);
+                    if (count > max) {
+                        await ctx.deleteMessage().catch(() => {});
+                        if (settings.emojiSpam.sendMsg !== false) {
+                            const notice = resolveLocalizedText(settings, 'emojiSpam', userLang, { mention: userMention, count, limit: max, chat: ctx.chat.title });
+                            const sent = await ctx.replyWithMarkdown(notice).catch(() => {});
+                            const del = parseInt(settings.emojiSpam.autoDeleteSeconds || 5);
+                            if (del > 0 && sent) setTimeout(() => ctx.deleteMessage(sent.message_id).catch(() => {}), del * 1000);
+                        }
+                        return;
+                    }
+                }
+
+                // 5. Anti-Forward
+                if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
+                    await ctx.deleteMessage().catch(() => {});
+                    if (settings.antiForward.sendMsg !== false) {
+                        const notice = resolveLocalizedText(settings, 'antiForward', userLang, { mention: userMention, chat: ctx.chat.title });
+                        ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiForward.autoDeleteSeconds || 5) * 1000));
+                    }
+                    return;
+                }
+
+                // 6. Anti-Link
+                if (settings.antiLink?.enabled) {
+                    const hasLink = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi.test(text);
+                    if (hasLink) {
+                        await ctx.deleteMessage().catch(() => {});
+                        if (settings.antiLink.sendMsg !== false) {
+                            const notice = resolveLocalizedText(settings, 'antiLink', userLang, { mention: userMention, chat: ctx.chat.title });
+                            ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiLink.autoDeleteSeconds || 5) * 1000));
+                        }
+                        return;
+                    }
+                }
+
+                // 7. Bad Words
+                if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
+                    const found = settings.badWords.words.some(w => w.trim() && text.toLowerCase().includes(w.trim().toLowerCase()));
+                    if (found) {
+                        await ctx.deleteMessage().catch(() => {});
+                        const action = settings.badWords.action || 'warn';
+                        const limit = settings.warnLimit || 3;
+
+                        if (action === 'warn') {
+                            const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
+                            const snap = await warnRef.once('value');
+                            const warns = (snap.val() || 0) + 1;
+                            await warnRef.set(warns);
+
+                            if (warns >= limit) {
+                                await ctx.banChatMember(userId).catch(() => {});
+                                await warnRef.remove();
+                                if (settings.banSystem?.sendMsg !== false) {
+                                    const banMsg = resolveLocalizedText(settings, 'banMsg', userLang, { name: fullName, chat: ctx.chat.title });
+                                    ctx.replyWithMarkdown(banMsg).catch(() => {});
+                                }
+                            } else if (settings.badWords.sendMsg !== false) {
+                                const notice = resolveLocalizedText(settings, 'badWords', userLang, { mention: userMention, warns, warnLimit: limit });
+                                const sent = await ctx.replyWithMarkdown(notice).catch(() => {});
+                                const del = parseInt(settings.badWords.autoDeleteSeconds || 6);
+                                if (del > 0 && sent) setTimeout(() => ctx.deleteMessage(sent.message_id).catch(() => {}), del * 1000);
+                            }
+                        } else if (action === 'ban') {
+                            await ctx.banChatMember(userId).catch(() => {});
+                            if (settings.banSystem?.sendMsg !== false) {
+                                const banMsg = resolveLocalizedText(settings, 'banMsg', userLang, { name: fullName, chat: ctx.chat.title });
+                                ctx.replyWithMarkdown(banMsg).catch(() => {});
+                            }
+                        }
+                        return;
+                    }
+                }
+
+            } catch (e) {}
+            return next();
+        });
+
+        await bot.launch();
+        return { success: true, username: BOT_USERNAME, id: botId };
+    } catch (err) {
+        console.error("[Bot Engine Error]:", err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+// =============================================================================
+// ADMIN API: DYNAMIC BOT TOKEN GET & UPDATE
+// =============================================================================
+app.get('/api/admin/bot-config', async (req, res) => {
+    try {
+        const snap = await db.ref('system_config/bot_config').once('value');
+        const config = snap.val() || {};
+        res.json({
+            success: true,
+            botUsername: BOT_USERNAME,
+            botId: botId,
+            tokenMasked: CURRENT_BOT_TOKEN ? `${CURRENT_BOT_TOKEN.slice(0, 8)}...${CURRENT_BOT_TOKEN.slice(-6)}` : 'None',
+            status: bot ? 'ONLINE' : 'OFFLINE',
+            updatedAt: config.updatedAt || null
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/admin/update-bot-token', async (req, res) => {
+    const { newToken } = req.body;
+    if (!newToken || typeof newToken !== 'string' || !newToken.includes(':')) {
+        return res.status(400).json({ success: false, error: "Invalid bot token format." });
+    }
+
+    try {
+        const testBot = new Telegraf(newToken.trim());
+        const testInfo = await testBot.telegram.getMe();
+
+        if (!testInfo || !testInfo.id) {
+            return res.status(400).json({ success: false, error: "Telegram rejected this token." });
+        }
+
+        const bootResult = await bootBotEngine(newToken.trim());
+        if (bootResult.success) {
+            await db.ref('system_config/bot_config').set({
+                token: newToken.trim(),
+                username: testInfo.username,
+                botId: testInfo.id,
+                updatedAt: Date.now()
             });
 
-            const sent = await ctx.replyWithMarkdown(goodbyeMsg).catch(() => {});
-            const delSec = parseInt(settings.goodbye?.autoDeleteSeconds || 10);
-            if (delSec > 0 && sent && sent.message_id) {
-                setTimeout(() => ctx.deleteMessage(sent.message_id).catch(() => {}), delSec * 1000);
-            }
+            return res.json({
+                success: true,
+                message: `Bot switched successfully to @${testInfo.username}!`,
+                botUsername: testInfo.username,
+                botId: testInfo.id
+            });
+        } else {
+            return res.status(500).json({ success: false, error: bootResult.error });
         }
-    } catch (e) {}
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message || "Failed to switch bot token." });
+    }
 });
 
 // =============================================================================
-// 4. CORE MODERATION ENGINE WITH REPLY TOGGLES
-// =============================================================================
-bot.on('message', async (ctx, next) => {
-    try {
-        if (!ctx.chat || ctx.chat.type === 'private') return next();
-
-        const chatId = ctx.chat.id;
-        const text = ctx.message.text || ctx.message.caption || "";
-
-        if (text === '/ping') {
-            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Defense: *Active & Defending*`);
-        }
-
-        const isSubActive = await isChatSubscriptionActive(chatId, ctx);
-        if (!isSubActive) return next();
-
-        const userId = ctx.from?.id;
-        const userLang = ctx.from?.language_code;
-        const settings = await getChatSettings(chatId);
-        const userRole = await getUserRole(ctx, userId);
-        const isAdmin = ['owner', 'admin'].includes(userRole);
-
-        const fullName = `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim() || (ctx.from ? ctx.from.first_name : 'Member');
-        const userMention = `[${fullName}](tg://user?id=${userId})`;
-        const usernameTag = ctx.from?.username ? `@${ctx.from.username}` : fullName;
-
-        // Name Tracker
-        if (settings.nameTracker?.enabled !== false && ctx.from) {
-            const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
-            const snap = await userHistoryRef.once('value');
-            const storedName = snap.val();
-
-            if (storedName && storedName !== fullName) {
-                ctx.replyWithMarkdown(
-                    `📝 *[SECURITY: NAME CHANGE DETECTED]*\n` +
-                    `User: [${fullName}](tg://user?id=${userId})\n` +
-                    `🔄 *Old Name:* \`${storedName}\`\n` +
-                    `✨ *New Name:* \`${fullName}\``
-                ).catch(() => {});
-            }
-            await userHistoryRef.set(fullName);
-        }
-
-        // Scammer Tagging
-        const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
-        if (scammerSnap.val()) {
-            const scamNotice = settings.scammerAlert?.msg || "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER!*";
-            ctx.replyWithMarkdown(scamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
-        }
-
-        // Auto-Replies Engine
-        if (text && settings.autoReplies && typeof settings.autoReplies === 'object') {
-            const clean = text.trim().toLowerCase();
-            for (const key of Object.keys(settings.autoReplies)) {
-                const rule = settings.autoReplies[key];
-                if (!rule || !rule.trigger || !rule.response) continue;
-
-                const trg = rule.trigger.trim().toLowerCase();
-                if (clean === trg || clean.includes(trg)) {
-                    let allowed = false;
-                    if (rule.target === 'everyone') allowed = true;
-                    else if (rule.target === 'admin_owner' && isAdmin) allowed = true;
-                    else if (rule.target === 'owner_only' && userRole === 'owner') allowed = true;
-
-                    if (allowed) {
-                        const formatted = formatTemplate(rule.response, {
-                            mention: userMention,
-                            name: fullName,
-                            username: usernameTag,
-                            chat: ctx.chat.title
-                        });
-                        const kb = buildInlineButtons(rule.buttons);
-                        const extra = { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' };
-                        if (kb) extra.reply_markup = kb.reply_markup;
-
-                        ctx.reply(formatted, extra).catch(() => {});
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Slash Commands
-        if (text.startsWith('/')) {
-            const parts = text.trim().split(/\s+/);
-            const cmd = parts[0].toLowerCase().replace(`@${bot.botInfo?.username?.toLowerCase()}`, '');
-
-            if (cmd === '/ban' && isAdmin) {
-                let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply to a user's message with `/ban`.");
-
-                await ctx.banChatMember(targetUser.id).catch(() => {});
-                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
-
-                if (settings.banSystem?.sendMsg !== false) {
-                    const banMsg = resolveLocalizedText(settings, 'banMsg', userLang, {
-                        name: tName,
-                        chat: ctx.chat.title
-                    });
-                    return ctx.replyWithMarkdown(banMsg);
-                }
-                return;
-            }
-
-            if (cmd === '/bio') {
-                const bioRoleAllowed = settings.commands?.bio?.role || 'all';
-                if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
-                if (bioRoleAllowed === 'admin' && !isAdmin) return;
-
-                let targetUser = ctx.message.reply_to_message?.from || ctx.from;
-                const tRole = await getUserRole(ctx, targetUser.id);
-                const warnSnap = await db.ref(`groups/${chatId}/warns/${targetUser.id}`).once('value');
-                const isScammer = (await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).once('value')).val();
-
-                const bioMessage = 
-                    `📋 *User Dossier & Security Evaluation*\n\n` +
-                    `👤 *Name:* [${targetUser.first_name}](tg://user?id=${targetUser.id})\n` +
-                    `🆔 *User ID:* \`${targetUser.id}\`\n` +
-                    `🎖 *Assigned Role:* \`${tRole.toUpperCase()}\`\n` +
-                    `⚠️ *Active Infractions:* \`${warnSnap.val() || 0}/${settings.warnLimit || 3}\`\n` +
-                    `🛡 *Trust Score:* ${isScammer ? '🚨 *CONFIRMED SCAMMER*' : '✅ *Safe*'}`;
-
-                return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
-            }
-
-            if (cmd === '/scam' && isAdmin) {
-                let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/scam`.");
-
-                await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).set({
-                    name: `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim(),
-                    username: targetUser.username || '',
-                    flaggedAt: Date.now()
-                });
-                return ctx.replyWithMarkdown(`🚨 [${targetUser.first_name}](tg://user?id=${targetUser.id}) has been added to Scammer Blacklist.`);
-            }
-
-            if (cmd === '/unscam' && isAdmin) {
-                let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply with `/unscam`.");
-                await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).remove();
-                return ctx.replyWithMarkdown(`✅ Cleared scam flag for [${targetUser.first_name}](tg://user?id=${targetUser.id}).`);
-            }
-        }
-
-        if (isAdmin) return next();
-
-        // 1. Chat Lock
-        if (settings.chatLocked) {
-            await ctx.deleteMessage().catch(() => {});
-            return;
-        }
-
-        // 2. Anti-Button
-        if (settings.antiButton?.enabled) {
-            const hasButtons = ctx.message.reply_markup?.inline_keyboard?.length > 0;
-            if (hasButtons || ctx.from.is_bot) {
-                await ctx.deleteMessage().catch(() => {});
-                if (settings.antiButton.sendMsg !== false) {
-                    const notice = resolveLocalizedText(settings, 'antiButton', userLang, { mention: userMention, chat: ctx.chat.title });
-                    ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiButton.autoDeleteSeconds || 5) * 1000));
-                }
-                return;
-            }
-        }
-
-        // 3. Image/Media Spam
-        const isMedia = Boolean(ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.sticker);
-        if (settings.imageSpam?.enabled && isMedia) {
-            await ctx.deleteMessage().catch(() => {});
-            if (settings.imageSpam.sendMsg !== false) {
-                const notice = resolveLocalizedText(settings, 'imageSpam', userLang, { mention: userMention, chat: ctx.chat.title });
-                ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.imageSpam.autoDeleteSeconds || 5) * 1000));
-            }
-            return;
-        }
-
-        // 4. Emoji Spam
-        if (settings.emojiSpam?.enabled) {
-            const count = countEmojis(text);
-            const max = parseInt(settings.emojiSpam.maxCount ?? 2);
-            if (count > max) {
-                await ctx.deleteMessage().catch(() => {});
-                if (settings.emojiSpam.sendMsg !== false) {
-                    const notice = resolveLocalizedText(settings, 'emojiSpam', userLang, { mention: userMention, count, limit: max, chat: ctx.chat.title });
-                    const sent = await ctx.replyWithMarkdown(notice).catch(() => {});
-                    const del = parseInt(settings.emojiSpam.autoDeleteSeconds || 5);
-                    if (del > 0 && sent) setTimeout(() => ctx.deleteMessage(sent.message_id).catch(() => {}), del * 1000);
-                }
-                return;
-            }
-        }
-
-        // 5. Anti-Forward
-        if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
-            await ctx.deleteMessage().catch(() => {});
-            if (settings.antiForward.sendMsg !== false) {
-                const notice = resolveLocalizedText(settings, 'antiForward', userLang, { mention: userMention, chat: ctx.chat.title });
-                ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiForward.autoDeleteSeconds || 5) * 1000));
-            }
-            return;
-        }
-
-        // 6. Anti-Link
-        if (settings.antiLink?.enabled) {
-            const hasLink = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi.test(text);
-            if (hasLink) {
-                await ctx.deleteMessage().catch(() => {});
-                if (settings.antiLink.sendMsg !== false) {
-                    const notice = resolveLocalizedText(settings, 'antiLink', userLang, { mention: userMention, chat: ctx.chat.title });
-                    ctx.replyWithMarkdown(notice).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiLink.autoDeleteSeconds || 5) * 1000));
-                }
-                return;
-            }
-        }
-
-        // 7. Bad Words
-        if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
-            const found = settings.badWords.words.some(w => w.trim() && text.toLowerCase().includes(w.trim().toLowerCase()));
-            if (found) {
-                await ctx.deleteMessage().catch(() => {});
-                const action = settings.badWords.action || 'warn';
-                const limit = settings.warnLimit || 3;
-
-                if (action === 'warn') {
-                    const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
-                    const snap = await warnRef.once('value');
-                    const warns = (snap.val() || 0) + 1;
-                    await warnRef.set(warns);
-
-                    if (warns >= limit) {
-                        await ctx.banChatMember(userId).catch(() => {});
-                        await warnRef.remove();
-                        if (settings.banSystem?.sendMsg !== false) {
-                            const banMsg = resolveLocalizedText(settings, 'banMsg', userLang, { name: fullName, chat: ctx.chat.title });
-                            ctx.replyWithMarkdown(banMsg).catch(() => {});
-                        }
-                    } else if (settings.badWords.sendMsg !== false) {
-                        const notice = resolveLocalizedText(settings, 'badWords', userLang, { mention: userMention, warns, warnLimit: limit });
-                        const sent = await ctx.replyWithMarkdown(notice).catch(() => {});
-                        const del = parseInt(settings.badWords.autoDeleteSeconds || 6);
-                        if (del > 0 && sent) setTimeout(() => ctx.deleteMessage(sent.message_id).catch(() => {}), del * 1000);
-                    }
-                } else if (action === 'ban') {
-                    await ctx.banChatMember(userId).catch(() => {});
-                    if (settings.banSystem?.sendMsg !== false) {
-                        const banMsg = resolveLocalizedText(settings, 'banMsg', userLang, { name: fullName, chat: ctx.chat.title });
-                        ctx.replyWithMarkdown(banMsg).catch(() => {});
-                    }
-                }
-                return;
-            }
-        }
-
-    } catch (e) {}
-    return next();
-});
-
-// =============================================================================
-// 5. GRAMJS MTPROTO & REST API ROUTES
+// GRAMJS MTPROTO & REST API ROUTES
 // =============================================================================
 const tempAuthClients = {};
 
@@ -1072,7 +1115,9 @@ app.post('/api/tg/get-scammers', async (req, res) => {
     }
 });
 
-// License Key Generator
+// =============================================================================
+// LICENSE MANAGEMENT & SUPER ADMIN
+// =============================================================================
 function generateLicenseKey() {
     const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -1080,7 +1125,6 @@ function generateLicenseKey() {
     return `VS-${p1}-${p2}-${p3}`;
 }
 
-// License APIs
 app.post('/api/admin/generate-license', async (req, res) => {
     const { planId, customDurationDays } = req.body;
     try {
@@ -1305,12 +1349,24 @@ app.get('*', (req, res) => {
     res.status(404).send("<h2>index.html not found.</h2>");
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// =============================================================================
+// SERVER STARTUP WITH FIREBASE SAVED BOT TOKEN RECOVERY
+// =============================================================================
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`[VS Protection] Server listening on port ${PORT}`);
-    bot.launch()
-        .then(() => console.log(`[VS Protection] Bot Engine Active: @${BOT_USERNAME}`))
-        .catch(e => console.error("[VS Protection] Engine Warning:", e.message));
+
+    // ডাটাবেজে আগে থেকে সেভ থাকা কাস্টম টোকেন থাকলে সেটি দিয়ে চালু হবে
+    try {
+        const tokenSnap = await db.ref('system_config/bot_config').once('value');
+        const config = tokenSnap.val();
+        if (config && config.token) {
+            CURRENT_BOT_TOKEN = config.token;
+            console.log(`[Bot Engine] Found saved Bot Token in Firebase for @${config.username || 'Bot'}`);
+        }
+    } catch (e) {}
+
+    await bootBotEngine(CURRENT_BOT_TOKEN);
 });
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => bot && bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot && bot.stop('SIGTERM'));
