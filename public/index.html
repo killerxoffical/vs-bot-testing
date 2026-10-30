@@ -70,7 +70,7 @@
         .pane-scroll::-webkit-scrollbar-track { background: transparent; }
         .pane-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
         .section-divider {
-            border-bottom: 1px solid #E2E8F0;
+            border-bottom: 1px solid #F1F5F9;
             padding-bottom: 1.5rem;
             margin-bottom: 1.5rem;
         }
@@ -131,7 +131,7 @@
                     <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">For High-Traffic Hubs</span>
                 </h1>
                 <p class="text-slate-600 text-sm md:text-base max-w-xl font-normal leading-relaxed">
-                    Granular security controls for Groups and Broadcast Channels. Emoji spam control, anti-button bot filters, live broadcast studio, and automated community defense.
+                    Granular security controls for Groups and Broadcast Channels. Stop SMM panel bot raids, auto-captcha join requests, purge emoji floods, block unauthorized links & media, and manage your community effortlessly.
                 </p>
                 <div class="pt-2 flex flex-wrap items-center gap-4">
                     <div id="landingHeroBtnWrap">
@@ -279,7 +279,7 @@
             </div>
         </div>
 
-        <!-- SUB-VIEW B: FULL GROUP PANEL -->
+        <!-- SUB-VIEW B: FULL GROUP/CHANNEL CONTROL PANEL -->
         <div id="dedicatedGroupPanelView" class="hidden flex-1 w-full h-full overflow-hidden flex flex-col">
             
             <!-- PANEL HEADER -->
@@ -291,7 +291,7 @@
                     <div id="panelGroupAvatarContainer" class="w-9 h-9 rounded-xl overflow-hidden shrink-0 shadow-sm border border-slate-200"></div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h2 id="panelGroupName" class="text-base font-bold text-slate-900 leading-tight truncate">Group Name</h2>
+                            <h2 id="panelGroupName" class="text-base font-bold text-slate-900 leading-tight truncate">Community</h2>
                             <span id="panelGroupRoleBadge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-100">Owner</span>
                         </div>
                         <p id="panelGroupMeta" class="text-[10px] text-slate-500">ID: -</p>
@@ -308,10 +308,11 @@
 
             <!-- Workspace Body -->
             <div class="flex-1 w-full flex flex-col lg:flex-row overflow-hidden">
+                <!-- Sidebar Menu -->
                 <aside class="w-full lg:w-72 bg-white border-r border-slate-200 p-3 lg:p-4 flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-y-auto no-scrollbar shrink-0 z-20">
                     <button onclick="switchTab('security')" id="tabBtn-security" class="tab-btn active flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition">
-                        <i data-lucide="shield" class="w-4 h-4"></i>
-                        <span>Security & Defense</span>
+                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                        <span>Security & Anti-Bot Defense</span>
                     </button>
                     <button onclick="switchTab('broadcast')" id="tabBtn-broadcast" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="radio" class="w-4 h-4"></i>
@@ -331,14 +332,14 @@
                     </button>
                     <button onclick="switchTab('welcome')" id="tabBtn-welcome" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="party-popper" class="w-4 h-4"></i>
-                        <span>Welcome & Farewell</span>
+                        <span>Welcome & Greetings</span>
                     </button>
                     <button onclick="switchTab('commands')" id="tabBtn-commands" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
                         <span>Slash Commands</span>
                     </button>
                     <button onclick="switchTab('scammers')" id="tabBtn-scammers" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
-                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                        <i data-lucide="shield-ban" class="w-4 h-4"></i>
                         <span>Scammer Blacklist</span>
                     </button>
                     <button onclick="switchTab('leftmembers')" id="tabBtn-leftmembers" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
@@ -349,8 +350,70 @@
 
                 <main class="flex-1 h-full overflow-y-auto pane-scroll p-5 md:p-8 space-y-6">
 
-                    <!-- TAB 1: SECURITY -->
+                    <!-- TAB 1: SECURITY & DEFENSE (ANTI-SMM BOT INCLUDED) -->
                     <div id="tabContent-security" class="space-y-6 max-w-5xl">
+                        
+                        <!-- Top Alert Card: SMM Bot Shields -->
+                        <div class="light-card p-6 md:p-8 rounded-2xl border-l-4 border-l-brand-600 bg-brand-50/20 space-y-6">
+                            
+                            <!-- FEATURE 1: Anti-Raid SMM Panel Shield -->
+                            <div class="section-divider space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-sm">
+                                            <i data-lucide="zap" class="w-5 h-5"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-bold text-slate-900">Anti-Raid SMM Bot Shield (Public Protection)</h4>
+                                            <p class="text-xs text-slate-500">Detects rapid bot floods during giveaways & auto-purges them instantly.</p>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="toggleAntiRaid" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                    <div class="p-3 bg-white rounded-xl border border-slate-200">
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Trigger Threshold (Joins in 5 seconds):</label>
+                                        <input id="antiRaidThreshold" type="number" min="3" max="50" value="5" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <span class="text-[10px] text-slate-400 mt-0.5 block">Exceeding this number triggers immediate raid mode.</span>
+                                    </div>
+                                    <div class="p-3 bg-white rounded-xl border border-slate-200">
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Enforcement Action:</label>
+                                        <select id="antiRaidAction" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="kick" selected>Auto-Kick (Remove from chat)</option>
+                                            <option value="ban">Permanent Ban</option>
+                                        </select>
+                                        <span class="text-[10px] text-slate-400 mt-0.5 block">Kick keeps channel clean without clogging ban list.</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="button" onclick="saveAntiRaidSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Raid Policy</button>
+                                </div>
+                            </div>
+
+                            <!-- FEATURE 2: Join Request Captcha Gateway -->
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                                            <i data-lucide="check-check" class="w-5 h-5"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-bold text-slate-900">Join Request Captcha Gateway (100% Bot Immunity)</h4>
+                                            <p class="text-xs text-slate-500">Sends math verification to user's Telegram DM. SMM bots fail completely!</p>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="toggleChannelCaptcha" class="w-5 h-5 accent-emerald-600 cursor-pointer">
+                                </div>
+                                <div class="p-3 bg-white rounded-xl border border-emerald-100 text-xs text-slate-600 leading-relaxed font-sans">
+                                    💡 <b>টিপস:</b> গিভওয়ে চলাকালীন আপনার চ্যানেলের ইনভাইট লিংকে টেলিগ্রাম সেটিংস থেকে <b>"Request Admin Approval"</b> অপশনটি চালু রাখুন। এই বট স্বয়ংক্রিয়ভাবে আসল ইউজারকে ইনবক্সে ম্যাথ ক্যাপচা পাঠাবে এবং সঠিক উত্তর দিলে চ্যানেলে অ্যাপ্রুভ করবে।
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="button" onclick="saveChannelCaptchaSection()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Captcha Policy</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- General Security Controls -->
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
                             
                             <!-- 1. Emoji Spam Guard -->
@@ -362,7 +425,7 @@
                                         </div>
                                         <div>
                                             <h4 class="text-sm font-bold text-slate-900">Emoji Spam Protection</h4>
-                                            <p class="text-xs text-slate-500">Purges messages with excessive emojis (0 allows no emojis)</p>
+                                            <p class="text-xs text-slate-500">Purges messages with excessive emojis</p>
                                         </div>
                                     </div>
                                     <input type="checkbox" id="toggleEmojiSpam" class="w-5 h-5 accent-brand-600 cursor-pointer">
@@ -390,7 +453,7 @@
                                 </div>
                             </div>
 
-                            <!-- Chat Lock -->
+                            <!-- 2. Chat Lockdown -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -417,8 +480,8 @@
                                 </div>
                             </div>
 
-                            <!-- Anti-Link -->
-                            <div class="space-y-3">
+                            <!-- 3. Anti-Link Shield -->
+                            <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
                                         <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
@@ -426,7 +489,7 @@
                                         </div>
                                         <div>
                                             <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield</h4>
-                                            <p class="text-xs text-slate-500">Detects and purges unauthorized external links</p>
+                                            <p class="text-xs text-slate-500">Detects and purges external links and Telegram invitations</p>
                                         </div>
                                     </div>
                                     <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
@@ -439,40 +502,87 @@
                                     <button type="button" onclick="saveAntiLinkSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Link Policy</button>
                                 </div>
                             </div>
+
+                            <!-- 4. Anti-Forward & Anti-Button Bot Guard -->
+                            <div class="section-divider grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <h5 class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                            <i data-lucide="corner-up-right" class="w-3.5 h-3.5 text-brand-600"></i>
+                                            <span>Anti-Forward Protection</span>
+                                        </h5>
+                                        <input type="checkbox" id="toggleAntiForward" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    </div>
+                                    <p class="text-[11px] text-slate-500">Deletes any forwarded messages from outside sources.</p>
+                                    <button onclick="saveAntiForwardSection()" class="px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-bold text-slate-700 transition">Save</button>
+                                </div>
+
+                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <h5 class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                                            <i data-lucide="square" class="w-3.5 h-3.5 text-brand-600"></i>
+                                            <span>Anti-Inline Button Bot Guard</span>
+                                        </h5>
+                                        <input type="checkbox" id="toggleAntiButton" class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    </div>
+                                    <p class="text-[11px] text-slate-500">Blocks bot messages that contain interactive inline keyboards.</p>
+                                    <button onclick="saveAntiButtonSection()" class="px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 rounded-lg text-[11px] font-bold text-slate-700 transition">Save</button>
+                                </div>
+                            </div>
+
+                            <!-- 5. Media & Image Spam Control -->
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                                            <i data-lucide="image" class="w-4 h-4"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-bold text-slate-900">Media & Image Restriction</h4>
+                                            <p class="text-xs text-slate-500">Deletes images, videos, documents or stickers sent by regular members</p>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="toggleImageSpam" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="button" onclick="saveImageSpamSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Media Policy</button>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    <!-- Broadcast Studio Tab -->
+                    <!-- TAB 2: BROADCAST STUDIO -->
                     <div id="tabContent-broadcast" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="border-b border-slate-100 pb-3">
-                                <h3 class="text-base font-bold text-slate-900">Official Group Broadcast Studio</h3>
-                                <p class="text-xs text-slate-500">Dispatch instant announcements, images, and buttons to the community</p>
+                                <h3 class="text-base font-bold text-slate-900">Official Community Broadcast Studio</h3>
+                                <p class="text-xs text-slate-500">Dispatch instant announcements, rich photos, and interactive buttons</p>
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Header Image URL (Optional):</label>
                                 <input id="broadcastPhotoUrl" type="url" placeholder="https://example.com/announcement.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Announcement Message Body:</label>
-                                <textarea id="broadcastText" rows="3" placeholder="📢 Attention Members! Important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Announcement Message Body (Markdown Supported):</label>
+                                <textarea id="broadcastText" rows="4" placeholder="📢 Attention Members! Important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
                             </div>
                             <div class="flex justify-end">
-                                <button type="button" onclick="sendGroupBroadcast()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                                <button type="button" onclick="sendGroupBroadcast()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                                     <i data-lucide="send" class="w-3.5 h-3.5"></i>
-                                    <span>Send Announcement to Group</span>
+                                    <span>Send Announcement to Community</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Ban System Tab -->
+                    <!-- TAB 3: BAN NOTIFICATIONS -->
                     <div id="tabContent-bansystem" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
-                                    <h3 class="text-base font-bold text-slate-900">Custom Ban Notification Message</h3>
-                                    <p class="text-xs text-slate-500">Broadcast notice when a member is removed</p>
+                                    <h3 class="text-base font-bold text-slate-900">Custom Ban Notification</h3>
+                                    <p class="text-xs text-slate-500">Broadcasts automated warning when a member is removed from the chat</p>
                                 </div>
                                 <input type="checkbox" id="toggleBanSystem" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
@@ -486,21 +596,21 @@
                         </div>
                     </div>
 
-                    <!-- Auto-Replies Tab -->
+                    <!-- TAB 4: AUTO-REPLIES ENGINE -->
                     <div id="tabContent-autoreply" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="border-b border-slate-100 pb-3">
-                                <h3 class="text-base font-bold text-slate-900">Custom Auto-Replies Engine</h3>
-                                <p class="text-xs text-slate-500">Configure keywords that trigger automatic bot responses filtered by sender role</p>
+                                <h3 class="text-base font-bold text-slate-900">Automated Bot Reply Triggers</h3>
+                                <p class="text-xs text-slate-500">Configure keywords that prompt immediate automated bot answers</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                                     <div class="sm:col-span-5">
-                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Trigger Keyword</label>
-                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Trigger Keyword</label>
+                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules, link" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                     </div>
                                     <div class="sm:col-span-4">
-                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sender Role</label>
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Sender Permission Role</label>
                                         <select id="newReplyTarget" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                             <option value="everyone">Everyone</option>
                                             <option value="admin_owner">Only Admin & Owner</option>
@@ -510,35 +620,51 @@
                                     <div class="sm:col-span-3 flex items-end">
                                         <button type="button" onclick="addAutoReplyRule()" class="w-full py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm">
                                             <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                                            <span>Add Reply</span>
+                                            <span>Add Trigger</span>
                                         </button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response</label>
-                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Bot Response</label>
+                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, our official pricing is..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
                             </div>
+
                             <div id="autoRepliesList" class="space-y-2"></div>
+                            
                             <div class="flex justify-end pt-2">
                                 <button type="button" onclick="saveAutoRepliesSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Auto-Replies</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Profanity Blacklist Tab -->
+                    <!-- TAB 5: PROFANITY BLACKLIST -->
                     <div id="tabContent-profanity" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
                                     <h3 class="text-base font-bold text-slate-900">Profanity Blacklist & Enforcement</h3>
-                                    <p class="text-xs text-slate-500">Configure prohibited words and punishment</p>
+                                    <p class="text-xs text-slate-500">Configure forbidden words, warning thresholds, and auto-ban</p>
                                 </div>
                                 <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Blacklisted Words (Comma separated):</label>
-                                <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="badWordsInput" rows="3" placeholder="badword1, scam, abusive, fraud" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Action on Infraction:</label>
+                                    <select id="badWordsAction" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="delete">Delete Message Only</option>
+                                        <option value="warn" selected>Warn User (Ban on limit)</option>
+                                        <option value="ban">Instant Ban</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Infraction Limit:</label>
+                                    <input id="badWordsWarnLimit" type="number" min="1" max="10" value="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                </div>
                             </div>
                             <div class="flex justify-end">
                                 <button type="button" onclick="saveBadWordsSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Profanity Policy</button>
@@ -546,19 +672,32 @@
                         </div>
                     </div>
 
-                    <!-- Welcome & Farewell Tab -->
+                    <!-- TAB 6: WELCOME & GREETINGS -->
                     <div id="tabContent-welcome" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
-                                    <h3 class="text-base font-bold text-slate-900">Welcome & Farewell Greetings</h3>
-                                    <p class="text-xs text-slate-500">Greet joined members & say goodbye to departed members</p>
+                                    <h3 class="text-base font-bold text-slate-900">Welcome & Greetings Gateway</h3>
+                                    <p class="text-xs text-slate-500">Send custom images and messages when real users join</p>
                                 </div>
                                 <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
                             <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Image URL (Optional):</label>
+                                <input id="welcomePhotoUrl" type="url" placeholder="https://example.com/welcome.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none">
+                            </div>
+                            <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Text Message:</label>
-                                <textarea id="welcomeTextInput" rows="3" placeholder="👋 Welcome {mention} to {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="welcomeTextInput" rows="3" placeholder="👋 Welcome {mention} to {chat}! Please follow rules." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Auto Delete Welcome Message After:</label>
+                                <select id="welcomeAutoDelete" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                    <option value="0">Never Delete</option>
+                                    <option value="15">15 Seconds</option>
+                                    <option value="30" selected>30 Seconds</option>
+                                    <option value="60">1 Minute</option>
+                                </select>
                             </div>
                             <div class="flex justify-end">
                                 <button type="button" onclick="saveWelcomeSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Welcome Policy</button>
@@ -566,46 +705,54 @@
                         </div>
                     </div>
 
-                    <!-- Slash Commands Tab -->
+                    <!-- TAB 7: SLASH COMMANDS -->
                     <div id="tabContent-commands" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="border-b border-slate-100 pb-3">
                                 <h3 class="text-base font-bold text-slate-900">Custom Slash Commands Engine</h3>
-                                <p class="text-xs text-slate-500">Define commands starting with /</p>
+                                <p class="text-xs text-slate-500">Define access rules for standard bot commands</p>
                             </div>
                             <div class="p-4 rounded-xl bg-brand-50/50 border border-brand-100 flex items-center justify-between">
-                                <span class="px-2.5 py-0.5 rounded-lg bg-brand-600 text-white font-mono text-xs font-bold">/bio</span>
+                                <div>
+                                    <span class="px-2.5 py-0.5 rounded-lg bg-brand-600 text-white font-mono text-xs font-bold">/bio</span>
+                                    <p class="text-[11px] text-slate-500 mt-1">Generates comprehensive dossier and infraction counter for users</p>
+                                </div>
                                 <select id="cmdBioRole" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 outline-none">
                                     <option value="all">Everyone</option>
                                     <option value="admin">Admins & Owner</option>
                                     <option value="owner">Owner Only</option>
                                 </select>
                             </div>
-                            <div id="customCommandsList" class="space-y-2"></div>
                             <div class="flex justify-end">
-                                <button type="button" onclick="saveCommandsSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Slash Commands</button>
+                                <button type="button" onclick="saveCommandsSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Commands</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Scammers Tab -->
+                    <!-- TAB 8: SCAMMERS -->
                     <div id="tabContent-scammers" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
-                            <div class="border-b border-slate-100 pb-3">
-                                <h3 class="text-base font-bold text-slate-900">Scammer Tagging & Blacklist System</h3>
-                                <p class="text-xs text-slate-500">Flag fraudsters with public warnings</p>
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div>
+                                    <h3 class="text-base font-bold text-slate-900">Scammer Tagging & Blacklist Database</h3>
+                                    <p class="text-xs text-slate-500">Flag fraudsters and warn members whenever they post</p>
+                                </div>
+                                <button onclick="loadScammers()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
+                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                    <span>Sync Scammers</span>
+                                </button>
                             </div>
                             <div id="scammersListContainer" class="space-y-2 max-h-80 overflow-y-auto"></div>
                         </div>
                     </div>
 
-                    <!-- Left Members Tab -->
+                    <!-- TAB 9: LEFT MEMBERS -->
                     <div id="tabContent-leftmembers" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
                                     <h3 class="text-base font-bold text-slate-900">Left Members Live Tracker</h3>
-                                    <p class="text-xs text-slate-500">Real-time log of users who exited the group</p>
+                                    <p class="text-xs text-slate-500">Audit log of members who departed or were removed</p>
                                 </div>
                                 <button onclick="loadLeftMembers()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
                                     <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
@@ -615,6 +762,7 @@
                             <div id="leftMembersListContainer" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
                         </div>
                     </div>
+
                 </main>
             </div>
         </div>
@@ -654,11 +802,6 @@
                         To purchase an official license key, please message the administrator directly on Telegram. You will receive an exclusive license key formatted as <code class="bg-white px-1.5 py-0.5 rounded border border-slate-300 font-bold text-brand-600">VS-XXXX-XXXX</code> immediately after payment.
                     </p>
                 </div>
-                <div class="border-t border-slate-200/80 pt-2.5">
-                    <p class="text-[11px] font-medium text-slate-500 leading-relaxed font-sans">
-                        বাংলা নির্দেশিকা: লাইসেন্স কেনার জন্য নিচের বাটনে ক্লিক করে সরাসরি আমাদের অ্যাডমিনকে টেলিগ্রামে মেসেজ দিন। পেমেন্ট কনফার্ম করার পর অ্যাডমিন আপনাকে একটি লাইসেন্স কী (License Key) প্রদান করবে, যা দিয়ে আপনি প্যানেলে গিয়ে সাবস্ক্রিপশন ক্লেইম করতে পারবেন।
-                    </p>
-                </div>
             </div>
             <div class="flex flex-col sm:flex-row items-center gap-3">
                 <a href="https://t.me/Blackmoney54" target="_blank" class="w-full sm:flex-1 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-brand-500/25">
@@ -672,7 +815,7 @@
         </div>
     </div>
 
-    <!-- MODAL: CLAIM LICENSE KEY (NO TELEGRAM ID REQUIRED) -->
+    <!-- MODAL: CLAIM LICENSE KEY -->
     <div id="claimLicenseModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-200 relative text-left">
             <button onclick="closeClaimLicenseModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
@@ -724,7 +867,7 @@
         </div>
     </div>
 
-    <!-- CLIENT SCRIPT -->
+    <!-- FRONTEND JAVASCRIPT ENGINE -->
     <script>
         lucide.createIcons();
 
@@ -747,7 +890,6 @@
         let phoneCodeHash = null;
         let loadedItemsMap = {};
         let activeGroupId = null;
-        let customCommandsMap = {};
         let autoRepliesMap = {};
 
         let cachedGroupsList = [];
@@ -769,7 +911,7 @@
                         </div>
                         <ul class="space-y-1.5 text-[11px] text-slate-600 border-t border-slate-100 pt-3">
                             <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i> 1 Group / Channel</li>
-                            <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i> 30 Days + 7 Days Grace</li>
+                            <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i> Anti-Raid SMM Shield</li>
                         </ul>
                     </div>
                     <button onclick="closePricingModal(); openPurchaseModal('Starter (1 Chat)', '50', '0.39')" class="w-full mt-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition">Buy Starter</button>
@@ -786,7 +928,7 @@
                         </div>
                         <ul class="space-y-1.5 text-[11px] text-slate-600 border-t border-slate-100 pt-3">
                             <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i> 5 Groups / Channels</li>
-                            <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i> Broadcast Studio</li>
+                            <li class="flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i> Captcha Gateways</li>
                         </ul>
                     </div>
                     <button onclick="closePricingModal(); openPurchaseModal('Growth (5 Chats)', '200', '1.57')" class="w-full mt-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition">Buy Growth</button>
@@ -852,13 +994,7 @@
                     </button>
                     <button onclick="showDashboardView()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition shadow-sm">
                         <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
-                        <span>Go to Dashboard</span>
-                    </button>
-                `;
-                document.getElementById('landingHeroBtnWrap').innerHTML = `
-                    <button onclick="showDashboardView()" class="flex items-center gap-3 px-7 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-xl shadow-brand-500/25 transition">
-                        <span>Go to Dashboard</span>
-                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        <span>Dashboard</span>
                     </button>
                 `;
             }
@@ -880,7 +1016,7 @@
                 </button>
                 <button onclick="showLandingView()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs text-slate-700 transition">
                     <i data-lucide="globe" class="w-3.5 h-3.5"></i>
-                    <span>Landing Page</span>
+                    <span>Landing</span>
                 </button>
                 <button onclick="signOutUser()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 font-bold text-xs transition">
                     <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
@@ -922,7 +1058,6 @@
             document.getElementById('claimLicenseModal').classList.add('hidden');
         }
 
-        // 1-CLICK CLAIM LICENSE (NO TELEGRAM ID REQUIRED)
         async function submitClaimLicense() {
             const key = document.getElementById('inputClaimKey').value.trim();
             if (!key) return Swal.fire('License Required', 'Please enter your license key.', 'warning');
@@ -960,7 +1095,6 @@
             }
         }
 
-        // REAL-TIME SUBSCRIPTION CHECKER (VERIFIES BY USER ID & TELEGRAM ID)
         async function checkSubscriptionStatus(showGatePopup = true) {
             if (!currentUser) return;
             try {
@@ -985,21 +1119,21 @@
                         isUserSubscribed = false;
                         badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700";
                         badgeEl.innerText = "EXPIRED & OFF";
-                        metaEl.innerHTML = `<span class="text-rose-600 font-bold">Subscription expired. All bot protection is OFF. Renew with @Blackmoney54.</span>`;
+                        metaEl.innerHTML = `<span class="text-rose-600 font-bold">Subscription expired. Bot protection is OFF. Renew with @Blackmoney54.</span>`;
                         banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-rose-50/60 border-rose-200";
 
-                        if (showGatePopup) promptSubscriptionGate("Your subscription and grace period have expired! Bot protection is shut off.");
+                        if (showGatePopup) promptSubscriptionGate("Your subscription has expired! Bot protection is shut off.");
                     } else if (data.isGracePeriod) {
                         isUserSubscribed = true;
                         badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse";
                         badgeEl.innerText = "GRACE PERIOD ACTIVE";
-                        metaEl.innerHTML = `<span class="text-amber-700 font-bold">${data.graceDaysLeft} days left in grace period before protection automatically shuts off!</span>`;
+                        metaEl.innerHTML = `<span class="text-amber-700 font-bold">${data.graceDaysLeft} days left in grace period!</span>`;
                         banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-amber-50/60 border-amber-200";
                     } else {
                         isUserSubscribed = true;
                         badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700";
                         badgeEl.innerText = "PROTECTION ACTIVE";
-                        metaEl.innerText = `${data.remainingDays} days remaining in current active period (+7 days renewal grace included).`;
+                        metaEl.innerText = `${data.remainingDays} days remaining in current active period.`;
                         banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-emerald-50/40 border-emerald-200";
                     }
                 } else {
@@ -1007,7 +1141,7 @@
                     planNameEl.innerText = "No Active License Key";
                     badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
                     badgeEl.innerText = "UNLICENSED";
-                    metaEl.innerText = "Please purchase a license key from admin @Blackmoney54 and click 'Claim License Key'.";
+                    metaEl.innerText = "Please purchase a license key from admin @Blackmoney54.";
                     banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-white border-slate-200";
 
                     if (showGatePopup) promptSubscriptionGate("You do not have an active subscription license to use VS Protection.");
@@ -1032,7 +1166,69 @@
             });
         }
 
-        // Modular Save Handlers
+        // ==========================================
+        // DYNAMIC GROUP SETTINGS LOADER & SAVERS
+        // ==========================================
+
+        async function loadGroupSettingsIntoUI(chatId) {
+            try {
+                const snap = await rtdb.ref(`groups/${chatId}/settings`).once('value');
+                const s = snap.val() || {};
+
+                // Anti-Raid
+                document.getElementById('toggleAntiRaid').checked = s.antiRaid ? s.antiRaid.enabled : true;
+                document.getElementById('antiRaidThreshold').value = (s.antiRaid && s.antiRaid.threshold) || 5;
+                document.getElementById('antiRaidAction').value = (s.antiRaid && s.antiRaid.action) || 'kick';
+
+                // Channel Captcha
+                document.getElementById('toggleChannelCaptcha').checked = s.channelCaptcha ? s.channelCaptcha.enabled !== false : true;
+
+                // Emoji
+                document.getElementById('toggleEmojiSpam').checked = s.emojiSpam ? s.emojiSpam.enabled : false;
+                document.getElementById('emojiMaxCount').value = (s.emojiSpam && s.emojiSpam.maxCount) ?? 2;
+                document.getElementById('emojiAutoDelete').value = (s.emojiSpam && s.emojiSpam.autoDeleteSeconds) ?? 5;
+                document.getElementById('emojiWarningMsg').value = s.emojiSpam?.msg || "⚠️ {mention}, excessive emojis are prohibited in {chat}!";
+
+                // Chat Lock
+                document.getElementById('toggleChatLock').checked = Boolean(s.chatLocked);
+                document.getElementById('chatLockMsg').value = s.lockMsg || "🔒 This conversation has been temporarily muted by community administrators.";
+
+                // Anti-Link
+                document.getElementById('toggleAntiLink').checked = s.antiLink ? s.antiLink.enabled : false;
+                document.getElementById('antiLinkMsg').value = s.antiLink?.msg || "⚠️ {mention}, external links are restricted in {chat}!";
+
+                // Anti-Forward & Anti-Button & Image
+                document.getElementById('toggleAntiForward').checked = s.antiForward ? s.antiForward.enabled : false;
+                document.getElementById('toggleAntiButton').checked = s.antiButton ? s.antiButton.enabled : false;
+                document.getElementById('toggleImageSpam').checked = s.imageSpam ? s.imageSpam.enabled : false;
+
+                // Ban System
+                document.getElementById('toggleBanSystem').checked = s.banSystem ? s.banSystem.enabled !== false : true;
+                document.getElementById('banSystemMsg').value = s.banSystem?.msg || "⛔ {name} has been permanently removed from {chat}.";
+
+                // Bad words
+                document.getElementById('toggleBadWords').checked = s.badWords ? s.badWords.enabled : false;
+                document.getElementById('badWordsInput').value = s.badWords && s.badWords.words ? s.badWords.words.join(', ') : "";
+                document.getElementById('badWordsAction').value = s.badWords?.action || "warn";
+                document.getElementById('badWordsWarnLimit').value = s.warnLimit || 3;
+
+                // Welcome
+                document.getElementById('toggleWelcome').checked = s.welcome ? s.welcome.enabled !== false : true;
+                document.getElementById('welcomePhotoUrl').value = s.welcome?.photoUrl || "";
+                document.getElementById('welcomeTextInput').value = s.welcome?.text || "👋 Welcome {mention} to {chat}!";
+                document.getElementById('welcomeAutoDelete').value = s.welcome?.autoDeleteSeconds || "0";
+
+                // Commands
+                document.getElementById('cmdBioRole').value = s.commands?.bio?.role || "all";
+
+                // Auto replies
+                autoRepliesMap = s.autoReplies || {};
+                renderAutoReplies();
+            } catch (err) {
+                console.error("Failed loading settings from Firebase:", err);
+            }
+        }
+
         async function saveSection(sectionKey, data, successLabel) {
             if (!activeGroupId) return;
             if (!isUserSubscribed) {
@@ -1051,15 +1247,25 @@
                 if (resData.success) {
                     Swal.fire({ title: 'Saved!', text: `${successLabel} updated successfully.`, icon: 'success', timer: 1400, showConfirmButton: false });
                 } else {
-                    if (resData.error === "NO_ACTIVE_LICENSE" || resData.error === "SUBSCRIPTION_EXPIRED") {
-                        promptSubscriptionGate(resData.message);
-                    } else {
-                        Swal.fire('Save Failed', resData.message || resData.error, 'error');
-                    }
+                    Swal.fire('Save Failed', resData.message || resData.error, 'error');
                 }
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');
             }
+        }
+
+        function saveAntiRaidSection() {
+            saveSection('antiRaid', {
+                enabled: document.getElementById('toggleAntiRaid').checked,
+                threshold: parseInt(document.getElementById('antiRaidThreshold').value || 5),
+                action: document.getElementById('antiRaidAction').value
+            }, 'Anti-Raid SMM Shield');
+        }
+
+        function saveChannelCaptchaSection() {
+            saveSection('channelCaptcha', {
+                enabled: document.getElementById('toggleChannelCaptcha').checked
+            }, 'Join Request Captcha Gateway');
         }
 
         function saveEmojiSection() {
@@ -1076,11 +1282,47 @@
             saveSection('lockMsg', document.getElementById('chatLockMsg').value, 'Lockdown Template');
         }
 
+        async function broadcastLockState() {
+            const isLocked = document.getElementById('toggleChatLock').checked;
+            const lockMsg = document.getElementById('chatLockMsg').value;
+            saveChatLockSection();
+
+            try {
+                await fetch('/api/tg/announce-lock', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ chatId: activeGroupId, locked: isLocked, message: lockMsg })
+                });
+                Swal.fire('Broadcasted!', 'Lock status dispatched to chat.', 'success');
+            } catch (e) {}
+        }
+
         function saveAntiLinkSection() {
             saveSection('antiLink', {
                 enabled: document.getElementById('toggleAntiLink').checked,
                 msg: document.getElementById('antiLinkMsg').value
             }, 'Anti-Link Shield Policy');
+        }
+
+        function saveAntiForwardSection() {
+            saveSection('antiForward', {
+                enabled: document.getElementById('toggleAntiForward').checked,
+                msg: "⚠️ Forwarded messages are prohibited in this group!"
+            }, 'Anti-Forward Shield');
+        }
+
+        function saveAntiButtonSection() {
+            saveSection('antiButton', {
+                enabled: document.getElementById('toggleAntiButton').checked,
+                msg: "⚠️ Interactive button spam is prohibited!"
+            }, 'Anti-Button Shield');
+        }
+
+        function saveImageSpamSection() {
+            saveSection('imageSpam', {
+                enabled: document.getElementById('toggleImageSpam').checked,
+                msg: "⚠️ Media & Image sharing is restricted!"
+            }, 'Media Spam Policy');
         }
 
         function saveBanSection() {
@@ -1090,35 +1332,86 @@
             }, 'Ban Notification Policy');
         }
 
-        function saveAutoRepliesSection() {
-            saveSection('autoReplies', autoRepliesMap, 'Auto-Replies Database');
-        }
-
         function saveBadWordsSection() {
             const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
             saveSection('badWords', {
                 enabled: document.getElementById('toggleBadWords').checked,
-                words: words
+                words: words,
+                action: document.getElementById('badWordsAction').value
             }, 'Profanity Blacklist Policy');
+            saveSection('warnLimit', parseInt(document.getElementById('badWordsWarnLimit').value || 3), 'Warning Limit');
         }
 
         function saveWelcomeSection() {
             saveSection('welcome', {
                 enabled: document.getElementById('toggleWelcome').checked,
-                text: document.getElementById('welcomeTextInput').value
+                photoUrl: document.getElementById('welcomePhotoUrl').value.trim(),
+                text: document.getElementById('welcomeTextInput').value,
+                autoDeleteSeconds: parseInt(document.getElementById('welcomeAutoDelete').value || 0)
             }, 'Welcome Greeting Policy');
         }
 
         function saveCommandsSection() {
             saveSection('commands', { bio: { role: document.getElementById('cmdBioRole').value } }, 'Slash Bio Settings');
-            saveSection('customCommands', customCommandsMap, 'Custom Slash Commands');
+        }
+
+        // Auto-replies UI Manager
+        function addAutoReplyRule() {
+            const trigger = document.getElementById('newReplyTrigger').value.trim().toLowerCase();
+            const response = document.getElementById('newReplyResponse').value.trim();
+            const target = document.getElementById('newReplyTarget').value;
+
+            if (!trigger || !response) return Swal.fire('Incomplete', 'Please provide trigger keyword and bot reply.', 'warning');
+
+            const id = 'rep_' + Date.now();
+            autoRepliesMap[id] = { trigger, response, target };
+            renderAutoReplies();
+
+            document.getElementById('newReplyTrigger').value = '';
+            document.getElementById('newReplyResponse').value = '';
+        }
+
+        function deleteAutoReply(id) {
+            delete autoRepliesMap[id];
+            renderAutoReplies();
+        }
+
+        function renderAutoReplies() {
+            const container = document.getElementById('autoRepliesList');
+            container.innerHTML = '';
+            const keys = Object.keys(autoRepliesMap);
+
+            if (keys.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No auto-reply rules configured yet.</p>`;
+                return;
+            }
+
+            keys.forEach(k => {
+                const r = autoRepliesMap[k];
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs";
+                row.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-100">${r.trigger}</span>
+                            <span class="text-[10px] text-slate-400">Target: ${r.target}</span>
+                        </div>
+                        <p class="text-[11px] text-slate-600 mt-1 truncate max-w-md">${r.response}</p>
+                    </div>
+                    <button onclick="deleteAutoReply('${k}')" class="text-rose-500 hover:text-rose-700 p-1.5"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                `;
+                container.appendChild(row);
+            });
+            lucide.createIcons();
+        }
+
+        function saveAutoRepliesSection() {
+            saveSection('autoReplies', autoRepliesMap, 'Auto-Replies Database');
         }
 
         async function sendGroupBroadcast() {
             if (!activeGroupId) return;
-            if (!isUserSubscribed) {
-                return promptSubscriptionGate("Broadcasting announcements requires an active subscription.");
-            }
+            if (!isUserSubscribed) return promptSubscriptionGate("Broadcasting requires an active subscription.");
 
             const text = document.getElementById('broadcastText').value.trim();
             const photoUrl = document.getElementById('broadcastPhotoUrl').value.trim();
@@ -1136,11 +1429,7 @@
                 if (data.success) {
                     Swal.fire('Delivered!', data.message, 'success');
                 } else {
-                    if (data.error === "NO_ACTIVE_LICENSE") {
-                        promptSubscriptionGate(data.message);
-                    } else {
-                        Swal.fire('Failed', data.message || data.error, 'error');
-                    }
+                    Swal.fire('Failed', data.message || data.error, 'error');
                 }
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');
@@ -1279,13 +1568,7 @@
 
             if (!code) return Swal.fire('Required', 'Please enter your verification code.', 'warning');
 
-            Swal.fire({
-                title: 'Authenticating...',
-                text: 'Securing MTProto authorization credentials...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
+            Swal.showLoading();
             try {
                 const res = await fetch('/api/tg/verify-code', {
                     method: 'POST',
@@ -1445,66 +1728,34 @@
             return card;
         }
 
-        // CONNECT BOT WITH REAL-TIME GATEWAY
         async function connectBot(chatId) {
-            if (!currentUser) {
-                return Swal.fire('Login Required', 'Please login to your account first.', 'warning');
-            }
+            if (!currentUser) return Swal.fire('Login Required', 'Please login to your account first.', 'warning');
+            if (!isUserSubscribed) return promptSubscriptionGate("You need an active subscription license to deploy VS Protection Bot.");
 
-            if (!isUserSubscribed) {
-                return promptSubscriptionGate("You need an active subscription license to deploy VS Protection Bot. View our packages?");
-            }
-
-            Swal.fire({
-                title: 'Deploying @Vareonprotection_bot...',
-                text: 'Adding bot and granting full Administrator rights...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
+            Swal.showLoading();
             try {
                 const res = await fetch('/api/tg/connect-group', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        session: tgSession, 
-                        chatId, 
-                        userId: currentUser.uid 
-                    })
+                    body: JSON.stringify({ session: tgSession, chatId, userId: currentUser.uid })
                 });
                 const data = await res.json();
                 
                 if (data.success) {
-                    if (loadedItemsMap[chatId]) {
-                        loadedItemsMap[chatId].isBotConnected = true;
-                    }
+                    if (loadedItemsMap[chatId]) loadedItemsMap[chatId].isBotConnected = true;
                     renderCommunities(cachedGroupsList, cachedChannelsList);
-
-                    Swal.fire({
-                        title: 'Bot Activated!',
-                        text: 'Permissions applied successfully. Opening control panel...',
-                        icon: 'success',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
+                    Swal.fire({ title: 'Bot Activated!', text: 'Permissions granted. Opening control panel...', icon: 'success', timer: 1400, showConfirmButton: false });
                     setTimeout(() => openGroupSettings(chatId), 1200);
                 } else {
-                    if (data.error === "NO_ACTIVE_LICENSE" || data.error === "LIMIT_REACHED") {
-                        promptSubscriptionGate(data.message);
-                    } else {
-                        Swal.fire('Action Failed', data.message || data.error, 'error');
-                    }
+                    Swal.fire('Action Failed', data.message || data.error, 'error');
                 }
             } catch (e) {
                 Swal.fire('Error', e.message, 'error');
             }
         }
 
-        // GATED ACCESS TO GROUP SETTINGS
         async function openGroupSettings(chatId) {
-            if (!isUserSubscribed) {
-                return promptSubscriptionGate("Active subscription license required to access community settings.");
-            }
+            if (!isUserSubscribed) return promptSubscriptionGate("Active subscription license required to access community settings.");
 
             const item = loadedItemsMap[chatId] || { title: "Community", role: "Admin", photo: null };
             activeGroupId = chatId;
@@ -1518,7 +1769,7 @@
 
             document.getElementById('panelGroupName').innerText = item.title;
             document.getElementById('panelGroupRoleBadge').innerText = item.role || 'Admin';
-            document.getElementById('panelGroupMeta').innerText = `Community ID: ${chatId} • ${item.isBotConnected ? 'Bot Active' : 'Action Required'}`;
+            document.getElementById('panelGroupMeta').innerText = `Community ID: ${chatId} • Active Guard`;
 
             const avatarContainer = document.getElementById('panelGroupAvatarContainer');
             if (item.photo) {
@@ -1526,6 +1777,9 @@
             } else {
                 avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs">${item.title ? item.title[0].toUpperCase() : 'C'}</div>`;
             }
+
+            // Load Existing settings for this specific chat
+            await loadGroupSettingsIntoUI(chatId);
 
             switchTab('security');
         }
@@ -1560,15 +1814,13 @@
             });
             lucide.createIcons();
             if (tabKey === 'leftmembers') loadLeftMembers();
+            if (tabKey === 'scammers') loadScammers();
         }
 
         async function loadLeftMembers() {
             if (!activeGroupId) return;
             const container = document.getElementById('leftMembersListContainer');
-            const loader = document.getElementById('leftMembersLoading');
-
-            container.innerHTML = '';
-            loader?.classList.remove('hidden');
+            container.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Loading departed members...</div>`;
 
             try {
                 const res = await fetch('/api/tg/get-left-members', {
@@ -1577,16 +1829,16 @@
                     body: JSON.stringify({ chatId: activeGroupId })
                 });
                 const data = await res.json();
-                loader?.classList.add('hidden');
+                container.innerHTML = '';
 
                 if (data.success && data.leftMembers.length > 0) {
                     data.leftMembers.forEach(m => {
                         const dateStr = new Date(m.timestamp).toLocaleString();
                         const row = document.createElement('div');
-                        row.className = "flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200/60 transition";
+                        row.className = "flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200/80 transition";
                         row.innerHTML = `
                             <div class="flex items-center gap-2.5">
-                                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-rose-500 to-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                <div class="w-8 h-8 rounded-lg bg-rose-500 text-white flex items-center justify-center font-bold text-xs shrink-0">
                                     ${m.name[0] || 'U'}
                                 </div>
                                 <div>
@@ -1594,24 +1846,55 @@
                                     <p class="text-[10px] text-slate-500">${m.username} • ID: ${m.id}</p>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-100 block mb-0.5">Left Member</span>
-                                <span class="text-[9px] text-slate-400">${dateStr}</span>
-                            </div>
+                            <span class="text-[9px] text-slate-400">${dateStr}</span>
                         `;
                         container.appendChild(row);
                     });
                 } else {
-                    container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs italic"><i data-lucide="check-circle-2" class="w-6 h-6 mx-auto mb-1 text-slate-300"></i>No left members recorded right now.</div>`;
+                    container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs italic">No left members recorded yet.</div>`;
                 }
             } catch (e) {
-                loader.classList.add('hidden');
-                container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Failed to load left members: ${e.message}</p>`;
+                container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Error: ${e.message}</p>`;
             }
             lucide.createIcons();
         }
 
-        // 3D Canvas
+        async function loadScammers() {
+            if (!activeGroupId) return;
+            const container = document.getElementById('scammersListContainer');
+            container.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Loading blacklist...</div>`;
+
+            try {
+                const res = await fetch('/api/tg/get-scammers', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ chatId: activeGroupId })
+                });
+                const data = await res.json();
+                container.innerHTML = '';
+
+                if (data.success && data.scammers.length > 0) {
+                    data.scammers.forEach(s => {
+                        const row = document.createElement('div');
+                        row.className = "flex items-center justify-between p-3 bg-rose-50 rounded-xl border border-rose-200 transition text-xs";
+                        row.innerHTML = `
+                            <div>
+                                <h4 class="font-bold text-rose-900">${s.name}</h4>
+                                <p class="text-[10px] text-rose-600">ID: ${s.id} • ${s.username || 'No Username'}</p>
+                            </div>
+                            <span class="px-2 py-0.5 rounded bg-rose-600 text-white text-[9px] font-bold">FLAGGED</span>
+                        `;
+                        container.appendChild(row);
+                    });
+                } else {
+                    container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs italic">No scammers currently flagged. Reply to a user with /scam in group to add.</div>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Error: ${e.message}</p>`;
+            }
+        }
+
+        // 3D Canvas Engine
         (function() {
             const canvas = document.getElementById('threeCanvas');
             if (!canvas) return;
