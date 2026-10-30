@@ -8,7 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-// Firebase Node Setup
+// Firebase Setup
 const firebase = require('firebase/compat/app');
 require('firebase/compat/database');
 
@@ -27,7 +27,6 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
-// NEW UPDATED BOT TOKEN
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAF9l54_V5P2lHuk_kvVA1VnucYWMGRY1gk";
 let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
@@ -43,7 +42,6 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
-// Separate Admin Route (/admin -> admin.html)
 app.get('/admin', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'admin.html');
     const p2 = path.join(__dirname, 'admin.html');
@@ -53,7 +51,7 @@ app.get('/admin', (req, res) => {
 });
 
 // =============================================================================
-// SUBSCRIPTION CHECKER WITH AUTO-OWNER RECOVERY
+// SUBSCRIPTION CHECKER WITH AUTO RECOVERY
 // =============================================================================
 let subscriptionCache = {};
 
@@ -67,7 +65,6 @@ async function isChatSubscriptionActive(chatId, ctx = null) {
         let ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
         let ownerTgId = ownerSnap.val();
 
-        // Auto-detect group creator if missing
         if (!ownerTgId && ctx) {
             try {
                 const admins = await ctx.getChatAdministrators();
@@ -85,7 +82,6 @@ async function isChatSubscriptionActive(chatId, ctx = null) {
             sub = subSnap.val();
         }
 
-        // Check if any active user subscription exists
         if (!sub) {
             const allSubsSnap = await db.ref('subscriptions/by_uid').once('value');
             const allSubs = allSubsSnap.val() || {};
@@ -134,13 +130,12 @@ const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
 let botId = null;
 
-// Dynamically fetch and bind Bot Profile
 bot.telegram.getMe().then(info => {
     botId = info.id;
     BOT_USERNAME = info.username;
     console.log(`[VS Protection] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
 }).catch(err => {
-    console.error("[VS Protection] BOT TOKEN ERROR: Please verify your token with @BotFather:", err.message);
+    console.error("[VS Protection] BOT TOKEN ERROR:", err.message);
 });
 
 async function getChatSettings(chatId) {
@@ -150,12 +145,14 @@ async function getChatSettings(chatId) {
         const settings = snap.val() || {
             welcome: { enabled: true, photoUrl: "", text: "👋 Welcome {mention} to {chat}! Please adhere to our guidelines.", buttons: [], autoDeleteSeconds: 0 },
             goodbye: { enabled: true, text: "👋 Goodbye {mention}! We hope to see you again soon in {chat}.", autoDeleteSeconds: 10 },
-            banSystem: { enabled: true, silent: false, msg: "⛔ {name} has been permanently removed from {chat}." },
-            antiLink: { enabled: false, silent: false, msg: "⚠️ {mention}, external links are restricted in this community!" },
-            antiForward: { enabled: false, silent: false, msg: "⚠️ {mention}, forwarded messages are not permitted!" },
-            antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!" },
-            emojiSpam: { enabled: false, maxCount: 2, silent: false, msg: "⚠️ {mention}, excessive emojis are prohibited!", autoDeleteSeconds: 5 },
-            badWords: { enabled: false, words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
+            morningMsg: { enabled: false, time: "08:00", text: "🌅 Good Morning {chat}! Have a productive day ahead." },
+            banSystem: { enabled: true, sendMsg: true, msg: "⛔ {name} has been permanently removed from {chat}." },
+            antiLink: { enabled: false, sendMsg: true, msg: "⚠️ {mention}, external links are restricted in this community!", autoDeleteSeconds: 5 },
+            antiForward: { enabled: false, sendMsg: true, msg: "⚠️ {mention}, forwarded messages are not permitted!", autoDeleteSeconds: 5 },
+            antiButton: { enabled: false, sendMsg: true, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!", autoDeleteSeconds: 5 },
+            emojiSpam: { enabled: false, maxCount: 2, sendMsg: true, msg: "⚠️ {mention}, excessive emojis are prohibited!", autoDeleteSeconds: 5 },
+            imageSpam: { enabled: false, sendMsg: true, msg: "⚠️ {mention}, sending media/images is restricted!", autoDeleteSeconds: 5 },
+            badWords: { enabled: false, words: [], action: 'delete', sendMsg: true, customMsg: "⚠️ {mention}, inappropriate language is prohibited! Warnings: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
             scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*" },
             nameTracker: { enabled: true },
             leaveTracker: { enabled: true },
@@ -163,6 +160,7 @@ async function getChatSettings(chatId) {
             autoReplies: {},
             warnLimit: 3,
             chatLocked: false,
+            sendLockMsg: true,
             lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*"
         };
         chatSettingsCache[chatId] = settings;
@@ -305,19 +303,13 @@ bot.on('message', async (ctx, next) => {
         const chatId = ctx.chat.id;
         const text = ctx.message.text || ctx.message.caption || "";
 
-        // Instant Health Check in Group: /ping
+        // Instant Health Check
         if (text === '/ping') {
-            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Operational & Guarding Community*`);
+            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Active & Defending*`);
         }
 
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
-        if (!isSubActive) {
-            // Helpful prompt if unlicensed
-            if (text.startsWith('/bio') || text.startsWith('/scam')) {
-                return ctx.reply("⚠️ VS Protection Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
-            }
-            return next();
-        }
+        if (!isSubActive) return next();
 
         const userId = ctx.from?.id;
         const settings = await getChatSettings(chatId);
@@ -345,7 +337,7 @@ bot.on('message', async (ctx, next) => {
             await userHistoryRef.set(fullName);
         }
 
-        // Scammer Alert
+        // Scammer Tagging
         const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
         if (scammerSnap.val()) {
             const scamNotice = settings.scammerAlert?.msg || "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*";
@@ -405,7 +397,7 @@ bot.on('message', async (ctx, next) => {
                 const tMention = `[${tName}](tg://user?id=${targetUser.id})`;
                 const tUsername = targetUser.username ? `@${targetUser.username}` : tName;
 
-                if (!settings.banSystem?.silent && settings.banSystem?.msg) {
+                if (settings.banSystem?.sendMsg !== false && settings.banSystem?.msg) {
                     const banNotice = settings.banSystem.msg
                         .replace(/{mention}/g, tMention)
                         .replace(/{user}/g, tMention)
@@ -474,7 +466,11 @@ bot.on('message', async (ctx, next) => {
 
         if (isAdmin) return next();
 
-        // 1. Chat Lock
+        // ==========================================
+        // FILTERS WITH INDIVIDUAL SEND-MSG TOGGLES
+        // ==========================================
+
+        // 1. Chat Lock Check
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
@@ -485,23 +481,52 @@ bot.on('message', async (ctx, next) => {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
                 await ctx.deleteMessage().catch(() => {});
-                if (!settings.antiButton.silent && settings.antiButton.msg) {
-                    const response = settings.antiButton.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
+                if (settings.antiButton.sendMsg !== false && settings.antiButton.msg) {
+                    const response = settings.antiButton.msg
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title);
+                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiButton.autoDeleteSeconds || 5) * 1000));
                 }
                 return;
             }
         }
 
-        // 3. Emoji Spam Guard
+        // 3. Image/Media Spam Guard
+        const isMediaMessage = Boolean(ctx.message.photo || ctx.message.document || ctx.message.video || ctx.message.animation || ctx.message.sticker);
+        if (settings.imageSpam?.enabled && isMediaMessage) {
+            await ctx.deleteMessage().catch(() => {});
+            if (settings.imageSpam.sendMsg !== false && settings.imageSpam.msg) {
+                const response = settings.imageSpam.msg
+                    .replace(/{mention}/g, userMention)
+                    .replace(/{user}/g, userMention)
+                    .replace(/{name}/g, fullName)
+                    .replace(/{username}/g, usernameTag)
+                    .replace(/{chat}/g, ctx.chat.title);
+                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.imageSpam.autoDeleteSeconds || 5) * 1000));
+            }
+            return;
+        }
+
+        // 4. Emoji Spam Guard
         if (settings.emojiSpam?.enabled) {
             const emojiCount = countEmojis(text);
             const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
 
             if (emojiCount > maxAllowed) {
                 await ctx.deleteMessage().catch(() => {});
-                if (!settings.emojiSpam.silent && settings.emojiSpam.msg) {
-                    const response = settings.emojiSpam.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title).replace(/{count}/g, emojiCount).replace(/{limit}/g, maxAllowed);
+                if (settings.emojiSpam.sendMsg !== false && settings.emojiSpam.msg) {
+                    const response = settings.emojiSpam.msg
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title)
+                        .replace(/{count}/g, emojiCount)
+                        .replace(/{limit}/g, maxAllowed);
+                    
                     const sentWarn = await ctx.replyWithMarkdown(response).catch(() => {});
                     const delSec = parseInt(settings.emojiSpam.autoDeleteSeconds || 5);
                     if (delSec > 0 && sentWarn && sentWarn.message_id) {
@@ -512,30 +537,40 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 4. Anti-Forward Check
+        // 5. Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
-            if (!settings.antiForward.silent && settings.antiForward.msg) {
-                const response = settings.antiForward.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
+            if (settings.antiForward.sendMsg !== false && settings.antiForward.msg) {
+                const response = settings.antiForward.msg
+                    .replace(/{mention}/g, userMention)
+                    .replace(/{user}/g, userMention)
+                    .replace(/{name}/g, fullName)
+                    .replace(/{username}/g, usernameTag)
+                    .replace(/{chat}/g, ctx.chat.title);
+                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiForward.autoDeleteSeconds || 5) * 1000));
             }
             return;
         }
 
-        // 5. Anti-Link Check
+        // 6. Anti-Link Check
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
             if (linkRegex.test(text)) {
                 await ctx.deleteMessage().catch(() => {});
-                if (!settings.antiLink.silent && settings.antiLink.msg) {
-                    const response = settings.antiLink.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
+                if (settings.antiLink.sendMsg !== false && settings.antiLink.msg) {
+                    const response = settings.antiLink.msg
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title);
+                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), (settings.antiLink.autoDeleteSeconds || 5) * 1000));
                 }
                 return;
             }
         }
 
-        // 6. Bad Words Filter
+        // 7. Bad Words Filter
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
             const foundBadWord = settings.badWords.words.some(word => 
                 word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
@@ -556,21 +591,30 @@ bot.on('message', async (ctx, next) => {
                     if (warns >= warnLimit) {
                         await ctx.banChatMember(userId).catch(() => {});
                         await warnRef.remove();
-                        if (!settings.banSystem?.silent) {
+                        if (settings.banSystem?.sendMsg !== false) {
                             const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
                                 .replace(/{mention}/g, `@${ctx.from.username || fullName}`)
                                 .replace(/{chat}/g, ctx.chat.title);
                             warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
                         }
-                    } else if (!settings.badWords.silent) {
+                    } else if (settings.badWords.sendMsg !== false) {
                         const template = settings.badWords.customMsg || "⚠️ {mention}, prohibited words used! Warnings: ({warns}/{warn_limit})";
-                        const customNotice = template.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title).replace(/{warns}/g, warns).replace(/{warn_limit}/g, warnLimit);
+                        const customNotice = template
+                            .replace(/{mention}/g, userMention)
+                            .replace(/{user}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
+                            .replace(/{chat}/g, ctx.chat.title)
+                            .replace(/{warns}/g, warns)
+                            .replace(/{warn_limit}/g, warnLimit);
                         warningMsgSent = await ctx.replyWithMarkdown(customNotice).catch(() => {});
                     }
                 } else if (action === 'ban') {
                     await ctx.banChatMember(userId).catch(() => {});
-                    if (!settings.banSystem?.silent) {
-                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.").replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                    if (settings.banSystem?.sendMsg !== false) {
+                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
+                            .replace(/{mention}/g, userMention)
+                            .replace(/{chat}/g, ctx.chat.title);
                         warningMsgSent = await ctx.replyWithMarkdown(banMsg).catch(() => {});
                     }
                 }
@@ -589,7 +633,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (STRICT OWNER & PROMOTABLE ADMIN FILTER)
+// GRAMJS MTPROTO & REST APIS
 // =============================================================================
 const tempAuthClients = {};
 
@@ -744,7 +788,7 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// BOT AUTO-ADD & PROMOTE (WITH DUAL USER/TELEGRAM BIND)
+// Auto-Add Bot with Fixed Entity Resolution
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId, userId } = req.body;
     try {
@@ -760,7 +804,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }
         } catch (e) {}
 
-        // Check plan by UID or Telegram ID
         let sub = null;
         if (userId) {
             const sUid = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
@@ -925,19 +968,39 @@ app.post('/api/tg/test-welcome', async (req, res) => {
     }
 });
 
-// Announce Lock
+// Announce Lock (Respects sendLockMsg Toggle)
 app.post('/api/tg/announce-lock', async (req, res) => {
-    const { chatId, locked, message } = req.body;
+    const { chatId, locked, message, sendLockMsg } = req.body;
     try {
         const check = await getOwnerSubByChat(chatId);
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
-        const defaultMsg = locked ? "🔒 *This conversation has been temporarily muted by community administrators.*" : "🔓 *Conversation restriction lifted. Members may now post messages.*";
-        const broadcast = message && message.trim() ? message.trim() : defaultMsg;
-        await bot.telegram.sendMessage(chatId, broadcast, { parse_mode: 'Markdown' });
+        if (sendLockMsg !== false) {
+            const defaultMsg = locked ? "🔒 *This conversation has been temporarily muted by community administrators.*" : "🔓 *Conversation restriction lifted. Members may now post messages.*";
+            const broadcast = message && message.trim() ? message.trim() : defaultMsg;
+            await bot.telegram.sendMessage(chatId, broadcast, { parse_mode: 'Markdown' });
+        }
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+// Test Morning Message
+app.post('/api/tg/test-morning', async (req, res) => {
+    const { chatId, text } = req.body;
+    try {
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
+
+        const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
+        const formatted = (text || "🌅 Good Morning {chat}! Have a productive day ahead.")
+            .replace(/{chat}/g, chatInfo.title);
+
+        await bot.telegram.sendMessage(chatId, formatted, { parse_mode: 'Markdown' });
+        res.json({ success: true, message: "Morning announcement sent to group!" });
+    } catch (e) {
+        res.status(500).json({ error: e.message || "Failed to send morning message." });
     }
 });
 
@@ -966,7 +1029,7 @@ app.post('/api/tg/get-scammers', async (req, res) => {
     }
 });
 
-// Helper: License Key Generator
+// License Key Generator
 function generateLicenseKey() {
     const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
@@ -1079,7 +1142,7 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
-// CLAIM LICENSE (BINDS TO USER ACCOUNT UID & EMAIL)
+// CLAIM LICENSE
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, userId, userEmail, session, ownerTelegramId: providedTgId } = req.body;
     try {
