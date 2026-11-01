@@ -205,23 +205,23 @@
         <!-- SUB-VIEW A: COMMUNITIES LIST -->
         <div id="communitiesOverviewView" class="flex-1 w-full overflow-y-auto pane-scroll px-6 md:px-10 py-6 space-y-6">
             
-            <!-- LICENSE STATUS BANNER -->
-            <div id="licenseStatusBanner" class="p-4 rounded-2xl border transition-all flex flex-col md:flex-row items-center justify-between gap-4 bg-white border-slate-200 shadow-sm">
-                <div class="flex items-center gap-3">
-                    <div id="licenseBadgeIcon" class="w-10 h-10 rounded-xl bg-indigo-50 text-brand-600 flex items-center justify-center font-bold">
-                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+            <!-- 3-PHASE COLOR-CODED LIFECYCLE BANNER -->
+            <div id="licenseStatusBanner" class="p-4 md:p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-center justify-between gap-4 bg-white border-slate-200 shadow-sm">
+                <div class="flex items-center gap-3.5">
+                    <div id="licenseBadgeIcon" class="w-11 h-11 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center font-bold shrink-0 shadow-sm">
+                        <i data-lucide="shield-check" class="w-6 h-6"></i>
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <span id="subPlanName" class="text-xs font-extrabold text-slate-900">Subscription Verification</span>
-                            <span id="subStatusBadge" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">Checking...</span>
+                            <span id="subPlanName" class="text-sm font-extrabold text-slate-900">Subscription Verification</span>
+                            <span id="subStatusBadge" class="text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600">Checking...</span>
                         </div>
-                        <p id="subTimingMeta" class="text-[11px] text-slate-500 mt-0.5">Verifying subscription status with cloud server...</p>
+                        <p id="subTimingMeta" class="text-xs text-slate-500 mt-1 leading-relaxed">Verifying subscription status with cloud server...</p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <button onclick="openPricingModal()" class="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                <div class="flex items-center gap-2.5 shrink-0">
+                    <button onclick="openPricingModal()" class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                         <i data-lucide="tag" class="w-3.5 h-3.5 text-brand-600"></i>
                         <span>Pricing Plans</span>
                     </button>
@@ -232,13 +232,17 @@
                 </div>
             </div>
 
-            <!-- Header -->
+            <!-- Header & Real-time Quota Badge -->
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
                 <div>
                     <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Security Command Center</h2>
                     <p class="text-slate-500 text-xs mt-0.5">Manage all your connected communities with centralized cloud policies.</p>
                 </div>
                 <div class="flex items-center gap-3">
+                    <div id="quotaStatusBadge" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold shadow-sm">
+                        <i data-lucide="layers" class="w-3.5 h-3.5 text-brand-600"></i>
+                        <span id="quotaText">Quota: Checking...</span>
+                    </div>
                     <button onclick="syncCommunities()" id="btnSync" class="hidden flex items-center gap-2 px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition shadow-sm">
                         <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                         <span>Sync Communities</span>
@@ -1501,6 +1505,8 @@
         let cachedGroupsList = [];
         let cachedChannelsList = [];
         let isUserSubscribed = false;
+        let currentMaxCommunities = 0;
+        let currentConnectedCount = 0;
 
         // =========================================================================
         // REAL-TIME TELEGRAM PREVIEW & TAG INSERTION ENGINE
@@ -1814,6 +1820,9 @@
             }
         }
 
+        // =========================================================================
+        // SUBSCRIPTION LIFECYCLE & LIVE QUOTA CALCULATOR
+        // =========================================================================
         async function checkSubscriptionStatus(showGatePopup = true) {
             if (!currentUser) return;
             try {
@@ -1830,42 +1839,76 @@
                 const planNameEl = document.getElementById('subPlanName');
                 const badgeEl = document.getElementById('subStatusBadge');
                 const metaEl = document.getElementById('subTimingMeta');
+                const iconEl = document.getElementById('licenseBadgeIcon');
+                const quotaBox = document.getElementById('quotaStatusBadge');
 
                 if (data.hasSubscription) {
                     planNameEl.innerText = data.subscription.planName;
-                    
-                    if (data.isTotallyShutDown) {
-                        isUserSubscribed = false;
-                        badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700";
-                        badgeEl.innerText = "EXPIRED & OFF";
-                        metaEl.innerHTML = `<span class="text-rose-600 font-bold">Subscription expired. All bot protection is OFF. Renew with @Blackmoney54.</span>`;
-                        banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-rose-50/60 border-rose-200";
+                    currentMaxCommunities = data.subscription.maxCommunities || 1;
+                    quotaBox.classList.remove('hidden');
 
-                        if (showGatePopup) promptSubscriptionGate("Your subscription and grace period have expired! Bot protection is shut off.");
+                    if (data.isTotallyShutDown) {
+                        // PHASE 3: SHUTDOWN (RED)
+                        isUserSubscribed = false;
+                        banner.className = "p-4 md:p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-center justify-between gap-4 bg-rose-50/80 border-rose-300 shadow-sm";
+                        iconEl.className = "w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold shrink-0 shadow-sm";
+                        badgeEl.className = "text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200";
+                        badgeEl.innerText = "EXPIRED & OFF";
+                        metaEl.innerHTML = `<span class="text-rose-700 font-bold">🚨 Subscription Expired: All bot protection is currently SHUT DOWN. Your community policies and settings remain safely stored in our vault and will instantly restore upon renewal.</span>`;
+
+                        if (showGatePopup) promptSubscriptionGate("Your subscription and grace period have expired! Bot protection is shut off. Renew to restore.");
                     } else if (data.isGracePeriod) {
+                        // PHASE 2: GRACE PERIOD WARNING (YELLOW / AMBER)
                         isUserSubscribed = true;
-                        badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 animate-pulse";
+                        banner.className = "p-4 md:p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-center justify-between gap-4 bg-amber-50/80 border-amber-300 shadow-sm";
+                        iconEl.className = "w-11 h-11 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold shrink-0 shadow-sm animate-pulse";
+                        badgeEl.className = "text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse";
                         badgeEl.innerText = "GRACE PERIOD ACTIVE";
-                        metaEl.innerHTML = `<span class="text-amber-700 font-bold">${data.graceDaysLeft} days left in grace period before protection automatically shuts off!</span>`;
-                        banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-amber-50/60 border-amber-200";
+                        metaEl.innerHTML = `<span class="text-amber-800 font-bold">⚠️ Regular period ended! ${data.graceDaysLeft} day(s) left in your 7-day grace period before bot defenses are completely shut down! Renew with @Blackmoney54.</span>`;
                     } else {
+                        // PHASE 1: ACTIVE PROTECTION (GREEN)
                         isUserSubscribed = true;
-                        badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700";
+                        banner.className = "p-4 md:p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-center justify-between gap-4 bg-emerald-50/70 border-emerald-200 shadow-sm";
+                        iconEl.className = "w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0 shadow-sm";
+                        badgeEl.className = "text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200";
                         badgeEl.innerText = "PROTECTION ACTIVE";
                         metaEl.innerText = `${data.remainingDays} days remaining in current active period (+7 days renewal grace included).`;
-                        banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-emerald-50/40 border-emerald-200";
                     }
                 } else {
                     isUserSubscribed = false;
+                    currentMaxCommunities = 0;
+                    quotaBox.classList.add('hidden');
+
                     planNameEl.innerText = "No Active License Key";
-                    badgeEl.className = "text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600";
+                    banner.className = "p-4 md:p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-center justify-between gap-4 bg-white border-slate-200 shadow-sm";
+                    iconEl.className = "w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center font-bold shrink-0 shadow-sm";
+                    badgeEl.className = "text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600";
                     badgeEl.innerText = "UNLICENSED";
                     metaEl.innerText = "Please purchase a license key from admin @Blackmoney54 and click 'Claim License Key'.";
-                    banner.className = "p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 bg-white border-slate-200";
 
                     if (showGatePopup) promptSubscriptionGate("You do not have an active subscription license to use VS Protection.");
                 }
+
+                updateQuotaDisplay();
             } catch (e) {}
+        }
+
+        function updateQuotaDisplay() {
+            const quotaText = document.getElementById('quotaText');
+            if (!quotaText) return;
+
+            let connected = 0;
+            Object.values(loadedItemsMap).forEach(item => {
+                if (item.isBotConnected) connected++;
+            });
+            currentConnectedCount = connected;
+
+            if (currentMaxCommunities >= 9999) {
+                quotaText.innerHTML = `Quota: <span class="text-brand-600">${connected}</span> Active (Unlimited)`;
+            } else {
+                const isFull = connected >= currentMaxCommunities;
+                quotaText.innerHTML = `Quota: <span class="${isFull ? 'text-rose-600' : 'text-brand-600'}">${connected} / ${currentMaxCommunities}</span> ${isFull ? '(Full)' : 'Active'}`;
+            }
         }
 
         function promptSubscriptionGate(message) {
@@ -2648,6 +2691,7 @@
                 });
             }
 
+            updateQuotaDisplay();
             lucide.createIcons();
         }
 
@@ -2703,6 +2747,16 @@
             if (!currentUser) return Swal.fire('Login Required', 'Please login to your account first.', 'warning');
             if (!isUserSubscribed) return promptSubscriptionGate("You need an active subscription license to deploy VS Protection Bot. View our packages?");
 
+            // STRICT QUOTA VERIFICATION
+            if (currentMaxCommunities < 9999 && currentConnectedCount >= currentMaxCommunities) {
+                return Swal.fire({
+                    title: 'Community Quota Limit Reached!',
+                    text: `Your current subscription plan allows up to ${currentMaxCommunities} active community. Please upgrade your plan to connect more communities!`,
+                    icon: 'warning',
+                    confirmButtonText: 'Upgrade Plan'
+                }).then((r) => { if (r.isConfirmed) openPricingModal(); });
+            }
+
             Swal.fire({
                 title: 'Deploying @Vareonprotection_bot...',
                 text: 'Adding bot and granting full Administrator rights...',
@@ -2737,7 +2791,7 @@
                     });
                     setTimeout(() => openGroupSettings(chatId), 1200);
                 } else {
-                    if (data.error === "NO_ACTIVE_LICENSE" || data.error === "LIMIT_REACHED") {
+                    if (data.error === "NO_ACTIVE_LICENSE" || data.error === "LIMIT_REACHED" || data.error === "QUOTA_EXCEEDED") {
                         promptSubscriptionGate(data.message);
                     } else {
                         Swal.fire('Action Failed', data.message || data.error, 'error');
