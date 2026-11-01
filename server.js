@@ -28,7 +28,7 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 
 // NEW UPDATED BOT TOKEN
-const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFs7WmMJ-Yc65EO6_bX_saipnF5s8tHymI";
+const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFy2RiubtlGSLOHIwR_I8f5XJVtjL5V0u4";
 let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
