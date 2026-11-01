@@ -91,6 +91,20 @@
             background-color: #4F46E5;
             color: #FFFFFF;
         }
+        .tg-btn-preview {
+            background: #F1F5F9;
+            border: 1px solid #CBD5E1;
+            color: #2563EB;
+            font-weight: 700;
+            border-radius: 0.5rem;
+            text-align: center;
+            padding: 0.4rem;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+        }
     </style>
 </head>
 <body class="min-h-screen h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white relative overflow-x-hidden">
@@ -340,7 +354,7 @@
                     </button>
                     <button onclick="switchTab('autoreply')" id="tabBtn-autoreply" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="message-square-reply" class="w-4 h-4"></i>
-                        <span>Auto-Replies</span>
+                        <span>Auto-Replies (Buttons)</span>
                     </button>
                     <button onclick="switchTab('profanity')" id="tabBtn-profanity" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="message-square-x" class="w-4 h-4"></i>
@@ -348,7 +362,7 @@
                     </button>
                     <button onclick="switchTab('welcome')" id="tabBtn-welcome" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="party-popper" class="w-4 h-4"></i>
-                        <span>Welcome & Farewell</span>
+                        <span>Welcome Banner & Text</span>
                     </button>
                     <button onclick="switchTab('commands')" id="tabBtn-commands" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
@@ -646,7 +660,7 @@
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Ban Notification Content:</label>
-                                <textarea id="banSystemMsg" oninput="updateLivePreview('ban')" rows="3" placeholder="⛔ {name} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="banSystemMsg" oninput="updateLivePreview('ban')" rows="3" placeholder="⛔ {name} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none font-medium"></textarea>
                             </div>
 
                             <!-- Variable Chips -->
@@ -682,41 +696,36 @@
                         </div>
                     </div>
 
-                    <!-- Auto-Replies Tab -->
+                    <!-- Auto-Replies Tab (WITH BUTTON BUILDER) -->
                     <div id="tabContent-autoreply" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="border-b border-slate-100 pb-3">
                                 <h3 class="text-base font-bold text-slate-900">Custom Auto-Replies Engine</h3>
-                                <p class="text-xs text-slate-500">Keywords that trigger automatic bot responses filtered by sender role</p>
+                                <p class="text-xs text-slate-500">Keywords that trigger automatic bot responses filtered by sender role with interactive buttons</p>
                             </div>
-                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                                    <div class="sm:col-span-5">
-                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Trigger Keyword</label>
-                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules, help" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                            
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div class="sm:col-span-6">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Trigger Keyword (e.g. price, rules, help)</label>
+                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
                                     </div>
-                                    <div class="sm:col-span-4">
-                                        <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sender Role</label>
-                                        <select id="newReplyTarget" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                    <div class="sm:col-span-6">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Sender Role Permission</label>
+                                        <select id="newReplyTarget" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
                                             <option value="everyone">Everyone</option>
                                             <option value="admin_owner">Only Admin & Owner</option>
                                             <option value="owner_only">Only Owner</option>
                                         </select>
                                     </div>
-                                    <div class="sm:col-span-3 flex items-end">
-                                        <button type="button" onclick="addAutoReplyRule()" class="w-full py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm">
-                                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                                            <span>Add Reply</span>
-                                        </button>
-                                    </div>
                                 </div>
                                 <div>
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response Body</label>
-                                    <textarea id="newReplyResponse" oninput="updateLivePreview('reply')" rows="2" placeholder="Hi {name}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none font-medium"></textarea>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Bot Response Body</label>
+                                    <textarea id="newReplyResponse" oninput="updateLivePreview('reply')" rows="2" placeholder="Hi {name}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
                                 </div>
 
                                 <!-- Variable Chips -->
-                                <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                <div class="flex flex-wrap items-center gap-1.5">
                                     <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
                                     <button type="button" onclick="insertTag('newReplyResponse', '{mention}', 'reply')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{mention}</button>
                                     <button type="button" onclick="insertTag('newReplyResponse', '{name}', 'reply')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{name}</button>
@@ -724,21 +733,54 @@
                                     <button type="button" onclick="insertTag('newReplyResponse', '{id}', 'reply')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{id}</button>
                                 </div>
 
-                                <!-- Live Preview for Auto-Reply -->
-                                <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-1.5">
+                                <!-- BUTTON BUILDER FOR AUTO-REPLY -->
+                                <div class="p-3.5 bg-white rounded-xl border border-slate-200 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <i data-lucide="link" class="w-3.5 h-3.5 text-brand-600"></i>
+                                            <span>Add Inline Link Buttons (Optional)</span>
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                        <div class="sm:col-span-5">
+                                            <input id="replyBtnText" type="text" placeholder="Button Label (e.g. Visit Website)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none font-medium">
+                                        </div>
+                                        <div class="sm:col-span-5">
+                                            <input id="replyBtnUrl" type="url" placeholder="https://example.com" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 outline-none font-medium">
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <button type="button" onclick="addReplyButtonToStaging()" class="w-full py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1">
+                                                <i data-lucide="plus" class="w-3 h-3"></i>
+                                                <span>Add</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="stagingButtonsContainer" class="flex flex-wrap gap-2 pt-1"></div>
+                                </div>
+
+                                <div class="flex justify-end pt-1">
+                                    <button type="button" onclick="addAutoReplyRule()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                                        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                                        <span>Add This Auto-Reply Rule</span>
+                                    </button>
+                                </div>
+
+                                <!-- Live Preview for Auto-Reply with Buttons -->
+                                <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-1.5 mt-2">
                                     <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                         <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
                                         <span>Telegram Live Message Simulator</span>
                                     </div>
                                     <div class="tg-bubble p-3 flex gap-2.5 items-start bg-slate-50">
                                         <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
-                                        <div class="flex-1">
+                                        <div class="flex-1 space-y-2">
                                             <div class="flex items-center gap-1.5 leading-tight">
                                                 <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
                                                 <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
                                                 <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
                                             </div>
-                                            <div id="previewReplyMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">Hi Alex Dev, here are the details...</div>
+                                            <div id="previewReplyMsg" class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed font-sans">Hi Alex Dev, here are the details...</div>
+                                            <div id="previewReplyButtons" class="space-y-1.5 pt-1"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -753,19 +795,19 @@
                             <div class="flex justify-end pt-2">
                                 <button type="button" onclick="saveAutoRepliesSection()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
                                     <i data-lucide="save" class="w-3.5 h-3.5"></i>
-                                    <span>Save Auto-Replies</span>
+                                    <span>Save Auto-Replies Database</span>
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Profanity Blacklist Tab -->
+                    <!-- Profanity Blacklist Tab (WITH CUSTOM MESSAGE) -->
                     <div id="tabContent-profanity" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-4">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
                                     <h3 class="text-base font-bold text-slate-900">Profanity Blacklist & Enforcement</h3>
-                                    <p class="text-xs text-slate-500">Configure prohibited words separated by commas</p>
+                                    <p class="text-xs text-slate-500">Configure prohibited words and customize warning notice</p>
                                 </div>
                                 <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
@@ -792,24 +834,67 @@
 
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Blacklisted Words (Comma separated):</label>
-                                <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
                             </div>
-                            <div class="flex justify-end">
+
+                            <!-- CUSTOM BAD WORDS WARNING MESSAGE -->
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Custom Warning Notice Template:</label>
+                                <textarea id="badWordsCustomMsg" oninput="updateLivePreview('badwords')" rows="2" placeholder="⚠️ {mention}, inappropriate language is prohibited in {chat}! Strike: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
+                            </div>
+
+                            <!-- Variable Chips -->
+                            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                <button type="button" onclick="insertTag('badWordsCustomMsg', '{mention}', 'badwords')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{mention}</button>
+                                <button type="button" onclick="insertTag('badWordsCustomMsg', '{name}', 'badwords')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{name}</button>
+                                <button type="button" onclick="insertTag('badWordsCustomMsg', '{chat}', 'badwords')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{chat}</button>
+                                <button type="button" onclick="insertTag('badWordsCustomMsg', '{warns}', 'badwords')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{warns}</button>
+                                <button type="button" onclick="insertTag('badWordsCustomMsg', '{warn_limit}', 'badwords')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{warn_limit}</button>
+                            </div>
+
+                            <!-- Live Preview for Bad Words Warning -->
+                            <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5">
+                                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                    <span>Telegram Live Message Simulator</span>
+                                </div>
+                                <div class="tg-bubble p-3 flex gap-2.5 items-start">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-1.5 leading-tight">
+                                            <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                            <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                            <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                        </div>
+                                        <div id="previewBadWordsMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">⚠️ @AlexDev, inappropriate language is prohibited in Crypto Alpha Community! Strike: (1/3)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end pt-1">
                                 <button type="button" onclick="saveBadWordsSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Profanity Policy</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Welcome & Farewell Tab -->
+                    <!-- Welcome & Farewell Tab (WITH HEADER IMAGE) -->
                     <div id="tabContent-welcome" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                                 <div>
-                                    <h3 class="text-base font-bold text-slate-900">Welcome & Farewell Greetings</h3>
-                                    <p class="text-xs text-slate-500">Greet joined members & say goodbye to departed members</p>
+                                    <h3 class="text-base font-bold text-slate-900">Welcome Banner & Greetings</h3>
+                                    <p class="text-xs text-slate-500">Greet joined members with banner photo & dynamic tags</p>
                                 </div>
                                 <input type="checkbox" id="toggleWelcome" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
+
+                            <!-- HEADER PHOTO URL -->
+                            <div>
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Header Image URL (Optional):</label>
+                                <input id="welcomePhotoUrl" oninput="updateLivePreview('welcome')" type="url" placeholder="https://example.com/welcome-banner.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none font-medium">
+                            </div>
+
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Text Message:</label>
                                 <textarea id="welcomeTextInput" oninput="updateLivePreview('welcome')" rows="3" placeholder="👋 Welcome {mention} to {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none font-medium"></textarea>
@@ -824,7 +909,7 @@
                                 <button type="button" onclick="insertTag('welcomeTextInput', '{id}', 'welcome')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{id}</button>
                             </div>
 
-                            <!-- Live Preview for Welcome -->
+                            <!-- Live Preview for Welcome (With Image preview) -->
                             <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5">
                                 <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                     <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
@@ -832,13 +917,16 @@
                                 </div>
                                 <div class="tg-bubble p-3 flex gap-2.5 items-start">
                                     <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
-                                    <div class="flex-1">
+                                    <div class="flex-1 space-y-2">
                                         <div class="flex items-center gap-1.5 leading-tight">
                                             <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
                                             <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
                                             <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
                                         </div>
-                                        <div id="previewWelcomeMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">👋 Welcome @AlexDev to Crypto Alpha Community!</div>
+                                        <div id="previewWelcomePhotoContainer" class="hidden">
+                                            <img id="previewWelcomePhoto" src="" class="rounded-xl w-full max-h-48 object-cover border border-slate-200">
+                                        </div>
+                                        <div id="previewWelcomeMsg" class="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed font-sans">👋 Welcome @AlexDev to Crypto Alpha Community!</div>
                                     </div>
                                 </div>
                             </div>
@@ -1115,6 +1203,7 @@
         
         let autoRepliesMap = {};
         let customCommandsMap = {};
+        let stagingReplyButtons = [];
 
         let cachedGroupsList = [];
         let cachedChannelsList = [];
@@ -1154,9 +1243,23 @@
             } else if (type === 'reply') {
                 const val = document.getElementById('newReplyResponse').value;
                 document.getElementById('previewReplyMsg').innerText = formatPreviewText(val) || "Hi Alex Dev, here are the details...";
+                renderReplyButtonsPreview();
             } else if (type === 'welcome') {
-                const val = document.getElementById('welcomeTextInput').value;
-                document.getElementById('previewWelcomeMsg').innerText = formatPreviewText(val) || "👋 Welcome @AlexDev to Crypto Alpha Community!";
+                const textVal = document.getElementById('welcomeTextInput').value;
+                const photoVal = document.getElementById('welcomePhotoUrl').value.trim();
+                document.getElementById('previewWelcomeMsg').innerText = formatPreviewText(textVal) || "👋 Welcome @AlexDev to Crypto Alpha Community!";
+                
+                const photoContainer = document.getElementById('previewWelcomePhotoContainer');
+                const photoEl = document.getElementById('previewWelcomePhoto');
+                if (photoVal && (photoVal.startsWith('http://') || photoVal.startsWith('https://'))) {
+                    photoEl.src = photoVal;
+                    photoContainer.classList.remove('hidden');
+                } else {
+                    photoContainer.classList.add('hidden');
+                }
+            } else if (type === 'badwords') {
+                const val = document.getElementById('badWordsCustomMsg').value;
+                document.getElementById('previewBadWordsMsg').innerText = formatPreviewText(val) || "⚠️ @AlexDev, inappropriate language is prohibited in Crypto Alpha Community! Strike: (1/3)";
             } else if (type === 'cmd') {
                 const val = document.getElementById('newCmdResponse').value;
                 document.getElementById('previewCmdMsg').innerText = formatPreviewText(val) || "📜 Welcome Alex Dev! Here are our official rules...";
@@ -1173,6 +1276,56 @@
             el.focus();
             el.selectionStart = el.selectionEnd = start + tag.length;
             updateLivePreview(previewType);
+        }
+
+        // Auto-reply staging buttons
+        function addReplyButtonToStaging() {
+            const text = document.getElementById('replyBtnText').value.trim();
+            const url = document.getElementById('replyBtnUrl').value.trim();
+            if (!text || !url) return Swal.fire('Incomplete', 'Please provide button text & URL.', 'warning');
+
+            stagingReplyButtons.push({ text, url });
+            document.getElementById('replyBtnText').value = '';
+            document.getElementById('replyBtnUrl').value = '';
+            renderStagingButtons();
+            renderReplyButtonsPreview();
+        }
+
+        function removeStagingButton(idx) {
+            stagingReplyButtons.splice(idx, 1);
+            renderStagingButtons();
+            renderReplyButtonsPreview();
+        }
+
+        function renderStagingButtons() {
+            const container = document.getElementById('stagingButtonsContainer');
+            container.innerHTML = '';
+            stagingReplyButtons.forEach((b, idx) => {
+                const chip = document.createElement('div');
+                chip.className = "flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-xs font-bold text-brand-600";
+                chip.innerHTML = `
+                    <span>${b.text}</span>
+                    <button type="button" onclick="removeStagingButton(${idx})" class="text-rose-500 hover:text-rose-700 ml-1">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                `;
+                container.appendChild(chip);
+            });
+            lucide.createIcons();
+        }
+
+        function renderReplyButtonsPreview() {
+            const container = document.getElementById('previewReplyButtons');
+            container.innerHTML = '';
+            if (stagingReplyButtons.length === 0) return;
+
+            stagingReplyButtons.forEach(b => {
+                const btn = document.createElement('div');
+                btn.className = "tg-btn-preview";
+                btn.innerHTML = `<i data-lucide="external-link" class="w-3 h-3"></i> <span>${b.text}</span>`;
+                container.appendChild(btn);
+            });
+            lucide.createIcons();
         }
 
         function renderPricingCards(containerId) {
@@ -1477,9 +1630,12 @@
                     document.getElementById('badWordsAction').value = s.badWords?.action || 'delete';
                     document.getElementById('badWordsAutoDelete').value = s.badWords?.autoDeleteSeconds ?? 6;
                     document.getElementById('badWordsInput').value = Array.isArray(s.badWords?.words) ? s.badWords.words.join(', ') : "";
+                    document.getElementById('badWordsCustomMsg').value = s.badWords?.customMsg || "⚠️ {mention}, inappropriate language is prohibited in {chat}! Strike: ({warns}/{warn_limit})";
+                    updateLivePreview('badwords');
 
                     // 6. Welcome
                     document.getElementById('toggleWelcome').checked = Boolean(s.welcome?.enabled);
+                    document.getElementById('welcomePhotoUrl').value = s.welcome?.photoUrl || "";
                     document.getElementById('welcomeTextInput').value = s.welcome?.text || "👋 Welcome {mention} to {chat}!";
                     updateLivePreview('welcome');
 
@@ -1606,6 +1762,11 @@
             keys.forEach(k => {
                 const r = autoRepliesMap[k];
                 if (!r) return;
+                
+                const buttonsBadge = (r.buttons && r.buttons.length > 0)
+                    ? `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">${r.buttons.length} Buttons</span>`
+                    : '';
+
                 const row = document.createElement('div');
                 row.className = "flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 text-xs transition";
                 row.innerHTML = `
@@ -1613,6 +1774,7 @@
                         <div class="flex items-center gap-2">
                             <span class="font-extrabold text-slate-900 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 font-mono">${r.trigger}</span>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-100">Role: ${r.target}</span>
+                            ${buttonsBadge}
                         </div>
                         <p class="text-slate-600 mt-1.5 leading-relaxed font-medium">${r.response}</p>
                     </div>
@@ -1635,12 +1797,20 @@
             }
 
             const ruleId = 'reply_' + Date.now();
-            autoRepliesMap[ruleId] = { trigger, target, response };
+            autoRepliesMap[ruleId] = {
+                trigger,
+                target,
+                response,
+                buttons: [...stagingReplyButtons]
+            };
+
             document.getElementById('newReplyTrigger').value = '';
             document.getElementById('newReplyResponse').value = '';
+            stagingReplyButtons = [];
+            renderStagingButtons();
             renderAutoReplies();
             updateLivePreview('reply');
-            Swal.fire({ title: 'Added to List', text: 'Click "Save Auto-Replies" to deploy.', icon: 'info', timer: 1200, showConfirmButton: false });
+            Swal.fire({ title: 'Added to List', text: 'Click "Save Auto-Replies Database" to deploy.', icon: 'info', timer: 1200, showConfirmButton: false });
         }
 
         function removeAutoReplyRule(key) {
@@ -1719,13 +1889,15 @@
                 enabled: document.getElementById('toggleBadWords').checked,
                 action: document.getElementById('badWordsAction').value || 'delete',
                 autoDeleteSeconds: parseInt(document.getElementById('badWordsAutoDelete').value || 6),
-                words: words
+                words: words,
+                customMsg: document.getElementById('badWordsCustomMsg').value
             }, 'Profanity Blacklist Policy');
         }
 
         function saveWelcomeSection() {
             saveSection('welcome', {
                 enabled: document.getElementById('toggleWelcome').checked,
+                photoUrl: document.getElementById('welcomePhotoUrl').value.trim(),
                 text: document.getElementById('welcomeTextInput').value
             }, 'Welcome Greeting Policy');
         }
@@ -2297,4 +2469,3 @@
     </script>
 </body>
 </html>
-এখন আপনার **`server.js`** এবং **`index.html`** দুটি ফাইলই সম্পূর্ণ রেডি। সার্ভার রিস্টার্ট দিয়ে ড্যাশবোর্ডে গিয়ে যেকোনো গ্রুপ ওপেন করে দেখুন—লাইভ টেলিগ্রাম প্রিভিউ, ক্লিকেবল ট্যাগস এবং কাস্টম অ্যাকশনগুলো চমৎকারভাবে কাজ করবে!
