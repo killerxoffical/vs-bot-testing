@@ -187,10 +187,9 @@ async function getChatSettings(rawChatId) {
             banSystem: { enabled: true, silent: false, msg: "⛔ {name} has been permanently removed from {chat}." },
             
             emojiSpam: { enabled: false, maxCount: 2, action: 'delete', silent: false, msg: "⚠️ {mention}, excessive emojis are prohibited ({count}/{limit})! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
-            antiLink: { enabled: false, action: 'delete', silent: false, msg: "⚠️ {mention}, external links are restricted in this community! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
-            
-            antiForward: { enabled: false, silent: false, msg: "⚠️ {mention}, forwarded messages are not permitted!" },
-            antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!" },
+            antiLink: { enabled: false, action: 'delete', silent: false, whitelist: [], msg: "⚠️ {mention}, external links are restricted in this community! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
+            antiForward: { enabled: false, action: 'delete', silent: false, msg: "⚠️ {mention}, forwarded posts are not allowed in {chat}! Strikes: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
+            antiButton: { enabled: false, action: 'delete', silent: false, msg: "⚠️ {mention}, inline button spam is strictly prohibited in {chat}!", autoDeleteSeconds: 5 },
             
             badWords: { enabled: false, words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, inappropriate language is prohibited! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
             
@@ -251,14 +250,35 @@ function countEmojis(message) {
     return count;
 }
 
-function hasLinks(message) {
+function extractAllUrls(message) {
+    const urls = [];
     const text = message.text || message.caption || "";
     const entities = message.entities || message.caption_entities || [];
+
     for (const ent of entities) {
-        if (ent.type === 'url' || ent.type === 'text_link') return true;
+        if (ent.type === 'url') {
+            urls.push(text.substring(ent.offset, ent.offset + ent.length));
+        } else if (ent.type === 'text_link' && ent.url) {
+            urls.push(ent.url);
+        }
     }
+
     const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
-    return linkRegex.test(text);
+    let match;
+    while ((match = linkRegex.exec(text)) !== null) {
+        urls.push(match[0]);
+    }
+
+    return urls;
+}
+
+function isLinkWhitelisted(urlStr, whitelistArray) {
+    if (!Array.isArray(whitelistArray) || whitelistArray.length === 0) return false;
+    const cleanUrl = urlStr.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '');
+    return whitelistArray.some(domain => {
+        const cleanDomain = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').trim();
+        return cleanDomain && cleanUrl.includes(cleanDomain);
+    });
 }
 
 // Universal Template Variable Formatter
@@ -316,7 +336,7 @@ async function handleStrikePunishment(ctx, chatId, userId, settings, violationLa
     }
 }
 
-// 1. Welcome New Members (Supports Photo + Caption + Buttons)
+// 1. Welcome New Members (Photo + Caption + Inline Buttons)
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = normalizeChatId(ctx.chat.id);
@@ -450,21 +470,13 @@ bot.on('message', async (ctx, next) => {
         const userMention = `[${fullName}](tg://user?id=${userId})`;
         const usernameTag = ctx.from?.username ? `@${ctx.from.username}` : fullName;
 
-        // Name Change Tracker
-        if (settings.nameTracker?.enabled !== false && ctx.from) {
-            const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
-            const snap = await userHistoryRef.once('value');
-            const storedName = snap.val();
-
-            if (storedName && storedName !== fullName) {
-                ctx.replyWithMarkdown(
-                    `📝 *[SECURITY: NAME CHANGE DETECTED]*\n` +
-                    `Member: [${fullName}](tg://user?id=${userId})\n` +
-                    `🔄 *Previous Name:* \`${storedName}\`\n` +
-                    `✨ *Updated Name:* \`${fullName}\``
-                ).catch(() => {});
-            }
-            await userHistoryRef.set(fullName);
+        // Name Change Tracker & Store Username
+        if (ctx.from) {
+            await db.ref(`groups/${chatId}/name_history/${userId}`).set({
+                name: fullName,
+                username: ctx.from.username ? `@${ctx.from.username}` : '',
+                lastSeen: Date.now()
+            });
         }
 
         // Scammer Alert
@@ -475,7 +487,7 @@ bot.on('message', async (ctx, next) => {
         }
 
         // =========================================================================
-        // 1. AUTO-REPLY ENGINE (SUPPORTS INLINE BUTTONS & VARIABLES)
+        // 1. AUTO-REPLY ENGINE (SUPPORTS BUTTONS & VARIABLES)
         // =========================================================================
         if (text && settings.autoReplies && !text.startsWith('/')) {
             const cleanText = text.trim().toLowerCase();
@@ -521,7 +533,7 @@ bot.on('message', async (ctx, next) => {
             const cmd = parts[0].toLowerCase().replace(`@${BOT_USERNAME.toLowerCase()}`, '');
             const targetRepliedUser = ctx.message.reply_to_message?.from;
 
-            // --- COMMAND: /bio (Rose-Bot Style User Dossier) ---
+            // --- COMMAND: /bio ---
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
@@ -550,7 +562,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
             }
 
-            // --- COMMAND: /warn (Add Strike) ---
+            // --- COMMAND: /warn ---
             if (cmd === '/warn' && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/warn` to issue a strike.");
                 if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot warn the protection bot.");
@@ -569,7 +581,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`✅ Infraction strikes cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
             }
 
-            // --- COMMAND: /warns (Check Warns) ---
+            // --- COMMAND: /warns ---
             if (cmd === '/warns') {
                 const target = targetRepliedUser || ctx.from;
                 const warnSnap = await db.ref(`groups/${chatId}/warns/${target.id}`).once('value');
@@ -695,20 +707,62 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
-        // 2. Anti-Button Enforcement
+        // 2. Anti-Button Enforcement (Block userbots with inline buttons)
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
                 await ctx.deleteMessage().catch(() => {});
+                const action = settings.antiButton.action || 'delete';
+                let currentWarns = 1;
+
+                if (action === 'warn') {
+                    const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Inline Button Spam');
+                    if (typeof res === 'number') currentWarns = res;
+                } else if (action === 'mute') {
+                    await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
+                } else if (action === 'ban') {
+                    await ctx.banChatMember(userId).catch(() => {});
+                }
+
                 if (!settings.antiButton.silent && settings.antiButton.msg) {
-                    const response = formatTemplateMessage(settings.antiButton.msg, ctx);
-                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
+                    const response = formatTemplateMessage(settings.antiButton.msg, ctx, { warns: currentWarns, warn_limit: settings.warnLimit || 3 });
+                    const sentMsg = await ctx.replyWithMarkdown(response).catch(() => {});
+                    const delSec = parseInt(settings.antiButton.autoDeleteSeconds || 5);
+                    if (delSec > 0 && sentMsg && sentMsg.message_id) {
+                        setTimeout(() => ctx.deleteMessage(sentMsg.message_id).catch(() => {}), delSec * 1000);
+                    }
                 }
                 return;
             }
         }
 
-        // 3. Emoji Spam Enforcement with Granular Actions (delete, warn, mute, ban)
+        // 3. Anti-Forward Enforcement
+        if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin || ctx.message.forward_from || ctx.message.forward_from_chat)) {
+            await ctx.deleteMessage().catch(() => {});
+            const action = settings.antiForward.action || 'delete';
+            let currentWarns = 1;
+
+            if (action === 'warn') {
+                const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Forwarded Message');
+                if (typeof res === 'number') currentWarns = res;
+            } else if (action === 'mute') {
+                await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
+            } else if (action === 'ban') {
+                await ctx.banChatMember(userId).catch(() => {});
+            }
+
+            if (!settings.antiForward.silent && settings.antiForward.msg) {
+                const response = formatTemplateMessage(settings.antiForward.msg, ctx, { warns: currentWarns, warn_limit: settings.warnLimit || 3 });
+                const sentMsg = await ctx.replyWithMarkdown(response).catch(() => {});
+                const delSec = parseInt(settings.antiForward.autoDeleteSeconds || 5);
+                if (delSec > 0 && sentMsg && sentMsg.message_id) {
+                    setTimeout(() => ctx.deleteMessage(sentMsg.message_id).catch(() => {}), delSec * 1000);
+                }
+            }
+            return;
+        }
+
+        // 4. Emoji Spam Enforcement
         if (settings.emojiSpam?.enabled) {
             const emojiCount = countEmojis(ctx.message);
             const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
@@ -745,48 +799,45 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 4. Anti-Forward Enforcement
-        if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
-            await ctx.deleteMessage().catch(() => {});
-            if (!settings.antiForward.silent && settings.antiForward.msg) {
-                const response = formatTemplateMessage(settings.antiForward.msg, ctx);
-                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
-            }
-            return;
-        }
-
-        // 5. Anti-Link Enforcement with Granular Actions (delete, warn, mute, ban)
+        // 5. Anti-Link Enforcement WITH WHITELIST
         if (settings.antiLink?.enabled) {
-            if (hasLinks(ctx.message)) {
-                await ctx.deleteMessage().catch(() => {});
-                const action = settings.antiLink.action || 'delete';
-                let currentWarns = 1;
+            const detectedUrls = extractAllUrls(ctx.message);
+            if (detectedUrls.length > 0) {
+                // Check if all detected links are whitelisted
+                const whitelist = settings.antiLink.whitelist || [];
+                const allSafe = detectedUrls.every(u => isLinkWhitelisted(u, whitelist));
 
-                if (action === 'warn') {
-                    const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Unauthorized Link');
-                    if (typeof res === 'number') currentWarns = res;
-                } else if (action === 'mute') {
-                    await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
-                } else if (action === 'ban') {
-                    await ctx.banChatMember(userId).catch(() => {});
-                }
+                if (!allSafe) {
+                    await ctx.deleteMessage().catch(() => {});
+                    const action = settings.antiLink.action || 'delete';
+                    let currentWarns = 1;
 
-                if (!settings.antiLink.silent && settings.antiLink.msg) {
-                    const response = formatTemplateMessage(settings.antiLink.msg, ctx, {
-                        warns: currentWarns,
-                        warn_limit: settings.warnLimit || 3
-                    });
-                    const sentMsg = await ctx.replyWithMarkdown(response).catch(() => {});
-                    const delSec = parseInt(settings.antiLink.autoDeleteSeconds || 5);
-                    if (delSec > 0 && sentMsg && sentMsg.message_id) {
-                        setTimeout(() => ctx.deleteMessage(sentMsg.message_id).catch(() => {}), delSec * 1000);
+                    if (action === 'warn') {
+                        const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Unauthorized Link');
+                        if (typeof res === 'number') currentWarns = res;
+                    } else if (action === 'mute') {
+                        await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
+                    } else if (action === 'ban') {
+                        await ctx.banChatMember(userId).catch(() => {});
                     }
+
+                    if (!settings.antiLink.silent && settings.antiLink.msg) {
+                        const response = formatTemplateMessage(settings.antiLink.msg, ctx, {
+                            warns: currentWarns,
+                            warn_limit: settings.warnLimit || 3
+                        });
+                        const sentMsg = await ctx.replyWithMarkdown(response).catch(() => {});
+                        const delSec = parseInt(settings.antiLink.autoDeleteSeconds || 5);
+                        if (delSec > 0 && sentMsg && sentMsg.message_id) {
+                            setTimeout(() => ctx.deleteMessage(sentMsg.message_id).catch(() => {}), delSec * 1000);
+                        }
+                    }
+                    return;
                 }
-                return;
             }
         }
 
-        // 6. Bad Words Enforcement with Granular Actions (delete, warn, mute, ban)
+        // 6. Bad Words Enforcement
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words) && settings.badWords.words.length > 0) {
             const lowerText = text.toLowerCase();
             const foundBadWord = settings.badWords.words.some(word => 
@@ -992,6 +1043,70 @@ app.post('/api/tg/get-group-settings', async (req, res) => {
     try {
         const settings = await getChatSettings(chatId);
         res.json({ success: true, settings });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Warnings & Strikes Management Endpoints
+app.post('/api/tg/get-warnings', async (req, res) => {
+    const chatId = normalizeChatId(req.body.chatId);
+    try {
+        const warnSnap = await db.ref(`groups/${chatId}/warns`).once('value');
+        const warnsData = warnSnap.val() || {};
+        const nameSnap = await db.ref(`groups/${chatId}/name_history`).once('value');
+        const nameData = nameSnap.val() || {};
+
+        const list = Object.keys(warnsData).map(uid => ({
+            id: uid,
+            name: nameData[uid]?.name || `User (${uid})`,
+            username: nameData[uid]?.username || '',
+            count: warnsData[uid]
+        }));
+
+        res.json({ success: true, warnings: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/tg/update-warning', async (req, res) => {
+    const chatId = normalizeChatId(req.body.chatId);
+    const { userId, delta } = req.body;
+    try {
+        const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
+        const snap = await warnRef.once('value');
+        let current = (snap.val() || 0) + parseInt(delta || 1);
+
+        if (current <= 0) {
+            await warnRef.remove();
+        } else {
+            await warnRef.set(current);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/tg/reset-warning', async (req, res) => {
+    const chatId = normalizeChatId(req.body.chatId);
+    const { userId } = req.body;
+    try {
+        await db.ref(`groups/${chatId}/warns/${userId}`).remove();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/tg/ban-member', async (req, res) => {
+    const chatId = normalizeChatId(req.body.chatId);
+    const { userId } = req.body;
+    try {
+        await bot.telegram.banChatMember(chatId, userId);
+        await db.ref(`groups/${chatId}/warns/${userId}`).remove();
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
