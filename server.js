@@ -67,6 +67,24 @@ function normalizeChatId(rawId) {
     return `-100${s}`;
 }
 
+// Time Duration Parser (/mute 5m, 1h, 1d)
+function parseDuration(str) {
+    if (!str) return null;
+    const match = str.trim().match(/^(\d+)([smhdw]?)$/i);
+    if (!match) return null;
+    const val = parseInt(match[1]);
+    const unit = (match[2] || 'm').toLowerCase();
+
+    switch (unit) {
+        case 's': return { seconds: val, text: `${val} second(s)` };
+        case 'm': return { seconds: val * 60, text: `${val} minute(s)` };
+        case 'h': return { seconds: val * 3600, text: `${val} hour(s)` };
+        case 'd': return { seconds: val * 86400, text: `${val} day(s)` };
+        case 'w': return { seconds: val * 604800, text: `${val} week(s)` };
+        default: return { seconds: val * 60, text: `${val} minute(s)` };
+    }
+}
+
 // =============================================================================
 // SUBSCRIPTION CHECKER WITH AUTO-RECOVERY
 // =============================================================================
@@ -193,7 +211,7 @@ async function getChatSettings(rawChatId) {
             
             badWords: { enabled: false, words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, inappropriate language is prohibited! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
             
-            scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*" },
+            scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: {mention} is a CONFIRMED SCAMMER flagged by community administrators! Do not transact with this user.*" },
             nameTracker: { enabled: true },
             leaveTracker: { enabled: true },
             commands: { bio: { enabled: true, role: 'all' } },
@@ -440,7 +458,7 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// 3. Core Moderation, Slash Commands & Auto-Reply Engine
+// 3. Core Moderation, Slash Commands, Name Change Tracker & Scammer Auto-Warning
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -455,7 +473,7 @@ bot.on('message', async (ctx, next) => {
 
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) {
-            if (text.startsWith('/bio') || text.startsWith('/warn') || text.startsWith('/rules')) {
+            if (text.startsWith('/bio') || text.startsWith('/warn') || text.startsWith('/rules') || text.startsWith('/scam')) {
                 return ctx.reply("⚠️ VS Protection Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
             }
             return next();
@@ -468,26 +486,69 @@ bot.on('message', async (ctx, next) => {
 
         const fullName = `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim() || (ctx.from ? ctx.from.first_name : 'Member');
         const userMention = `[${fullName}](tg://user?id=${userId})`;
-        const usernameTag = ctx.from?.username ? `@${ctx.from.username}` : fullName;
+        const currentUsername = ctx.from?.username ? `@${ctx.from.username}` : '';
+        const usernameTag = currentUsername || fullName;
 
-        // Name Change Tracker & Store Username
-        if (ctx.from) {
-            await db.ref(`groups/${chatId}/name_history/${userId}`).set({
-                name: fullName,
-                username: ctx.from.username ? `@${ctx.from.username}` : '',
-                lastSeen: Date.now()
-            });
-        }
+        // =========================================================================
+        // A. NAME & USERNAME CHANGE TRACKER (PROFILE ALTERATION SHIELD)
+        // =========================================================================
+        if (settings.nameTracker?.enabled !== false && ctx.from && userId) {
+            const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
+            const snap = await userHistoryRef.once('value');
+            const stored = snap.val();
 
-        // Scammer Alert
-        const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
-        if (scammerSnap.val()) {
-            const scamNotice = settings.scammerAlert?.msg || "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*";
-            ctx.replyWithMarkdown(scamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+            if (stored && stored.currentName) {
+                const oldName = stored.currentName;
+                const oldUsername = stored.currentUsername || '';
+
+                const nameChanged = (oldName !== fullName);
+                const usernameChanged = (oldUsername !== currentUsername);
+
+                if (nameChanged || usernameChanged) {
+                    let alertText = `🚨 *[SECURITY ALERT: PROFILE ALTERATION DETECTED]*\n👤 *Member:* ${userMention}\n`;
+                    if (nameChanged) {
+                        alertText += `🔄 *Previous Name:* \`${oldName}\` ➔ ✨ *New Name:* \`${fullName}\`\n`;
+                    }
+                    if (usernameChanged) {
+                        alertText += `🔗 *Previous Username:* \`${oldUsername || 'None'}\` ➔ ✨ *New Username:* \`${currentUsername || 'None'}\`\n`;
+                    }
+                    alertText += `🕒 *Detected:* Just now`;
+
+                    ctx.replyWithMarkdown(alertText, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+
+                    // Update History Record
+                    await userHistoryRef.update({
+                        currentName: fullName,
+                        currentUsername: currentUsername,
+                        previousName: oldName,
+                        previousUsername: oldUsername,
+                        lastChangedAt: Date.now()
+                    });
+                }
+            } else {
+                // Initialize User Record
+                await userHistoryRef.set({
+                    currentName: fullName,
+                    currentUsername: currentUsername,
+                    initialSeenAt: Date.now()
+                });
+            }
         }
 
         // =========================================================================
-        // 1. AUTO-REPLY ENGINE (SUPPORTS BUTTONS & VARIABLES)
+        // B. SCAMMER LIVE WARNING AUTOMATION (FIRES ON ANY SCAMMER MESSAGE)
+        // =========================================================================
+        const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
+        if (scammerSnap.val()) {
+            const defaultScamNotice = "🚨 *SECURITY ALERT: {mention} is a CONFIRMED SCAMMER flagged by community administrators! Do not transact with this user.*";
+            const scamNoticeTemplate = settings.scammerAlert?.msg || defaultScamNotice;
+            const formattedScamNotice = formatTemplateMessage(scamNoticeTemplate, ctx);
+
+            ctx.replyWithMarkdown(formattedScamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+        }
+
+        // =========================================================================
+        // C. AUTO-REPLY ENGINE (SUPPORTS BUTTONS & VARIABLES)
         // =========================================================================
         if (text && settings.autoReplies && !text.startsWith('/')) {
             const cleanText = text.trim().toLowerCase();
@@ -526,14 +587,14 @@ bot.on('message', async (ctx, next) => {
         }
 
         // =========================================================================
-        // 2. ROSE BOT-STYLE SLASH COMMANDS & MODERATION ENGINE
+        // D. OFFICIAL SLASH COMMANDS & TIME-BASED MODERATION
         // =========================================================================
         if (text.startsWith('/')) {
             const parts = text.trim().split(/\s+/);
             const cmd = parts[0].toLowerCase().replace(`@${BOT_USERNAME.toLowerCase()}`, '');
             const targetRepliedUser = ctx.message.reply_to_message?.from;
 
-            // --- COMMAND: /bio ---
+            // --- COMMAND: /bio (WITH DETAILED ALTERATION HISTORY) ---
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
@@ -548,6 +609,19 @@ bot.on('message', async (ctx, next) => {
                 const warnsCount = warnSnap.val() || 0;
                 const isScammer = (await db.ref(`groups/${chatId}/scammers/${targetId}`).once('value')).val();
 
+                // Profile Alteration History lookup
+                const histSnap = await db.ref(`groups/${chatId}/name_history/${targetId}`).once('value');
+                const histData = histSnap.val() || {};
+
+                let alterationSection = "✅ *No alteration recorded.*";
+                if (histData.lastChangedAt && histData.previousName) {
+                    const changeDate = new Date(histData.lastChangedAt).toLocaleString();
+                    alterationSection = 
+                        `⚠️ *Alteration Recorded on:* \`${changeDate}\`\n` +
+                        `🔄 *Previous Name:* \`${histData.previousName}\`\n` +
+                        `🔗 *Previous Username:* \`${histData.previousUsername || 'None'}\``;
+                }
+
                 const bioMessage = 
                     `👤 *User Security Dossier — VS Guardian*\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -557,49 +631,50 @@ bot.on('message', async (ctx, next) => {
                     `🎖 *Group Role:* \`${targetRole.toUpperCase()}\`\n` +
                     `⚠️ *Infractions / Warns:* \`${warnsCount}/${settings.warnLimit || 3}\`\n` +
                     `🛡 *Trust Score:* ${isScammer ? '🚨 *BLACKLISTED SCAMMER*' : '✅ *Verified Regular User*'}\n` +
+                    `━━━━━━━━━━━━━━━━━━━━\n` +
+                    `📝 *Profile History Audit:*\n${alterationSection}\n` +
                     `━━━━━━━━━━━━━━━━━━━━`;
 
                 return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
             }
 
-            // --- COMMAND: /warn ---
-            if (cmd === '/warn' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/warn` to issue a strike.");
-                if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot warn the protection bot.");
-
-                const res = await handleStrikePunishment(ctx, chatId, targetRepliedUser.id, settings, 'Manual Strike');
-                if (typeof res === 'number') {
-                    return ctx.replyWithMarkdown(`⚠️ Strike issued to [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id})!\nInfractions: \`${res}/${settings.warnLimit || 3}\``);
-                }
-                return;
-            }
-
-            // --- COMMAND: /unwarn or /resetwarns ---
-            if ((cmd === '/unwarn' || cmd === '/resetwarns') && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/unwarn`.");
-                await db.ref(`groups/${chatId}/warns/${targetRepliedUser.id}`).remove();
-                return ctx.replyWithMarkdown(`✅ Infraction strikes cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
-            }
-
-            // --- COMMAND: /warns ---
-            if (cmd === '/warns') {
-                const target = targetRepliedUser || ctx.from;
-                const warnSnap = await db.ref(`groups/${chatId}/warns/${target.id}`).once('value');
-                const count = warnSnap.val() || 0;
-                return ctx.replyWithMarkdown(`⚠️ [${target.first_name}](tg://user?id=${target.id}) has \`${count}/${settings.warnLimit || 3}\` warnings.`);
-            }
-
-            // --- COMMAND: /mute & /unmute ---
+            // --- COMMAND: /mute [5m, 1h, 1d] & /unmute ---
             if (cmd === '/mute' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/mute`.");
-                await ctx.restrictChatMember(targetRepliedUser.id, { permissions: { can_send_messages: false } }).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
-                return ctx.replyWithMarkdown(`🔇 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been muted.`);
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/mute <duration>`. Example: `/mute 10m` or `/mute 1h`");
+                if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot mute the guardian bot.");
+
+                const durationArg = parts[1] || null;
+                const durationObj = parseDuration(durationArg);
+
+                try {
+                    if (durationObj && durationObj.seconds > 30) {
+                        const untilDate = Math.floor(Date.now() / 1000) + durationObj.seconds;
+                        await ctx.restrictChatMember(targetRepliedUser.id, {
+                            permissions: { can_send_messages: false },
+                            until_date: untilDate
+                        });
+                        return ctx.replyWithMarkdown(`🔇 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been muted for **${durationObj.text}**.`);
+                    } else {
+                        // Permanent Mute
+                        await ctx.restrictChatMember(targetRepliedUser.id, {
+                            permissions: { can_send_messages: false }
+                        });
+                        return ctx.replyWithMarkdown(`🔇 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been muted permanently.`);
+                    }
+                } catch (e) {
+                    return ctx.reply(`❌ Failed to mute: ${e.message}`);
+                }
             }
 
             if (cmd === '/unmute' && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/unmute`.");
                 await ctx.restrictChatMember(targetRepliedUser.id, {
-                    permissions: { can_send_messages: true, can_send_media_messages: true, can_send_other_messages: true, can_add_web_page_previews: true }
+                    permissions: {
+                        can_send_messages: true,
+                        can_send_media_messages: true,
+                        can_send_other_messages: true,
+                        can_add_web_page_previews: true
+                    }
                 }).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
                 return ctx.replyWithMarkdown(`🔊 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been unmuted.`);
             }
@@ -625,14 +700,58 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`👢 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been kicked.`);
             }
 
-            // --- COMMAND: /pin ---
+            // --- COMMAND: /warn, /unwarn, /warns ---
+            if (cmd === '/warn' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/warn`.");
+                if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot warn the protection bot.");
+
+                const res = await handleStrikePunishment(ctx, chatId, targetRepliedUser.id, settings, 'Manual Strike');
+                if (typeof res === 'number') {
+                    return ctx.replyWithMarkdown(`⚠️ Strike issued to [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id})!\nInfractions: \`${res}/${settings.warnLimit || 3}\``);
+                }
+                return;
+            }
+
+            if ((cmd === '/unwarn' || cmd === '/resetwarns') && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/unwarn`.");
+                await db.ref(`groups/${chatId}/warns/${targetRepliedUser.id}`).remove();
+                return ctx.replyWithMarkdown(`✅ Infraction strikes cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
+            }
+
+            if (cmd === '/warns') {
+                const target = targetRepliedUser || ctx.from;
+                const warnSnap = await db.ref(`groups/${chatId}/warns/${target.id}`).once('value');
+                const count = warnSnap.val() || 0;
+                return ctx.replyWithMarkdown(`⚠️ [${target.first_name}](tg://user?id=${target.id}) has \`${count}/${settings.warnLimit || 3}\` warnings.`);
+            }
+
+            // --- COMMAND: /scam or /scammer ---
+            if ((cmd === '/scam' || cmd === '/scammer') && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/scam` or `/scammer`.");
+                
+                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).set({
+                    name: `${targetRepliedUser.first_name || ''} ${targetRepliedUser.last_name || ''}`.trim(),
+                    username: targetRepliedUser.username || '',
+                    flaggedAt: Date.now(),
+                    flaggedBy: ctx.from.id
+                });
+                return ctx.replyWithMarkdown(`🚨 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been added to the **Scammer Blacklist**!\n*All future messages will trigger security warnings.*`);
+            }
+
+            // --- COMMAND: /unscam or /unscammer ---
+            if ((cmd === '/unscam' || cmd === '/unscammer') && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unscam` or `/unscammer`.");
+                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).remove();
+                return ctx.replyWithMarkdown(`✅ Scam tag cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
+            }
+
+            // --- COMMAND: /pin, /lock, /unlock ---
             if (cmd === '/pin' && isAdmin) {
                 if (!ctx.message.reply_to_message) return ctx.reply("⚠️ Reply to a message with `/pin`.");
                 await ctx.pinChatMessage(ctx.message.reply_to_message.message_id).catch(() => {});
                 return ctx.reply("📌 Message pinned successfully.");
             }
 
-            // --- COMMAND: /lock & /unlock ---
             if (cmd === '/lock' && isAdmin) {
                 settings.chatLocked = true;
                 await db.ref(`groups/${chatId}/settings/chatLocked`).set(true);
@@ -643,24 +762,6 @@ bot.on('message', async (ctx, next) => {
                 settings.chatLocked = false;
                 await db.ref(`groups/${chatId}/settings/chatLocked`).set(false);
                 return ctx.replyWithMarkdown("🔓 *Chat unlocked. Everyone may now participate.*");
-            }
-
-            // --- COMMAND: /scam & /unscam ---
-            if (cmd === '/scam' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/scam`.");
-                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).set({
-                    name: `${targetRepliedUser.first_name || ''} ${targetRepliedUser.last_name || ''}`.trim(),
-                    username: targetRepliedUser.username || '',
-                    flaggedAt: Date.now(),
-                    flaggedBy: ctx.from.id
-                });
-                return ctx.replyWithMarkdown(`🚨 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been added to the **Scammer Blacklist**!`);
-            }
-
-            if (cmd === '/unscam' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unscam`.");
-                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).remove();
-                return ctx.replyWithMarkdown(`✅ Scam tag cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
             }
 
             // --- DYNAMIC CUSTOM SLASH COMMANDS ---
@@ -803,7 +904,6 @@ bot.on('message', async (ctx, next) => {
         if (settings.antiLink?.enabled) {
             const detectedUrls = extractAllUrls(ctx.message);
             if (detectedUrls.length > 0) {
-                // Check if all detected links are whitelisted
                 const whitelist = settings.antiLink.whitelist || [];
                 const allSafe = detectedUrls.every(u => isLinkWhitelisted(u, whitelist));
 
@@ -1059,8 +1159,8 @@ app.post('/api/tg/get-warnings', async (req, res) => {
 
         const list = Object.keys(warnsData).map(uid => ({
             id: uid,
-            name: nameData[uid]?.name || `User (${uid})`,
-            username: nameData[uid]?.username || '',
+            name: nameData[uid]?.currentName || nameData[uid]?.name || `User (${uid})`,
+            username: nameData[uid]?.currentUsername || nameData[uid]?.username || '',
             count: warnsData[uid]
         }));
 
