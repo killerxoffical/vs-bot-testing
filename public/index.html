@@ -370,7 +370,7 @@
                     </button>
                     <button onclick="switchTab('commands')" id="tabBtn-commands" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
-                        <span>Slash Commands (Rose)</span>
+                        <span>VS Guardian Command Studio</span>
                     </button>
                     <button onclick="switchTab('scammers')" id="tabBtn-scammers" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="shield-alert" class="w-4 h-4"></i>
@@ -1143,13 +1143,57 @@
                         </div>
                     </div>
 
-                    <!-- TAB: SLASH COMMANDS (ROSE BOT STYLE STUDIO) -->
+                    <!-- TAB: VS GUARDIAN SLASH COMMAND STUDIO (WITH ADMIN COMMANDS CHEAT SHEET) -->
                     <div id="tabContent-commands" class="hidden space-y-6 max-w-5xl">
+                        
+                        <!-- ADMIN COMMANDS REFERENCE & TIME-MUTE CHEAT SHEET CARD -->
+                        <div class="light-card p-6 md:p-8 rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-950 text-white space-y-4 shadow-xl">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold">
+                                        <i data-lucide="terminal" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-bold text-white tracking-wide">VS Guardian — Group Commands Cheat Sheet</h3>
+                                        <p class="text-[11px] text-slate-400">Admins can use these official commands directly inside Telegram group</p>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">Official Suite</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
+                                    <span class="font-mono text-xs font-bold text-brand-400">/mute &lt;time&gt;</span>
+                                    <p class="text-[11px] text-slate-300">Reply to user to mute for time. e.g. <code class="text-emerald-400">/mute 5m</code>, <code class="text-emerald-400">/mute 1h</code>, <code class="text-emerald-400">/mute 1d</code></p>
+                                </div>
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
+                                    <span class="font-mono text-xs font-bold text-emerald-400">/unmute</span>
+                                    <p class="text-[11px] text-slate-300">Reply to muted user to instantly restore all messaging privileges.</p>
+                                </div>
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
+                                    <span class="font-mono text-xs font-bold text-rose-400">/ban & /unban</span>
+                                    <p class="text-[11px] text-slate-300">Reply with <code class="text-rose-400">/ban</code> to remove permanently, or <code class="text-emerald-400">/unban</code> to lift ban.</p>
+                                </div>
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
+                                    <span class="font-mono text-xs font-bold text-amber-400">/warn & /unwarn</span>
+                                    <p class="text-[11px] text-slate-300">Reply with <code class="text-amber-400">/warn</code> to add strike, or <code class="text-emerald-400">/unwarn</code> to clear strike.</p>
+                                </div>
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
+                                    <span class="font-mono text-xs font-bold text-rose-500">/scam & /unscam</span>
+                                    <p class="text-[11px] text-slate-300">Reply with <code class="text-rose-400">/scam</code> or <code class="text-rose-400">/scammer</code> to flag fraudulent account.</p>
+                                </div>
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
+                                    <span class="font-mono text-xs font-bold text-indigo-400">/bio</span>
+                                    <p class="text-[11px] text-slate-300">Displays rich dossier (name history, strikes, role, scammer score).</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
                             
                             <!-- Header -->
                             <div class="border-b border-slate-100 pb-3">
-                                <h3 class="text-base font-bold text-slate-900">Rose-Bot Slash Command Studio</h3>
+                                <h3 class="text-base font-bold text-slate-900">Custom Slash Command Studio</h3>
                                 <p class="text-xs text-slate-500">Configure pre-built /bio dossier & create dynamic slash commands</p>
                             </div>
 
@@ -1160,7 +1204,7 @@
                                         <span class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-mono text-xs font-bold">/bio</span>
                                         <span class="text-xs font-bold text-slate-900">User Dossier & Security Bio</span>
                                     </div>
-                                    <p class="text-[11px] text-slate-500 mt-1">Users can check their own or replied user's profile card, Telegram ID, warns & role.</p>
+                                    <p class="text-[11px] text-slate-500 mt-1">Users can check their own or replied user's profile card, Telegram ID, name change history & warns.</p>
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <label class="text-[10px] font-bold text-slate-500 uppercase">Allowed Role:</label>
@@ -1246,20 +1290,63 @@
                         </div>
                     </div>
 
-                    <!-- Scammers Tab -->
+                    <!-- Scammers Tab (WITH CUSTOM ALERT NOTIFICATION & LIVE SIMULATOR) -->
                     <div id="tabContent-scammers" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
-                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                                <div>
-                                    <h3 class="text-base font-bold text-slate-900">Scammer Tagging & Blacklist System</h3>
-                                    <p class="text-xs text-slate-500">Flag fraudsters with public warnings</p>
-                                </div>
-                                <button onclick="loadScammers()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
-                                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                                    <span>Refresh Blacklist</span>
-                                </button>
+                            <div class="border-b border-slate-100 pb-3">
+                                <h3 class="text-base font-bold text-slate-900">Scammer Blacklist & Automatic Warning System</h3>
+                                <p class="text-xs text-slate-500">Flag fraudsters and customize automated alert triggered whenever a scammer posts in group</p>
                             </div>
-                            <div id="scammersListContainer" class="space-y-2 max-h-80 overflow-y-auto"></div>
+
+                            <!-- CUSTOM SCAMMER WARNING ALERT TEMPLATE -->
+                            <div class="space-y-3">
+                                <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Automated Scammer Reply Alert Notice:</label>
+                                <textarea id="scammerAlertMsg" oninput="updateLivePreview('scammer')" rows="2" placeholder="🚨 SECURITY ALERT: {mention} is a CONFIRMED SCAMMER flagged by community administrators! Do not transact with this user." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
+
+                                <!-- Variable Chips -->
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                    <button type="button" onclick="insertTag('scammerAlertMsg', '{mention}', 'scammer')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{mention}</button>
+                                    <button type="button" onclick="insertTag('scammerAlertMsg', '{name}', 'scammer')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{name}</button>
+                                    <button type="button" onclick="insertTag('scammerAlertMsg', '{chat}', 'scammer')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{chat}</button>
+                                    <button type="button" onclick="insertTag('scammerAlertMsg', '{id}', 'scammer')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{id}</button>
+                                </div>
+
+                                <!-- Live Preview for Scammer Alert -->
+                                <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5">
+                                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                        <span>Telegram Live Message Simulator</span>
+                                    </div>
+                                    <div class="tg-bubble p-3 flex gap-2.5 items-start bg-rose-50/40 border-rose-200">
+                                        <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-1.5 leading-tight">
+                                                <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                                <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                                <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                            </div>
+                                            <div id="previewScammerMsg" class="text-xs text-rose-800 font-bold mt-1 whitespace-pre-wrap leading-relaxed font-sans">🚨 SECURITY ALERT: @AlexDev is a CONFIRMED SCAMMER flagged by community administrators! Do not transact with this user.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-end pt-1">
+                                    <button type="button" onclick="saveScammerAlertSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Scammer Alert Policy</button>
+                                </div>
+                            </div>
+
+                            <!-- List of Scammers -->
+                            <div class="pt-4 border-t border-slate-100 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Public Flagged Scammers Roster</h4>
+                                    <button onclick="loadScammers()" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                                        <span>Refresh</span>
+                                    </button>
+                                </div>
+                                <div id="scammersListContainer" class="space-y-2 max-h-80 overflow-y-auto pane-scroll pr-1"></div>
+                            </div>
                         </div>
                     </div>
 
@@ -1472,6 +1559,9 @@
             } else if (type === 'badwords') {
                 const val = document.getElementById('badWordsCustomMsg').value;
                 document.getElementById('previewBadWordsMsg').innerText = formatPreviewText(val) || "⚠️ @AlexDev, inappropriate language is prohibited in Crypto Alpha Community! Strike: (1/3)";
+            } else if (type === 'scammer') {
+                const val = document.getElementById('scammerAlertMsg').value;
+                document.getElementById('previewScammerMsg').innerText = formatPreviewText(val) || "🚨 SECURITY ALERT: @AlexDev is a CONFIRMED SCAMMER flagged by community administrators!";
             } else if (type === 'cmd') {
                 const val = document.getElementById('newCmdResponse').value;
                 document.getElementById('previewCmdMsg').innerText = formatPreviewText(val) || "📜 Welcome Alex Dev! Here are our official rules...";
@@ -1490,7 +1580,6 @@
             updateLivePreview(previewType);
         }
 
-        // Auto-reply staging buttons
         function addReplyButtonToStaging() {
             const text = document.getElementById('replyBtnText').value.trim();
             const url = document.getElementById('replyBtnUrl').value.trim();
@@ -1880,7 +1969,11 @@
                     customCommandsMap = s.customCommands || {};
                     renderCustomCommands();
 
-                    // 11. Auto Replies
+                    // 11. Scammer Alert Message
+                    document.getElementById('scammerAlertMsg').value = s.scammerAlert?.msg || "🚨 SECURITY ALERT: {mention} is a CONFIRMED SCAMMER flagged by community administrators!";
+                    updateLivePreview('scammer');
+
+                    // 12. Auto Replies
                     autoRepliesMap = s.autoReplies || {};
                     renderAutoReplies();
                 }
@@ -2002,6 +2095,13 @@
                 enabled: document.getElementById('toggleBanSystem').checked,
                 msg: document.getElementById('banSystemMsg').value
             }, 'Ban Notification Policy');
+        }
+
+        function saveScammerAlertSection() {
+            saveSection('scammerAlert', {
+                enabled: true,
+                msg: document.getElementById('scammerAlertMsg').value
+            }, 'Scammer Warning Template');
         }
 
         // =========================================================================
@@ -2731,14 +2831,14 @@
                 if (data.success && data.scammers.length > 0) {
                     data.scammers.forEach(s => {
                         const row = document.createElement('div');
-                        row.className = "flex items-center justify-between p-3 bg-rose-50 rounded-xl border border-rose-100 text-xs";
+                        row.className = "flex items-center justify-between p-3.5 bg-rose-50/70 hover:bg-rose-100/60 rounded-xl border border-rose-200 text-xs transition";
                         row.innerHTML = `
                             <div>
-                                <span class="font-bold text-rose-800">${s.name}</span>
-                                <span class="text-rose-500 ml-1">(@${s.username || 'No user'})</span>
-                                <p class="text-[10px] text-slate-400 mt-0.5">ID: ${s.id}</p>
+                                <span class="font-bold text-rose-900">${s.name}</span>
+                                <span class="text-rose-600 ml-1">(@${s.username || 'No user'})</span>
+                                <p class="text-[10px] text-slate-500 mt-0.5">User ID: ${s.id}</p>
                             </div>
-                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-200 text-rose-800">SCAMMER</span>
+                            <span class="text-[9px] font-bold px-2.5 py-0.5 rounded-full bg-rose-200 text-rose-800 border border-rose-300">SCAMMER</span>
                         `;
                         container.appendChild(row);
                     });
