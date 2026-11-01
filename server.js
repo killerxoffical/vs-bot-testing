@@ -186,16 +186,12 @@ async function getChatSettings(rawChatId) {
             goodbye: { enabled: true, text: "👋 Goodbye {mention}! We hope to see you again soon in {chat}.", autoDeleteSeconds: 10 },
             banSystem: { enabled: true, silent: false, msg: "⛔ {name} has been permanently removed from {chat}." },
             
-            // Emoji Spam Guard with Granular Actions
             emojiSpam: { enabled: false, maxCount: 2, action: 'delete', silent: false, msg: "⚠️ {mention}, excessive emojis are prohibited ({count}/{limit})! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
-            
-            // Anti-Link Shield with Granular Actions
             antiLink: { enabled: false, action: 'delete', silent: false, msg: "⚠️ {mention}, external links are restricted in this community! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
             
             antiForward: { enabled: false, silent: false, msg: "⚠️ {mention}, forwarded messages are not permitted!" },
             antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!" },
             
-            // Bad Words Filter
             badWords: { enabled: false, words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, inappropriate language is prohibited! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
             
             scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*" },
@@ -205,7 +201,6 @@ async function getChatSettings(rawChatId) {
             customCommands: {},
             autoReplies: {},
             
-            // Global Strike Settings
             warnLimit: 3,
             warnAction: 'ban', // 'ban' | 'mute' | 'kick'
             
@@ -311,7 +306,7 @@ async function handleStrikePunishment(ctx, chatId, userId, settings, violationLa
             await ctx.unbanChatMember(userId).catch(() => {});
             return ctx.replyWithMarkdown(`👢 ${userMention} reached max infractions (\`${currentWarns}/${warnLimit}\`) and has been **kicked**.`);
         } else {
-            // Default Auto-Ban
+            // Auto-Ban
             await ctx.banChatMember(userId).catch(() => {});
             return ctx.replyWithMarkdown(`⛔ ${userMention} reached max infractions (\`${currentWarns}/${warnLimit}\`) for **${violationLabel}** and has been **permanently banned**.`);
         }
@@ -321,7 +316,7 @@ async function handleStrikePunishment(ctx, chatId, userId, settings, violationLa
     }
 }
 
-// 1. Welcome New Members
+// 1. Welcome New Members (Supports Photo + Caption + Buttons)
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = normalizeChatId(ctx.chat.id);
@@ -480,7 +475,7 @@ bot.on('message', async (ctx, next) => {
         }
 
         // =========================================================================
-        // 1. AUTO-REPLY ENGINE (MATCHES KEYWORDS & SUPPORTS VARIABLES)
+        // 1. AUTO-REPLY ENGINE (SUPPORTS INLINE BUTTONS & VARIABLES)
         // =========================================================================
         if (text && settings.autoReplies && !text.startsWith('/')) {
             const cleanText = text.trim().toLowerCase();
