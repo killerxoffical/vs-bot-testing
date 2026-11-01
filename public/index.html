@@ -74,6 +74,23 @@
             padding-bottom: 1.5rem;
             margin-bottom: 1.5rem;
         }
+        .tg-bubble {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            position: relative;
+        }
+        .tag-chip {
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .tag-chip:hover {
+            transform: translateY(-1px);
+            background-color: #4F46E5;
+            color: #FFFFFF;
+        }
     </style>
 </head>
 <body class="min-h-screen h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white relative overflow-x-hidden">
@@ -351,6 +368,43 @@
 
                     <!-- TAB 1: SECURITY -->
                     <div id="tabContent-security" class="space-y-6 max-w-5xl">
+                        
+                        <!-- GLOBAL STRIKE & PUNISHMENT SETTINGS CARD -->
+                        <div class="light-card p-5 md:p-6 rounded-2xl bg-gradient-to-r from-brand-50/50 to-white border border-brand-200/80 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold">
+                                        <i data-lucide="zap" class="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Strike Punishment Engine</h4>
+                                        <p class="text-xs text-slate-500">Configure global infractions threshold and automatic execution</p>
+                                    </div>
+                                </div>
+                                <button onclick="saveGlobalStrikeSettings()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Strikes</button>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                <div class="p-3 bg-white rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Max Warnings Before Punishment:</label>
+                                    <select id="settingWarnLimit" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="1">1 Strike (Instant Punishment)</option>
+                                        <option value="2">2 Strikes</option>
+                                        <option value="3" selected>3 Strikes (Standard)</option>
+                                        <option value="5">5 Strikes (Lenient)</option>
+                                    </select>
+                                </div>
+                                <div class="p-3 bg-white rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Final Action on Limit Exceeded:</label>
+                                    <select id="settingWarnAction" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="ban" selected>⛔ Auto-Ban from Community</option>
+                                        <option value="mute">🔇 Auto-Mute (Disable Send Messages)</option>
+                                        <option value="kick">👢 Auto-Kick from Group</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
                             
                             <!-- 1. Emoji Spam Guard -->
@@ -362,18 +416,28 @@
                                         </div>
                                         <div>
                                             <h4 class="text-sm font-bold text-slate-900">Emoji Spam Protection</h4>
-                                            <p class="text-xs text-slate-500">Purges messages with excessive emojis (0 allows no emojis)</p>
+                                            <p class="text-xs text-slate-500">Purges messages with excessive emojis</p>
                                         </div>
                                     </div>
                                     <input type="checkbox" id="toggleEmojiSpam" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
                                         <label class="text-[11px] font-bold text-slate-700 block mb-1">Max Emojis Allowed:</label>
                                         <input id="emojiMaxCount" type="number" min="0" max="50" value="2" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                     </div>
                                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Warning Auto-Delete Timer:</label>
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Punishment Action:</label>
+                                        <select id="emojiAction" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="delete" selected>Delete Message Only</option>
+                                            <option value="warn">Delete & Strike Warning</option>
+                                            <option value="mute">Delete & Instant Mute</option>
+                                            <option value="ban">Delete & Instant Ban</option>
+                                        </select>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Notice Auto-Delete:</label>
                                         <select id="emojiAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                             <option value="0">Never Delete</option>
                                             <option value="5" selected>5 Seconds</option>
@@ -381,16 +445,49 @@
                                         </select>
                                     </div>
                                 </div>
+
                                 <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message:</label>
-                                    <textarea id="emojiWarningMsg" rows="2" placeholder="⚠️ {mention}, excessive emojis are prohibited in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Notice Template:</label>
+                                    <textarea id="emojiWarningMsg" oninput="updateLivePreview('emoji')" rows="2" placeholder="⚠️ {mention}, excessive emojis are prohibited in {chat}! Strikes: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
                                 </div>
-                                <div class="flex justify-end">
+
+                                <!-- Variable Chips Cheat Sheet -->
+                                <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{mention}', 'emoji')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{mention}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{name}', 'emoji')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{name}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{chat}', 'emoji')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{chat}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{count}', 'emoji')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{count}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{limit}', 'emoji')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{limit}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{warns}', 'emoji')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{warns}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{warn_limit}', 'emoji')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{warn_limit}</button>
+                                </div>
+
+                                <!-- LIVE TELEGRAM PREVIEW BOX -->
+                                <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5 mt-2">
+                                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                        <span>Telegram Live Message Simulator</span>
+                                    </div>
+                                    <div class="tg-bubble p-3 flex gap-2.5 items-start">
+                                        <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-1.5 leading-tight">
+                                                <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                                <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                                <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                            </div>
+                                            <div id="previewEmojiMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">⚠️ @AlexDev, excessive emojis are prohibited in Crypto Alpha Community!</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-end pt-1">
                                     <button type="button" onclick="saveEmojiSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Emoji Policy</button>
                                 </div>
                             </div>
 
-                            <!-- Chat Lock -->
+                            <!-- 2. Chat Lock -->
                             <div class="section-divider space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -405,10 +502,30 @@
                                     <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
                                 <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Message:</label>
-                                    <textarea id="chatLockMsg" rows="2" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Announcement Message:</label>
+                                    <textarea id="chatLockMsg" oninput="updateLivePreview('lock')" rows="2" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
                                 </div>
-                                <div class="flex justify-end gap-2">
+
+                                <!-- Live Preview for Lock -->
+                                <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5">
+                                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                        <span>Telegram Live Message Simulator</span>
+                                    </div>
+                                    <div class="tg-bubble p-3 flex gap-2.5 items-start">
+                                        <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-1.5 leading-tight">
+                                                <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                                <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                                <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                            </div>
+                                            <div id="previewLockMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">🔒 This conversation has been temporarily muted by community administrators.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-end gap-2 pt-1">
                                     <button type="button" onclick="saveChatLockSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Lock Policy</button>
                                     <button type="button" onclick="broadcastLockState()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                                         <i data-lucide="send" class="w-3.5 h-3.5"></i>
@@ -417,7 +534,7 @@
                                 </div>
                             </div>
 
-                            <!-- Anti-Link -->
+                            <!-- 3. Anti-Link Shield -->
                             <div class="space-y-3">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2.5">
@@ -431,11 +548,62 @@
                                     </div>
                                     <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message:</label>
-                                    <textarea id="antiLinkMsg" rows="2" placeholder="⚠️ {mention}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Punishment Action:</label>
+                                        <select id="antiLinkAction" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="delete" selected>Delete Link Only</option>
+                                            <option value="warn">Delete & Strike Warning</option>
+                                            <option value="mute">Delete & Instant Mute</option>
+                                            <option value="ban">Delete & Instant Ban</option>
+                                        </select>
+                                    </div>
+                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Notice Auto-Delete Timer:</label>
+                                        <select id="antiLinkAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="0">Never Delete</option>
+                                            <option value="5" selected>5 Seconds</option>
+                                            <option value="10">10 Seconds</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="flex justify-end">
+
+                                <div>
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Anti-Link Notice Template:</label>
+                                    <textarea id="antiLinkMsg" oninput="updateLivePreview('link')" rows="2" placeholder="⚠️ {mention}, external links are restricted in {chat}! Strikes: ({warns}/{warn_limit})" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
+                                </div>
+
+                                <!-- Variable Chips Cheat Sheet -->
+                                <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{mention}', 'link')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{mention}</button>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{name}', 'link')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{name}</button>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{chat}', 'link')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{chat}</button>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{warns}', 'link')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{warns}</button>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{warn_limit}', 'link')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{warn_limit}</button>
+                                </div>
+
+                                <!-- Live Preview for Anti-Link -->
+                                <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5 mt-2">
+                                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                        <span>Telegram Live Message Simulator</span>
+                                    </div>
+                                    <div class="tg-bubble p-3 flex gap-2.5 items-start">
+                                        <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-1.5 leading-tight">
+                                                <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                                <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                                <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                            </div>
+                                            <div id="previewLinkMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">⚠️ @AlexDev, external links are restricted in Crypto Alpha Community!</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-end pt-1">
                                     <button type="button" onclick="saveAntiLinkSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Link Policy</button>
                                 </div>
                             </div>
@@ -478,9 +646,37 @@
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Ban Notification Content:</label>
-                                <textarea id="banSystemMsg" rows="3" placeholder="⛔ {name} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="banSystemMsg" oninput="updateLivePreview('ban')" rows="3" placeholder="⛔ {name} has been permanently removed from {chat}." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
                             </div>
-                            <div class="flex justify-end">
+
+                            <!-- Variable Chips -->
+                            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                <button type="button" onclick="insertTag('banSystemMsg', '{mention}', 'ban')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{mention}</button>
+                                <button type="button" onclick="insertTag('banSystemMsg', '{name}', 'ban')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{name}</button>
+                                <button type="button" onclick="insertTag('banSystemMsg', '{chat}', 'ban')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{chat}</button>
+                            </div>
+
+                            <!-- Live Preview for Ban Notice -->
+                            <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5">
+                                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                    <span>Telegram Live Message Simulator</span>
+                                </div>
+                                <div class="tg-bubble p-3 flex gap-2.5 items-start">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-1.5 leading-tight">
+                                            <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                            <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                            <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                        </div>
+                                        <div id="previewBanMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">⛔ Alex Dev has been permanently removed from Crypto Alpha Community.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end pt-1">
                                 <button type="button" onclick="saveBanSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Ban Policy</button>
                             </div>
                         </div>
@@ -515,8 +711,36 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response ({name}, {mention}, {chat}, {id})</label>
-                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response Body</label>
+                                    <textarea id="newReplyResponse" oninput="updateLivePreview('reply')" rows="2" placeholder="Hi {name}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none font-medium"></textarea>
+                                </div>
+
+                                <!-- Variable Chips -->
+                                <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                    <button type="button" onclick="insertTag('newReplyResponse', '{mention}', 'reply')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{mention}</button>
+                                    <button type="button" onclick="insertTag('newReplyResponse', '{name}', 'reply')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{name}</button>
+                                    <button type="button" onclick="insertTag('newReplyResponse', '{chat}', 'reply')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{chat}</button>
+                                    <button type="button" onclick="insertTag('newReplyResponse', '{id}', 'reply')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{id}</button>
+                                </div>
+
+                                <!-- Live Preview for Auto-Reply -->
+                                <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-1.5">
+                                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                        <span>Telegram Live Message Simulator</span>
+                                    </div>
+                                    <div class="tg-bubble p-3 flex gap-2.5 items-start bg-slate-50">
+                                        <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-1.5 leading-tight">
+                                                <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                                <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                                <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                            </div>
+                                            <div id="previewReplyMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">Hi Alex Dev, here are the details...</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -545,6 +769,27 @@
                                 </div>
                                 <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Punishment Action:</label>
+                                    <select id="badWordsAction" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="delete" selected>Delete Message Only</option>
+                                        <option value="warn">Delete & Strike Warning</option>
+                                        <option value="mute">Delete & Instant Mute</option>
+                                        <option value="ban">Delete & Instant Ban</option>
+                                    </select>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Notice Auto-Delete Timer:</label>
+                                    <select id="badWordsAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="0">Never Delete</option>
+                                        <option value="6" selected>6 Seconds</option>
+                                        <option value="12">12 Seconds</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Blacklisted Words (Comma separated):</label>
                                 <textarea id="badWordsInput" rows="2" placeholder="badword1, scam, abusive" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
@@ -567,9 +812,38 @@
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Welcome Text Message:</label>
-                                <textarea id="welcomeTextInput" rows="3" placeholder="👋 Welcome {mention} to {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="welcomeTextInput" oninput="updateLivePreview('welcome')" rows="3" placeholder="👋 Welcome {mention} to {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none font-medium"></textarea>
                             </div>
-                            <div class="flex justify-end">
+
+                            <!-- Variable Chips -->
+                            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                <button type="button" onclick="insertTag('welcomeTextInput', '{mention}', 'welcome')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{mention}</button>
+                                <button type="button" onclick="insertTag('welcomeTextInput', '{name}', 'welcome')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{name}</button>
+                                <button type="button" onclick="insertTag('welcomeTextInput', '{chat}', 'welcome')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{chat}</button>
+                                <button type="button" onclick="insertTag('welcomeTextInput', '{id}', 'welcome')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">{id}</button>
+                            </div>
+
+                            <!-- Live Preview for Welcome -->
+                            <div class="p-3 bg-slate-100/70 rounded-2xl border border-slate-200 space-y-1.5">
+                                <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                    <span>Telegram Live Message Simulator</span>
+                                </div>
+                                <div class="tg-bubble p-3 flex gap-2.5 items-start">
+                                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-1.5 leading-tight">
+                                            <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                            <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                            <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                        </div>
+                                        <div id="previewWelcomeMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">👋 Welcome @AlexDev to Crypto Alpha Community!</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end pt-1">
                                 <button type="button" onclick="saveWelcomeSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Welcome Policy</button>
                             </div>
                         </div>
@@ -609,7 +883,7 @@
                                 <h4 class="text-xs font-bold text-slate-900 uppercase">Create New Custom Slash Command</h4>
                                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
                                     <div class="sm:col-span-5">
-                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Command Trigger (e.g. rules, support, vip)</label>
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Command Trigger</label>
                                         <div class="flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5">
                                             <span class="font-mono text-xs font-bold text-slate-400 mr-1">/</span>
                                             <input id="newCmdTrigger" type="text" placeholder="rules" class="w-full bg-transparent text-xs font-bold text-slate-800 outline-none">
@@ -631,8 +905,35 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Bot Command Reply Message ({name}, {mention}, {chat})</label>
-                                    <textarea id="newCmdResponse" rows="2" placeholder="📜 Welcome {name}! Here are our official rules..." class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Bot Command Reply Message</label>
+                                    <textarea id="newCmdResponse" oninput="updateLivePreview('cmd')" rows="2" placeholder="📜 Welcome {name}! Here are our official rules..." class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 outline-none font-medium"></textarea>
+                                </div>
+
+                                <!-- Variable Chips -->
+                                <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Insert Tag:</span>
+                                    <button type="button" onclick="insertTag('newCmdResponse', '{mention}', 'cmd')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{mention}</button>
+                                    <button type="button" onclick="insertTag('newCmdResponse', '{name}', 'cmd')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{name}</button>
+                                    <button type="button" onclick="insertTag('newCmdResponse', '{chat}', 'cmd')" class="tag-chip text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200">{chat}</button>
+                                </div>
+
+                                <!-- Live Preview for Custom Command -->
+                                <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-1.5">
+                                    <div class="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <i data-lucide="eye" class="w-3 h-3 text-brand-600"></i>
+                                        <span>Telegram Live Message Simulator</span>
+                                    </div>
+                                    <div class="tg-bubble p-3 flex gap-2.5 items-start bg-slate-50">
+                                        <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" class="w-8 h-8 rounded-full object-cover shrink-0 border">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-1.5 leading-tight">
+                                                <span class="font-extrabold text-xs text-brand-600">VS Protection</span>
+                                                <span class="text-[8px] font-bold px-1 rounded bg-brand-100 text-brand-700 uppercase">BOT</span>
+                                                <span class="text-[10px] text-slate-400 ml-auto">12:00 PM</span>
+                                            </div>
+                                            <div id="previewCmdMsg" class="text-xs text-slate-800 mt-1 whitespace-pre-wrap leading-relaxed font-sans">📜 Welcome Alex Dev! Here are our official rules...</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -818,6 +1119,61 @@
         let cachedGroupsList = [];
         let cachedChannelsList = [];
         let isUserSubscribed = false;
+
+        // =========================================================================
+        // REAL-TIME TELEGRAM PREVIEW & TAG INSERTION ENGINE
+        // =========================================================================
+        function formatPreviewText(text) {
+            if (!text) return "";
+            return text
+                .replace(/{mention}/g, '@AlexDev')
+                .replace(/{user}/g, '@AlexDev')
+                .replace(/{name}/g, 'Alex Dev')
+                .replace(/{username}/g, '@alex_dev')
+                .replace(/{chat}/g, 'Crypto Alpha Community')
+                .replace(/{id}/g, '583920194')
+                .replace(/{count}/g, '4')
+                .replace(/{limit}/g, '2')
+                .replace(/{warns}/g, '1')
+                .replace(/{warn_limit}/g, '3');
+        }
+
+        function updateLivePreview(type) {
+            if (type === 'emoji') {
+                const val = document.getElementById('emojiWarningMsg').value;
+                document.getElementById('previewEmojiMsg').innerText = formatPreviewText(val) || "⚠️ @AlexDev, excessive emojis are prohibited in Crypto Alpha Community!";
+            } else if (type === 'lock') {
+                const val = document.getElementById('chatLockMsg').value;
+                document.getElementById('previewLockMsg').innerText = formatPreviewText(val) || "🔒 This conversation has been temporarily muted by community administrators.";
+            } else if (type === 'link') {
+                const val = document.getElementById('antiLinkMsg').value;
+                document.getElementById('previewLinkMsg').innerText = formatPreviewText(val) || "⚠️ @AlexDev, external links are restricted in Crypto Alpha Community!";
+            } else if (type === 'ban') {
+                const val = document.getElementById('banSystemMsg').value;
+                document.getElementById('previewBanMsg').innerText = formatPreviewText(val) || "⛔ Alex Dev has been permanently removed from Crypto Alpha Community.";
+            } else if (type === 'reply') {
+                const val = document.getElementById('newReplyResponse').value;
+                document.getElementById('previewReplyMsg').innerText = formatPreviewText(val) || "Hi Alex Dev, here are the details...";
+            } else if (type === 'welcome') {
+                const val = document.getElementById('welcomeTextInput').value;
+                document.getElementById('previewWelcomeMsg').innerText = formatPreviewText(val) || "👋 Welcome @AlexDev to Crypto Alpha Community!";
+            } else if (type === 'cmd') {
+                const val = document.getElementById('newCmdResponse').value;
+                document.getElementById('previewCmdMsg').innerText = formatPreviewText(val) || "📜 Welcome Alex Dev! Here are our official rules...";
+            }
+        }
+
+        function insertTag(textareaId, tag, previewType) {
+            const el = document.getElementById(textareaId);
+            if (!el) return;
+            const start = el.selectionStart || el.value.length;
+            const end = el.selectionEnd || el.value.length;
+            const text = el.value;
+            el.value = text.substring(0, start) + tag + text.substring(end);
+            el.focus();
+            el.selectionStart = el.selectionEnd = start + tag.length;
+            updateLivePreview(previewType);
+        }
 
         function renderPricingCards(containerId) {
             const container = document.getElementById(containerId);
@@ -1087,31 +1443,45 @@
                 if (data.success && data.settings) {
                     const s = data.settings;
 
+                    // Global Strike Settings
+                    document.getElementById('settingWarnLimit').value = s.warnLimit || 3;
+                    document.getElementById('settingWarnAction').value = s.warnAction || 'ban';
+
                     // 1. Emoji Spam
                     document.getElementById('toggleEmojiSpam').checked = Boolean(s.emojiSpam?.enabled);
                     document.getElementById('emojiMaxCount').value = s.emojiSpam?.maxCount ?? 2;
+                    document.getElementById('emojiAction').value = s.emojiSpam?.action || 'delete';
                     document.getElementById('emojiAutoDelete').value = s.emojiSpam?.autoDeleteSeconds ?? 5;
-                    document.getElementById('emojiWarningMsg').value = s.emojiSpam?.msg || "⚠️ {mention}, excessive emojis are prohibited in {chat}!";
+                    document.getElementById('emojiWarningMsg').value = s.emojiSpam?.msg || "⚠️ {mention}, excessive emojis are prohibited in {chat}! Strikes: ({warns}/{warn_limit})";
+                    updateLivePreview('emoji');
 
                     // 2. Chat Lock
                     document.getElementById('toggleChatLock').checked = Boolean(s.chatLocked);
                     document.getElementById('chatLockMsg').value = s.lockMsg || "🔒 This conversation has been temporarily muted by community administrators.";
+                    updateLivePreview('lock');
 
                     // 3. Anti-Link
                     document.getElementById('toggleAntiLink').checked = Boolean(s.antiLink?.enabled);
-                    document.getElementById('antiLinkMsg').value = s.antiLink?.msg || "⚠️ {mention}, external links are restricted in {chat}!";
+                    document.getElementById('antiLinkAction').value = s.antiLink?.action || 'delete';
+                    document.getElementById('antiLinkAutoDelete').value = s.antiLink?.autoDeleteSeconds ?? 5;
+                    document.getElementById('antiLinkMsg').value = s.antiLink?.msg || "⚠️ {mention}, external links are restricted in {chat}! Strikes: ({warns}/{warn_limit})";
+                    updateLivePreview('link');
 
                     // 4. Ban System
                     document.getElementById('toggleBanSystem').checked = Boolean(s.banSystem?.enabled);
                     document.getElementById('banSystemMsg').value = s.banSystem?.msg || "⛔ {name} has been permanently removed from {chat}.";
+                    updateLivePreview('ban');
 
                     // 5. Profanity / Bad words
                     document.getElementById('toggleBadWords').checked = Boolean(s.badWords?.enabled);
+                    document.getElementById('badWordsAction').value = s.badWords?.action || 'delete';
+                    document.getElementById('badWordsAutoDelete').value = s.badWords?.autoDeleteSeconds ?? 6;
                     document.getElementById('badWordsInput').value = Array.isArray(s.badWords?.words) ? s.badWords.words.join(', ') : "";
 
                     // 6. Welcome
                     document.getElementById('toggleWelcome').checked = Boolean(s.welcome?.enabled);
                     document.getElementById('welcomeTextInput').value = s.welcome?.text || "👋 Welcome {mention} to {chat}!";
+                    updateLivePreview('welcome');
 
                     // 7. Slash Commands & /bio
                     if (s.commands?.bio?.role) {
@@ -1161,13 +1531,19 @@
             }
         }
 
+        function saveGlobalStrikeSettings() {
+            saveSection('warnLimit', parseInt(document.getElementById('settingWarnLimit').value || 3), 'Strike Limit');
+            saveSection('warnAction', document.getElementById('settingWarnAction').value || 'ban', 'Punishment Action');
+        }
+
         function saveEmojiSection() {
             saveSection('emojiSpam', {
                 enabled: document.getElementById('toggleEmojiSpam').checked,
                 maxCount: parseInt(document.getElementById('emojiMaxCount').value || 0),
+                action: document.getElementById('emojiAction').value || 'delete',
                 autoDeleteSeconds: parseInt(document.getElementById('emojiAutoDelete').value || 5),
                 msg: document.getElementById('emojiWarningMsg').value
-            }, 'Emoji Spam Guard');
+            }, 'Emoji Spam Policy');
         }
 
         function saveChatLockSection() {
@@ -1203,6 +1579,8 @@
         function saveAntiLinkSection() {
             saveSection('antiLink', {
                 enabled: document.getElementById('toggleAntiLink').checked,
+                action: document.getElementById('antiLinkAction').value || 'delete',
+                autoDeleteSeconds: parseInt(document.getElementById('antiLinkAutoDelete').value || 5),
                 msg: document.getElementById('antiLinkMsg').value
             }, 'Anti-Link Shield Policy');
         }
@@ -1214,9 +1592,7 @@
             }, 'Ban Notification Policy');
         }
 
-        // =========================================================================
-        // AUTO-REPLY ENGINE UI LOGIC
-        // =========================================================================
+        // Auto-Reply Engine
         function renderAutoReplies() {
             const list = document.getElementById('autoRepliesList');
             list.innerHTML = '';
@@ -1263,7 +1639,8 @@
             document.getElementById('newReplyTrigger').value = '';
             document.getElementById('newReplyResponse').value = '';
             renderAutoReplies();
-            Swal.fire({ title: 'Added to List', text: 'Click "Save Auto-Replies" to deploy policy.', icon: 'info', timer: 1200, showConfirmButton: false });
+            updateLivePreview('reply');
+            Swal.fire({ title: 'Added to List', text: 'Click "Save Auto-Replies" to deploy.', icon: 'info', timer: 1200, showConfirmButton: false });
         }
 
         function removeAutoReplyRule(key) {
@@ -1275,9 +1652,7 @@
             saveSection('autoReplies', autoRepliesMap, 'Auto-Replies Database');
         }
 
-        // =========================================================================
-        // CUSTOM SLASH COMMANDS (ROSE BOT STYLE) UI LOGIC
-        // =========================================================================
+        // Custom Slash Commands
         function renderCustomCommands() {
             const list = document.getElementById('customCommandsList');
             list.innerHTML = '';
@@ -1315,7 +1690,7 @@
             const role = document.getElementById('newCmdRole').value;
             const response = document.getElementById('newCmdResponse').value.trim();
 
-            trigger = trigger.replace(/^\/+/, ''); // Remove leading slashes
+            trigger = trigger.replace(/^\/+/, '');
             if (!trigger || !response) {
                 return Swal.fire('Incomplete', 'Please provide command name (e.g. rules) and reply text.', 'warning');
             }
@@ -1324,6 +1699,7 @@
             document.getElementById('newCmdTrigger').value = '';
             document.getElementById('newCmdResponse').value = '';
             renderCustomCommands();
+            updateLivePreview('cmd');
             Swal.fire({ title: 'Command Added', text: 'Click "Save All Slash Commands" to deploy.', icon: 'info', timer: 1200, showConfirmButton: false });
         }
 
@@ -1341,6 +1717,8 @@
             const words = document.getElementById('badWordsInput').value.split(',').map(w => w.trim()).filter(Boolean);
             saveSection('badWords', {
                 enabled: document.getElementById('toggleBadWords').checked,
+                action: document.getElementById('badWordsAction').value || 'delete',
+                autoDeleteSeconds: parseInt(document.getElementById('badWordsAutoDelete').value || 6),
                 words: words
             }, 'Profanity Blacklist Policy');
         }
@@ -1919,4 +2297,4 @@
     </script>
 </body>
 </html>
-এখন আপনার `server.js` এবং `index.html` উভয় ফাইলই সম্পূর্ণ আপডেটেড। সার্ভার রিস্টার্ট দিয়ে ড্যাশবোর্ড থেকে অটো-রিপ্লাই এবং কাস্টম স্লাশ কমান্ডগুলো সেট করুন এবং টেলিগ্রাম গ্রুপে পরীক্ষা করুন!
+এখন আপনার **`server.js`** এবং **`index.html`** দুটি ফাইলই সম্পূর্ণ রেডি। সার্ভার রিস্টার্ট দিয়ে ড্যাশবোর্ডে গিয়ে যেকোনো গ্রুপ ওপেন করে দেখুন—লাইভ টেলিগ্রাম প্রিভিউ, ক্লিকেবল ট্যাগস এবং কাস্টম অ্যাকশনগুলো চমৎকারভাবে কাজ করবে!
