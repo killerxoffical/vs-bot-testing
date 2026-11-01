@@ -60,12 +60,10 @@ function normalizeChatId(rawId) {
     let s = rawId.toString().trim();
     if (s.startsWith('-100')) return s;
     if (s.startsWith('-')) {
-        // If length is large (supergroup/channel formatted without 100), e.g. -2487293847
         let digits = s.substring(1);
         if (digits.length >= 9) return `-100${digits}`;
         return s;
     }
-    // If positive number
     return `-100${s}`;
 }
 
@@ -86,7 +84,6 @@ async function isChatSubscriptionActive(rawChatId, ctx = null) {
         let ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
         let ownerTgId = ownerSnap.val();
 
-        // Also check un-normalized ID if previously saved that way
         if (!ownerTgId) {
             let unNormSnap = await db.ref(`groups/${rawChatId}/merged_owner`).once('value');
             ownerTgId = unNormSnap.val();
@@ -95,7 +92,6 @@ async function isChatSubscriptionActive(rawChatId, ctx = null) {
             }
         }
 
-        // Auto-detect group creator if missing
         if (!ownerTgId && ctx) {
             try {
                 const admins = await ctx.getChatAdministrators();
@@ -113,7 +109,6 @@ async function isChatSubscriptionActive(rawChatId, ctx = null) {
             sub = subSnap.val();
         }
 
-        // Fallback: Check if any active user subscription exists
         if (!sub) {
             const allSubsSnap = await db.ref('subscriptions/by_uid').once('value');
             const allSubs = allSubsSnap.val() || {};
@@ -199,6 +194,7 @@ async function getChatSettings(rawChatId) {
             nameTracker: { enabled: true },
             leaveTracker: { enabled: true },
             commands: { bio: { enabled: true, role: 'all' } },
+            customCommands: {},
             autoReplies: {},
             warnLimit: 3,
             chatLocked: false,
@@ -236,17 +232,13 @@ function countEmojis(message) {
     let count = 0;
     const text = message.text || message.caption || "";
 
-    // 1. Regex for standard Unicode emojis
     const emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F926}-\u{1F939}\u{1F1E6}-\u{1F1FF}]/gu;
     const matches = text.match(emojiRegex);
     if (matches) count += matches.length;
 
-    // 2. Custom Telegram Emojis via entities
     const entities = message.entities || message.caption_entities || [];
     for (const ent of entities) {
-        if (ent.type === 'custom_emoji') {
-            count += 1;
-        }
+        if (ent.type === 'custom_emoji') count += 1;
     }
 
     return count;
@@ -254,14 +246,10 @@ function countEmojis(message) {
 
 function hasLinks(message) {
     const text = message.text || message.caption || "";
-    // Check entities first (Telegram detects links automatically)
     const entities = message.entities || message.caption_entities || [];
     for (const ent of entities) {
-        if (ent.type === 'url' || ent.type === 'text_link') {
-            return true;
-        }
+        if (ent.type === 'url' || ent.type === 'text_link') return true;
     }
-    // Regex fallback
     const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
     return linkRegex.test(text);
 }
@@ -288,6 +276,7 @@ bot.on('new_chat_members', async (ctx) => {
                 .replace(/{user}/g, userMention)
                 .replace(/{name}/g, fullName)
                 .replace(/{username}/g, usernameTag)
+                .replace(/{id}/g, member.id)
                 .replace(/{chat}/g, ctx.chat.title || "Community");
 
             const keyboard = buildInlineButtons(settings.welcome.buttons);
@@ -346,6 +335,7 @@ bot.on('left_chat_member', async (ctx) => {
                 .replace(/{user}/g, userMention)
                 .replace(/{name}/g, fullName)
                 .replace(/{username}/g, usernameTag)
+                .replace(/{id}/g, user.id)
                 .replace(/{chat}/g, ctx.chat.title || "Community");
 
             const sentGoodbye = await ctx.replyWithMarkdown(goodbyeMsg).catch(() => {});
@@ -368,7 +358,7 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// 3. Core Moderation Engine
+// 3. Core Moderation, Slash Commands & Auto-Reply Engine
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -376,14 +366,14 @@ bot.on('message', async (ctx, next) => {
         const chatId = normalizeChatId(ctx.chat.id);
         const text = ctx.message.text || ctx.message.caption || "";
 
-        // Ping check
+        // Fast Ping
         if (text === '/ping') {
             return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Active & Guarding Community*`);
         }
 
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) {
-            if (text.startsWith('/bio') || text.startsWith('/scam')) {
+            if (text.startsWith('/bio') || text.startsWith('/warn') || text.startsWith('/rules')) {
                 return ctx.reply("⚠️ VS Protection Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
             }
             return next();
@@ -422,22 +412,29 @@ bot.on('message', async (ctx, next) => {
             ctx.replyWithMarkdown(scamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
         }
 
-        // Auto-Reply Engine
-        if (text && settings.autoReplies && typeof settings.autoReplies === 'object') {
+        // =========================================================================
+        // 1. AUTO-REPLY ENGINE (MATCHES TEXT & KEYWORDS PERFECTLY)
+        // =========================================================================
+        if (text && settings.autoReplies && !text.startsWith('/')) {
             const cleanText = text.trim().toLowerCase();
-            const replyKeys = Object.keys(settings.autoReplies);
+            const repliesObj = settings.autoReplies;
+            const replyKeys = Object.keys(repliesObj);
 
             for (const key of replyKeys) {
-                const rule = settings.autoReplies[key];
+                const rule = repliesObj[key];
                 if (!rule || !rule.trigger || !rule.response) continue;
 
                 const triggerWord = rule.trigger.trim().toLowerCase();
-                if (cleanText === triggerWord || cleanText.includes(triggerWord)) {
+                // Word boundary match or includes
+                const regex = new RegExp(`(^|\\s|[^a-zA-Z0-9])${triggerWord}($|\\s|[^a-zA-Z0-9])`, 'i');
+                const isMatch = regex.test(cleanText) || cleanText === triggerWord;
+
+                if (isMatch) {
                     const target = rule.target || 'everyone';
                     let allowed = false;
 
                     if (target === 'everyone') allowed = true;
-                    else if (target === 'admin_owner' && (userRole === 'admin' || userRole === 'owner')) allowed = true;
+                    else if (target === 'admin_owner' && isAdmin) allowed = true;
                     else if (target === 'owner_only' && userRole === 'owner') allowed = true;
 
                     if (allowed) {
@@ -446,6 +443,7 @@ bot.on('message', async (ctx, next) => {
                             .replace(/{user}/g, userMention)
                             .replace(/{name}/g, fullName)
                             .replace(/{username}/g, usernameTag)
+                            .replace(/{id}/g, userId)
                             .replace(/{chat}/g, ctx.chat.title || "Community");
 
                         const keyboard = buildInlineButtons(rule.buttons);
@@ -461,44 +459,22 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // Commands
+        // =========================================================================
+        // 2. ROSE BOT-STYLE SLASH COMMANDS & MODERATION ENGINE
+        // =========================================================================
         if (text.startsWith('/')) {
             const parts = text.trim().split(/\s+/);
-            const cmd = parts[0].toLowerCase().replace(`@${bot.botInfo?.username?.toLowerCase()}`, '');
+            const cmd = parts[0].toLowerCase().replace(`@${BOT_USERNAME.toLowerCase()}`, '');
+            const targetRepliedUser = ctx.message.reply_to_message?.from;
 
-            if (cmd === '/ban' && isAdmin) {
-                let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/ban` to execute removal.");
-
-                await ctx.banChatMember(targetUser.id).catch(() => {});
-                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
-                const tMention = `[${tName}](tg://user?id=${targetUser.id})`;
-                const tUsername = targetUser.username ? `@${targetUser.username}` : tName;
-
-                if (!settings.banSystem?.silent && settings.banSystem?.msg) {
-                    const banNotice = settings.banSystem.msg
-                        .replace(/{mention}/g, tMention)
-                        .replace(/{user}/g, tMention)
-                        .replace(/{name}/g, tName)
-                        .replace(/{username}/g, tUsername)
-                        .replace(/{chat}/g, ctx.chat.title)
-                        .replace(/{admin}/g, fullName);
-
-                    return ctx.replyWithMarkdown(banNotice);
-                }
-                return;
-            }
-
+            // --- COMMAND: /bio (Rose-Bot Style User Dossier) ---
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
                 if (bioRoleAllowed === 'admin' && !isAdmin) return;
 
-                let targetUser = ctx.from;
-                if (ctx.message.reply_to_message && ctx.message.reply_to_message.from) {
-                    targetUser = ctx.message.reply_to_message.from;
-                }
-
+                // Target is replied user OR the sender themselves!
+                const targetUser = targetRepliedUser || ctx.from;
                 const targetId = targetUser.id;
                 const targetFullName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
                 const targetRole = await getUserRole(ctx, targetId);
@@ -508,50 +484,183 @@ bot.on('message', async (ctx, next) => {
                 const isScammer = (await db.ref(`groups/${chatId}/scammers/${targetId}`).once('value')).val();
 
                 const bioMessage = 
-                    `📋 *User Community Bio & Security Dossier*\n\n` +
-                    `👤 *Name:* [${targetFullName}](tg://user?id=${targetId})\n` +
+                    `👤 *User Security Dossier — VS Guardian*\n` +
+                    `━━━━━━━━━━━━━━━━━━━━\n` +
+                    `🏷 *Name:* [${targetFullName}](tg://user?id=${targetId})\n` +
                     `🆔 *User ID:* \`${targetId}\`\n` +
                     `🔗 *Username:* ${targetUser.username ? `@${targetUser.username}` : '_None_'}\n` +
-                    `🎖 *Assigned Role:* \`${targetRole.toUpperCase()}\`\n` +
-                    `⚠️ *Active Infractions:* \`${warnsCount}/${settings.warnLimit || 3}\`\n` +
-                    `🛡 *Trust Evaluation:* ${isScammer ? '🚨 *CONFIRMED SCAMMER*' : '✅ *Verified Safe*'}`;
+                    `🎖 *Group Role:* \`${targetRole.toUpperCase()}\`\n` +
+                    `⚠️ *Infractions / Warns:* \`${warnsCount}/${settings.warnLimit || 3}\`\n` +
+                    `🛡 *Trust Score:* ${isScammer ? '🚨 *BLACKLISTED SCAMMER*' : '✅ *Verified Regular User*'}\n` +
+                    `━━━━━━━━━━━━━━━━━━━━`;
 
                 return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
             }
 
-            if (cmd === '/scam' && isAdmin) {
-                let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/scam` to flag this account.");
+            // --- COMMAND: /warn (Add Warning) ---
+            if (cmd === '/warn' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/warn` to issue a strike.");
+                if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot warn the protection bot.");
 
-                await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).set({
-                    name: `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim(),
-                    username: targetUser.username || '',
+                const warnRef = db.ref(`groups/${chatId}/warns/${targetRepliedUser.id}`);
+                const snap = await warnRef.once('value');
+                const currentWarns = (snap.val() || 0) + 1;
+                const limit = settings.warnLimit || 3;
+
+                const tName = targetRepliedUser.first_name;
+                const tMention = `[${tName}](tg://user?id=${targetRepliedUser.id})`;
+
+                if (currentWarns >= limit) {
+                    await ctx.banChatMember(targetRepliedUser.id).catch(() => {});
+                    await warnRef.remove();
+                    return ctx.replyWithMarkdown(`⛔ ${tMention} has reached maximum infractions (\`${currentWarns}/${limit}\`) and has been **banned** from the group.`);
+                } else {
+                    await warnRef.set(currentWarns);
+                    return ctx.replyWithMarkdown(`⚠️ Strike issued to ${tMention}!\nInfractions: \`${currentWarns}/${limit}\``);
+                }
+            }
+
+            // --- COMMAND: /unwarn or /resetwarns ---
+            if ((cmd === '/unwarn' || cmd === '/resetwarns') && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/unwarn`.");
+                await db.ref(`groups/${chatId}/warns/${targetRepliedUser.id}`).remove();
+                return ctx.replyWithMarkdown(`✅ Infraction strikes cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
+            }
+
+            // --- COMMAND: /warns (Check Warns) ---
+            if (cmd === '/warns') {
+                const target = targetRepliedUser || ctx.from;
+                const warnSnap = await db.ref(`groups/${chatId}/warns/${target.id}`).once('value');
+                const count = warnSnap.val() || 0;
+                return ctx.replyWithMarkdown(`⚠️ [${target.first_name}](tg://user?id=${target.id}) has \`${count}/${settings.warnLimit || 3}\` warnings.`);
+            }
+
+            // --- COMMAND: /mute & /unmute ---
+            if (cmd === '/mute' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/mute`.");
+                await ctx.restrictChatMember(targetRepliedUser.id, {
+                    permissions: { can_send_messages: false }
+                }).catch(e => ctx.reply(`❌ Failed to mute: ${e.message}`));
+                return ctx.replyWithMarkdown(`🔇 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been muted by administrators.`);
+            }
+
+            if (cmd === '/unmute' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/unmute`.");
+                await ctx.restrictChatMember(targetRepliedUser.id, {
+                    permissions: {
+                        can_send_messages: true,
+                        can_send_media_messages: true,
+                        can_send_other_messages: true,
+                        can_add_web_page_previews: true
+                    }
+                }).catch(e => ctx.reply(`❌ Failed to unmute: ${e.message}`));
+                return ctx.replyWithMarkdown(`🔊 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been unmuted.`);
+            }
+
+            // --- COMMAND: /ban & /unban ---
+            if (cmd === '/ban' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/ban`.");
+                await ctx.banChatMember(targetRepliedUser.id).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
+                return ctx.replyWithMarkdown(`⛔ [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been permanently banned.`);
+            }
+
+            if (cmd === '/unban' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unban`.");
+                await ctx.unbanChatMember(targetRepliedUser.id).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
+                return ctx.replyWithMarkdown(`✅ Ban lifted for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
+            }
+
+            // --- COMMAND: /kick ---
+            if (cmd === '/kick' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/kick`.");
+                await ctx.banChatMember(targetRepliedUser.id).catch(() => {});
+                await ctx.unbanChatMember(targetRepliedUser.id).catch(() => {});
+                return ctx.replyWithMarkdown(`👢 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been removed.`);
+            }
+
+            // --- COMMAND: /pin ---
+            if (cmd === '/pin' && isAdmin) {
+                if (!ctx.message.reply_to_message) return ctx.reply("⚠️ Reply to a message with `/pin`.");
+                await ctx.pinChatMessage(ctx.message.reply_to_message.message_id).catch(() => {});
+                return ctx.reply("📌 Message pinned successfully.");
+            }
+
+            // --- COMMAND: /lock & /unlock ---
+            if (cmd === '/lock' && isAdmin) {
+                settings.chatLocked = true;
+                await db.ref(`groups/${chatId}/settings/chatLocked`).set(true);
+                return ctx.replyWithMarkdown("🔒 *Chat has been locked. Regular members cannot send messages.*");
+            }
+
+            if (cmd === '/unlock' && isAdmin) {
+                settings.chatLocked = false;
+                await db.ref(`groups/${chatId}/settings/chatLocked`).set(false);
+                return ctx.replyWithMarkdown("🔓 *Chat unlocked. Everyone may now participate.*");
+            }
+
+            // --- COMMAND: /scam & /unscam ---
+            if (cmd === '/scam' && isAdmin) {
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/scam`.");
+                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).set({
+                    name: `${targetRepliedUser.first_name || ''} ${targetRepliedUser.last_name || ''}`.trim(),
+                    username: targetRepliedUser.username || '',
                     flaggedAt: Date.now(),
                     flaggedBy: ctx.from.id
                 });
-
-                return ctx.replyWithMarkdown(`🚨 [${targetUser.first_name}](tg://user?id=${targetUser.id}) has been added to the **Scammer Blacklist**!`);
+                return ctx.replyWithMarkdown(`🚨 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been flagged as a **SCAMMER**!`);
             }
 
             if (cmd === '/unscam' && isAdmin) {
-                let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply with `/unscam` to clear flags.");
+                if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unscam`.");
+                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).remove();
+                return ctx.replyWithMarkdown(`✅ Scammer tag cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
+            }
 
-                await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).remove();
-                return ctx.replyWithMarkdown(`✅ Scam designation cleared for [${targetUser.first_name}](tg://user?id=${targetUser.id}).`);
+            // --- DYNAMIC CUSTOM SLASH COMMANDS (From Dashboard) ---
+            if (settings.customCommands && typeof settings.customCommands === 'object') {
+                const cleanCmd = cmd.replace('/', '');
+                const customCmdRule = settings.customCommands[cleanCmd];
+
+                if (customCmdRule && customCmdRule.response) {
+                    const roleReq = customCmdRule.role || 'everyone';
+                    let canUse = false;
+
+                    if (roleReq === 'everyone') canUse = true;
+                    else if (roleReq === 'admin' && isAdmin) canUse = true;
+                    else if (roleReq === 'owner' && userRole === 'owner') canUse = true;
+
+                    if (canUse) {
+                        const targetUser = targetRepliedUser || ctx.from;
+                        const resp = customCmdRule.response
+                            .replace(/{mention}/g, `[${targetUser.first_name}](tg://user?id=${targetUser.id})`)
+                            .replace(/{user}/g, `[${targetUser.first_name}](tg://user?id=${targetUser.id})`)
+                            .replace(/{name}/g, targetUser.first_name)
+                            .replace(/{username}/g, targetUser.username ? `@${targetUser.username}` : targetUser.first_name)
+                            .replace(/{id}/g, targetUser.id)
+                            .replace(/{chat}/g, ctx.chat.title || "Community");
+
+                        const keyboard = buildInlineButtons(customCmdRule.buttons);
+                        const extra = { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' };
+                        if (keyboard) extra.reply_markup = keyboard.reply_markup;
+
+                        return ctx.reply(resp, extra).catch(async () => {
+                            await ctx.reply(resp, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+                        });
+                    }
+                }
             }
         }
 
-        // Admins bypass normal filtering rules (Chat lock, link, emoji, badwords)
+        // Admins bypass normal filter enforcement
         if (isAdmin) return next();
 
-        // 1. Chat Lock Filter
+        // 1. Chat Lock Enforcement
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 2. Anti-Button Filter
+        // 2. Anti-Button Enforcement
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
@@ -564,7 +673,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 3. Emoji Spam Filter
+        // 3. Emoji Spam Enforcement
         if (settings.emojiSpam?.enabled) {
             const emojiCount = countEmojis(ctx.message);
             const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
@@ -588,7 +697,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 4. Anti-Forward Filter
+        // 4. Anti-Forward Enforcement
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             if (!settings.antiForward.silent && settings.antiForward.msg) {
@@ -598,7 +707,7 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
-        // 5. Anti-Link Filter
+        // 5. Anti-Link Enforcement
         if (settings.antiLink?.enabled) {
             if (hasLinks(ctx.message)) {
                 await ctx.deleteMessage().catch(() => {});
@@ -612,7 +721,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 6. Bad Words Filter
+        // 6. Bad Words Enforcement
         if (settings.badWords?.enabled && Array.isArray(settings.badWords.words) && settings.badWords.words.length > 0) {
             const lowerText = text.toLowerCase();
             const foundBadWord = settings.badWords.words.some(word => 
@@ -674,7 +783,6 @@ bot.on('message', async (ctx, next) => {
 const tempAuthClients = {};
 
 async function extractCommunities(client) {
-    // Fetch up to 500 dialogs so old groups are never missed
     const dialogs = await client.getDialogs({ limit: 500 });
     const groups = [];
     const channels = [];
@@ -690,18 +798,11 @@ async function extractCommunities(client) {
         if (e.deactivated) continue;
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') continue;
 
-        // Check ownership or admin rights across both Chat & Channel
         const isCreator = Boolean(e.creator);
         let hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo || e.adminRights.deleteMessages));
         let isBasicAdmin = Boolean(e.admin);
 
-        // For legacy chats without explicit flags, creator is always admin
         if (!isCreator && !hasAdminRights && !isBasicAdmin) {
-            // Check if user has can_manage / edit rights
-            if (e.defaultBannedRights && e.defaultBannedRights.sendMessages) {
-                // If member, continue
-                continue;
-            }
             continue;
         }
 
@@ -716,7 +817,6 @@ async function extractCommunities(client) {
         } catch (err) {}
 
         const isBroadcastChannel = d.isChannel && !e.megagroup;
-        // Consistent Chat ID starting with -100 for Supergroup/Channel, or - for Basic Chat
         let chatIdStr = d.isChannel ? `-100${Math.abs(e.id)}` : `-${Math.abs(e.id)}`;
 
         let isBotConnected = Boolean(connectedMap[chatIdStr] || connectedMap[chatIdStr.replace('-100', '')]);
@@ -990,7 +1090,6 @@ app.post('/api/tg/save-section', async (req, res) => {
 
         await db.ref(`groups/${chatId}/settings/${sectionKey}`).set(data);
 
-        // Update active in-memory cache immediately
         if (!chatSettingsCache[chatId]) {
             chatSettingsCache[chatId] = await getChatSettings(chatId);
         }
