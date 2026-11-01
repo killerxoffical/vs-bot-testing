@@ -335,7 +335,7 @@
                     </button>
                     <button onclick="switchTab('commands')" id="tabBtn-commands" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="terminal" class="w-4 h-4"></i>
-                        <span>Slash Commands</span>
+                        <span>Slash Commands (Rose)</span>
                     </button>
                     <button onclick="switchTab('scammers')" id="tabBtn-scammers" class="tab-btn flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-xs shrink-0 lg:w-full transition text-slate-600 hover:bg-slate-100">
                         <i data-lucide="shield-alert" class="w-4 h-4"></i>
@@ -491,13 +491,13 @@
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="border-b border-slate-100 pb-3">
                                 <h3 class="text-base font-bold text-slate-900">Custom Auto-Replies Engine</h3>
-                                <p class="text-xs text-slate-500">Configure keywords that trigger automatic bot responses filtered by sender role</p>
+                                <p class="text-xs text-slate-500">Keywords that trigger automatic bot responses filtered by sender role</p>
                             </div>
                             <div class="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
                                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                                     <div class="sm:col-span-5">
                                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Trigger Keyword</label>
-                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules, help" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                     </div>
                                     <div class="sm:col-span-4">
                                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sender Role</label>
@@ -515,13 +515,22 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response</label>
-                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
+                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response ({name}, {mention}, {chat}, {id})</label>
+                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are the details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
                             </div>
-                            <div id="autoRepliesList" class="space-y-2"></div>
+
+                            <!-- LIVE AUTO REPLIES LIST -->
+                            <div class="space-y-2">
+                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Active Auto-Replies List</h4>
+                                <div id="autoRepliesList" class="space-y-2 max-h-72 overflow-y-auto pane-scroll pr-1"></div>
+                            </div>
+
                             <div class="flex justify-end pt-2">
-                                <button type="button" onclick="saveAutoRepliesSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Auto-Replies</button>
+                                <button type="button" onclick="saveAutoRepliesSection()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                    <span>Save Auto-Replies</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -566,23 +575,78 @@
                         </div>
                     </div>
 
-                    <!-- Slash Commands Tab -->
+                    <!-- TAB: SLASH COMMANDS (ROSE BOT STYLE STUDIO) -->
                     <div id="tabContent-commands" class="hidden space-y-6 max-w-5xl">
-                        <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
+                        <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
+                            
+                            <!-- Header -->
                             <div class="border-b border-slate-100 pb-3">
-                                <h3 class="text-base font-bold text-slate-900">Custom Slash Commands Engine</h3>
-                                <p class="text-xs text-slate-500">Define commands starting with /</p>
+                                <h3 class="text-base font-bold text-slate-900">Rose-Bot Slash Command Studio</h3>
+                                <p class="text-xs text-slate-500">Configure pre-built /bio dossier & create dynamic slash commands</p>
                             </div>
-                            <div class="p-4 rounded-xl bg-brand-50/50 border border-brand-100 flex items-center justify-between">
-                                <span class="px-2.5 py-0.5 rounded-lg bg-brand-600 text-white font-mono text-xs font-bold">/bio</span>
-                                <select id="cmdBioRole" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-800 outline-none">
-                                    <option value="all">Everyone</option>
-                                    <option value="admin">Admins & Owner</option>
-                                    <option value="owner">Owner Only</option>
-                                </select>
+
+                            <!-- Built-In Command: /bio -->
+                            <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-mono text-xs font-bold">/bio</span>
+                                        <span class="text-xs font-bold text-slate-900">User Dossier & Security Bio</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-1">Users can check their own or replied user's profile card, Telegram ID, warns & role.</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">Allowed Role:</label>
+                                    <select id="cmdBioRole" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="all">Everyone</option>
+                                        <option value="admin">Admins & Owner</option>
+                                        <option value="owner">Owner Only</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="flex justify-end">
-                                <button type="button" onclick="saveCommandsSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Slash Commands</button>
+
+                            <!-- Create New Custom Slash Command -->
+                            <div class="p-5 rounded-2xl bg-brand-50/40 border border-brand-100 space-y-3">
+                                <h4 class="text-xs font-bold text-slate-900 uppercase">Create New Custom Slash Command</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                                    <div class="sm:col-span-5">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Command Trigger (e.g. rules, support, vip)</label>
+                                        <div class="flex items-center bg-white border border-slate-300 rounded-xl px-2.5 py-1.5">
+                                            <span class="font-mono text-xs font-bold text-slate-400 mr-1">/</span>
+                                            <input id="newCmdTrigger" type="text" placeholder="rules" class="w-full bg-transparent text-xs font-bold text-slate-800 outline-none">
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-4">
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Role Permission</label>
+                                        <select id="newCmdRole" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
+                                            <option value="everyone">Everyone</option>
+                                            <option value="admin">Only Admin & Owner</option>
+                                            <option value="owner">Only Owner</option>
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-3 flex items-end">
+                                        <button type="button" onclick="addCustomCommandRule()" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                            <span>Add Command</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Bot Command Reply Message ({name}, {mention}, {chat})</label>
+                                    <textarea id="newCmdResponse" rows="2" placeholder="📜 Welcome {name}! Here are our official rules..." class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- List of Custom Commands -->
+                            <div class="space-y-2">
+                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Active Custom Commands</h4>
+                                <div id="customCommandsList" class="space-y-2 max-h-64 overflow-y-auto pane-scroll pr-1"></div>
+                            </div>
+
+                            <div class="flex justify-end pt-2">
+                                <button type="button" onclick="saveCommandsSection()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                    <span>Save All Slash Commands</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -597,7 +661,7 @@
                                 </div>
                                 <button onclick="loadScammers()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
                                     <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                                    <span>Refresh Scammers</span>
+                                    <span>Refresh Blacklist</span>
                                 </button>
                             </div>
                             <div id="scammersListContainer" class="space-y-2 max-h-80 overflow-y-auto"></div>
@@ -747,7 +811,9 @@
         let phoneCodeHash = null;
         let loadedItemsMap = {};
         let activeGroupId = null;
+        
         let autoRepliesMap = {};
+        let customCommandsMap = {};
 
         let cachedGroupsList = [];
         let cachedChannelsList = [];
@@ -1047,12 +1113,16 @@
                     document.getElementById('toggleWelcome').checked = Boolean(s.welcome?.enabled);
                     document.getElementById('welcomeTextInput').value = s.welcome?.text || "👋 Welcome {mention} to {chat}!";
 
-                    // 7. Slash Commands
+                    // 7. Slash Commands & /bio
                     if (s.commands?.bio?.role) {
                         document.getElementById('cmdBioRole').value = s.commands.bio.role;
                     }
 
-                    // 8. Auto Replies
+                    // 8. Custom Commands Studio
+                    customCommandsMap = s.customCommands || {};
+                    renderCustomCommands();
+
+                    // 9. Auto Replies
                     autoRepliesMap = s.autoReplies || {};
                     renderAutoReplies();
                 }
@@ -1144,30 +1214,33 @@
             }, 'Ban Notification Policy');
         }
 
-        // Auto-Reply Engine UI Logic
+        // =========================================================================
+        // AUTO-REPLY ENGINE UI LOGIC
+        // =========================================================================
         function renderAutoReplies() {
             const list = document.getElementById('autoRepliesList');
             list.innerHTML = '';
             const keys = Object.keys(autoRepliesMap);
 
             if (keys.length === 0) {
-                list.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No custom auto-replies configured.</p>`;
+                list.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No custom auto-replies configured yet.</p>`;
                 return;
             }
 
             keys.forEach(k => {
                 const r = autoRepliesMap[k];
+                if (!r) return;
                 const row = document.createElement('div');
-                row.className = "flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 text-xs";
+                row.className = "flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 text-xs transition";
                 row.innerHTML = `
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded">${r.trigger}</span>
-                            <span class="text-[10px] text-brand-600 font-semibold">[Role: ${r.target}]</span>
+                            <span class="font-extrabold text-slate-900 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 font-mono">${r.trigger}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-brand-600 border border-indigo-100">Role: ${r.target}</span>
                         </div>
-                        <p class="text-slate-500 mt-1">${r.response}</p>
+                        <p class="text-slate-600 mt-1.5 leading-relaxed font-medium">${r.response}</p>
                     </div>
-                    <button onclick="removeAutoReplyRule('${k}')" class="text-rose-500 hover:text-rose-700 p-1">
+                    <button onclick="removeAutoReplyRule('${k}')" class="text-rose-500 hover:text-rose-700 p-1.5 hover:bg-rose-50 rounded-lg transition" title="Delete Reply">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 `;
@@ -1185,11 +1258,12 @@
                 return Swal.fire('Incomplete', 'Please provide trigger keyword and bot response.', 'warning');
             }
 
-            const ruleId = 'rule_' + Date.now();
+            const ruleId = 'reply_' + Date.now();
             autoRepliesMap[ruleId] = { trigger, target, response };
             document.getElementById('newReplyTrigger').value = '';
             document.getElementById('newReplyResponse').value = '';
             renderAutoReplies();
+            Swal.fire({ title: 'Added to List', text: 'Click "Save Auto-Replies" to deploy policy.', icon: 'info', timer: 1200, showConfirmButton: false });
         }
 
         function removeAutoReplyRule(key) {
@@ -1199,6 +1273,68 @@
 
         function saveAutoRepliesSection() {
             saveSection('autoReplies', autoRepliesMap, 'Auto-Replies Database');
+        }
+
+        // =========================================================================
+        // CUSTOM SLASH COMMANDS (ROSE BOT STYLE) UI LOGIC
+        // =========================================================================
+        function renderCustomCommands() {
+            const list = document.getElementById('customCommandsList');
+            list.innerHTML = '';
+            const keys = Object.keys(customCommandsMap);
+
+            if (keys.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 italic py-2">No custom slash commands created yet.</p>`;
+                return;
+            }
+
+            keys.forEach(cmdName => {
+                const c = customCommandsMap[cmdName];
+                if (!c) return;
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 text-xs transition";
+                row.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono font-extrabold text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-md border border-brand-100">/${cmdName}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Role: ${c.role || 'everyone'}</span>
+                        </div>
+                        <p class="text-slate-600 mt-1.5 leading-relaxed font-medium">${c.response}</p>
+                    </div>
+                    <button onclick="removeCustomCommandRule('${cmdName}')" class="text-rose-500 hover:text-rose-700 p-1.5 hover:bg-rose-50 rounded-lg transition" title="Delete Command">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                `;
+                list.appendChild(row);
+            });
+            lucide.createIcons();
+        }
+
+        function addCustomCommandRule() {
+            let trigger = document.getElementById('newCmdTrigger').value.trim().toLowerCase();
+            const role = document.getElementById('newCmdRole').value;
+            const response = document.getElementById('newCmdResponse').value.trim();
+
+            trigger = trigger.replace(/^\/+/, ''); // Remove leading slashes
+            if (!trigger || !response) {
+                return Swal.fire('Incomplete', 'Please provide command name (e.g. rules) and reply text.', 'warning');
+            }
+
+            customCommandsMap[trigger] = { role, response };
+            document.getElementById('newCmdTrigger').value = '';
+            document.getElementById('newCmdResponse').value = '';
+            renderCustomCommands();
+            Swal.fire({ title: 'Command Added', text: 'Click "Save All Slash Commands" to deploy.', icon: 'info', timer: 1200, showConfirmButton: false });
+        }
+
+        function removeCustomCommandRule(cmdName) {
+            delete customCommandsMap[cmdName];
+            renderCustomCommands();
+        }
+
+        function saveCommandsSection() {
+            saveSection('commands', { bio: { role: document.getElementById('cmdBioRole').value } }, 'Slash Bio Settings');
+            saveSection('customCommands', customCommandsMap, 'Custom Slash Commands');
         }
 
         function saveBadWordsSection() {
@@ -1214,10 +1350,6 @@
                 enabled: document.getElementById('toggleWelcome').checked,
                 text: document.getElementById('welcomeTextInput').value
             }, 'Welcome Greeting Policy');
-        }
-
-        function saveCommandsSection() {
-            saveSection('commands', { bio: { role: document.getElementById('cmdBioRole').value } }, 'Slash Commands');
         }
 
         async function sendGroupBroadcast() {
@@ -1626,7 +1758,7 @@
                 avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs">${item.title ? item.title[0].toUpperCase() : 'C'}</div>`;
             }
 
-            // AUTO-FETCH ALL EXISTING POLICIES
+            // Load Existing Settings
             await loadGroupSettings(chatId);
 
             switchTab('security');
@@ -1787,3 +1919,4 @@
     </script>
 </body>
 </html>
+এখন আপনার `server.js` এবং `index.html` উভয় ফাইলই সম্পূর্ণ আপডেটেড। সার্ভার রিস্টার্ট দিয়ে ড্যাশবোর্ড থেকে অটো-রিপ্লাই এবং কাস্টম স্লাশ কমান্ডগুলো সেট করুন এবং টেলিগ্রাম গ্রুপে পরীক্ষা করুন!
