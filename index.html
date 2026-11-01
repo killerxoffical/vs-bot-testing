@@ -49,15 +49,16 @@
             background: #FFFFFF;
             border: 1px solid #E2E8F0;
             box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .light-card:hover {
-            box-shadow: 0 12px 28px -4px rgba(79, 70, 229, 0.06);
+            box-shadow: 0 16px 32px -4px rgba(79, 70, 229, 0.08);
+            border-color: #CBD5E1;
         }
         .frosted-nav {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(16px);
-            border-bottom: 1.5px solid #E2E8F0;
+            border-bottom: 1px solid #E2E8F0;
         }
         .tab-btn.active {
             background-color: #4F46E5;
@@ -105,6 +106,13 @@
             justify-content: center;
             gap: 0.25rem;
         }
+        .gradient-orb {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.45;
+            pointer-events: none;
+            z-index: 0;
+        }
     </style>
 </head>
 <body class="min-h-screen h-screen flex flex-col justify-between selection:bg-brand-500 selection:text-white relative overflow-x-hidden">
@@ -137,7 +145,7 @@
             </div>
 
             <div id="navActionArea" class="flex items-center gap-3">
-                <button onclick="openPricingModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs text-slate-700 transition">
+                <button onclick="openPricingModal()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs text-slate-700 transition shadow-sm">
                     <i data-lucide="tag" class="w-3.5 h-3.5 text-brand-600"></i>
                     <span>Pricing Plans</span>
                 </button>
@@ -149,35 +157,41 @@
         </div>
     </header>
 
-    <!-- SECTION 1: UPGRADED CYBERSECURITY LANDING VIEW -->
-    <div id="landingView" class="hidden flex-1 overflow-y-auto pane-scroll">
-        <section class="max-w-7xl mx-auto px-6 pt-16 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <!-- SECTION 1: ULTRA-PREMIUM LIGHT-THEME LANDING VIEW -->
+    <div id="landingView" class="hidden flex-1 overflow-y-auto pane-scroll relative">
+        
+        <!-- Subtle Ambient Background Light Orbs -->
+        <div class="gradient-orb w-96 h-96 bg-brand-200 rounded-full top-0 left-10"></div>
+        <div class="gradient-orb w-96 h-96 bg-indigo-200 rounded-full top-48 right-10"></div>
+
+        <!-- HERO SECTION -->
+        <section class="max-w-7xl mx-auto px-6 pt-16 pb-20 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
             <div class="lg:col-span-7 space-y-6 text-left">
-                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-brand-600 font-semibold text-xs">
-                    <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
-                    <span>Autonomous Telegram Cyber Defense</span>
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-brand-200 text-brand-600 font-bold text-xs shadow-sm">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-brand-600"></i>
+                    <span>Autonomous Telegram Cyber Defense Engine</span>
                 </div>
-                <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.12]">
                     Next-Gen Telegram Defense <br>
-                    <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">Engineered For High-Traffic Hubs</span>
+                    <span class="bg-gradient-to-r from-brand-600 via-indigo-600 to-blue-500 bg-clip-text text-transparent">For High-Traffic Hubs</span>
                 </h1>
                 <p class="text-slate-600 text-sm md:text-base max-w-xl font-normal leading-relaxed">
-                    Granular security controls for Groups and Broadcast Channels. Emoji spam control, anti-forward shield, anti-button bot filters, live broadcast studio, and real-time community defense.
+                    Granular security controls for Groups and Broadcast Channels. Emoji spam control, anti-forward shield, anti-button bot filters, live broadcast studio, 1-click cross-community policy cloner, and automated raid immunity.
                 </p>
 
-                <!-- Micro Stats Bar -->
-                <div class="grid grid-cols-3 gap-4 pt-2 max-w-lg border-y border-slate-200/80 py-3">
+                <!-- High-Impact Live Metrics Bar -->
+                <div class="grid grid-cols-3 gap-4 pt-2 max-w-lg border-y border-slate-200/90 py-3.5 bg-white/70 backdrop-blur-sm rounded-2xl px-4 shadow-sm">
                     <div>
-                        <div class="text-lg font-extrabold text-slate-900">0.02s</div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase">Reaction Speed</div>
+                        <div class="text-xl font-extrabold text-slate-900">0.02s</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reaction Speed</div>
                     </div>
                     <div>
-                        <div class="text-lg font-extrabold text-slate-900">256-bit</div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase">MTProto Defense</div>
+                        <div class="text-xl font-extrabold text-brand-600">256-bit</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">MTProto Defense</div>
                     </div>
                     <div>
-                        <div class="text-lg font-extrabold text-emerald-600">99.99%</div>
-                        <div class="text-[10px] font-bold text-slate-400 uppercase">Raid Immunity</div>
+                        <div class="text-xl font-extrabold text-emerald-600">100%</div>
+                        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Data Preserved</div>
                     </div>
                 </div>
 
@@ -194,17 +208,86 @@
                 </div>
             </div>
 
-            <div class="lg:col-span-5 h-[380px] w-full rounded-3xl relative overflow-hidden flex items-center justify-center light-card border-none bg-gradient-to-br from-indigo-50/50 to-white">
+            <!-- 3D Interactive Core Engine -->
+            <div class="lg:col-span-5 h-[400px] w-full rounded-3xl relative overflow-hidden flex items-center justify-center light-card border bg-gradient-to-br from-indigo-50/60 to-white shadow-xl">
                 <canvas id="threeCanvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
-                <div class="absolute bottom-4 left-6 text-xs font-semibold text-slate-400 flex items-center gap-2 pointer-events-none">
-                    <i data-lucide="move-3d" class="w-4 h-4"></i>
-                    <span>Infinity Guard Core Engine</span>
+                <div class="absolute bottom-4 left-6 text-xs font-semibold text-slate-400 flex items-center gap-2 pointer-events-none bg-white/80 backdrop-blur-md px-3 py-1 rounded-full border border-slate-200">
+                    <i data-lucide="cpu" class="w-3.5 h-3.5 text-brand-600"></i>
+                    <span>Infinity Guard Autonomous Core</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- BENTO-GRID FEATURE HIGHLIGHTS -->
+        <section class="max-w-7xl mx-auto px-6 py-14 space-y-10 relative z-10">
+            <div class="text-center space-y-2 max-w-2xl mx-auto">
+                <span class="px-3 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-600 font-bold text-xs uppercase tracking-wider">Enterprise Architecture</span>
+                <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Engineered to Neutralize Community Threats</h2>
+                <p class="text-xs text-slate-500">Every defense mechanism operates at Telegram MTProto kernel speed, keeping your communities clean and safe.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+                <!-- Feature 1 -->
+                <div class="light-card p-6 rounded-3xl space-y-3 border hover:border-brand-300">
+                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-brand-600 flex items-center justify-center font-bold">
+                        <i data-lucide="mouse-pointer-click" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">Anti-Button Bot Filter</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Detects and purges promotional userbots and spam accounts posting interactive inline URL buttons in regular member chats.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="light-card p-6 rounded-3xl space-y-3 border hover:border-brand-300">
+                    <div class="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
+                        <i data-lucide="link-2" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">Smart Domain Whitelist</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Restrict external links while whitelisting your official referral links, websites, or YouTube channels with zero disruption.</p>
+                </div>
+
+                <!-- Feature 3: Policy Cloner -->
+                <div class="light-card p-6 rounded-3xl space-y-3 border-2 border-brand-200 bg-brand-50/20 hover:border-brand-400">
+                    <div class="w-10 h-10 rounded-2xl bg-brand-600 text-white flex items-center justify-center font-bold shadow-md shadow-brand-500/20">
+                        <i data-lucide="copy-check" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base font-extrabold text-slate-900">1-Click Policy Cloner</h3>
+                        <span class="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-brand-600 text-white uppercase">New</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed font-medium">Configure one community perfectly and clone all welcome templates, auto-replies, buttons, and filters to 10+ other groups in a single click.</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="light-card p-6 rounded-3xl space-y-3 border hover:border-brand-300">
+                    <div class="w-10 h-10 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold">
+                        <i data-lucide="forward" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">Anti-Forward Shield</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Stop viral spam and cross-channel promotion by instantly blocking messages forwarded from other channels or groups.</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="light-card p-6 rounded-3xl space-y-3 border hover:border-brand-300">
+                    <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold">
+                        <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">Scammer Auto-Alert Banner</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Flag fraudulent users with <code class="text-brand-600 font-bold">/scam</code>. Every subsequent message they send triggers a public security alert to protect your members.</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="light-card p-6 rounded-3xl space-y-3 border hover:border-brand-300">
+                    <div class="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
+                        <i data-lucide="fingerprint" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="text-base font-extrabold text-slate-900">Profile Alteration Audit</h3>
+                    <p class="text-xs text-slate-500 leading-relaxed">Catches members who alter their display names or usernames after joining to execute impersonation scams, logging full historical dossiers in <code class="text-brand-600 font-bold">/bio</code>.</p>
                 </div>
             </div>
         </section>
 
         <!-- PRICING SECTION -->
-        <section class="w-full bg-slate-100/60 py-16 px-6 border-t border-slate-200">
+        <section class="w-full bg-slate-100/60 py-16 px-6 border-t border-slate-200 relative z-10">
             <div class="max-w-7xl mx-auto space-y-10 text-center">
                 <div class="space-y-2">
                     <span class="px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-brand-600 font-bold text-xs uppercase tracking-wider">Subscription Tiers</span>
@@ -214,6 +297,38 @@
                 <div id="pricingCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-left"></div>
             </div>
         </section>
+
+        <!-- FAQ SECTION -->
+        <section class="max-w-4xl mx-auto px-6 py-16 space-y-8 relative z-10">
+            <div class="text-center space-y-1.5">
+                <h3 class="text-2xl font-extrabold text-slate-900">Frequently Asked Questions</h3>
+                <p class="text-xs text-slate-500">Everything you need to know about Infinity Guard deployment & licensing</p>
+            </div>
+
+            <div class="space-y-3 text-left">
+                <div class="light-card p-4 rounded-2xl">
+                    <h4 class="text-xs font-bold text-slate-900">What happens to my settings if my plan expires?</h4>
+                    <p class="text-xs text-slate-500 mt-1">Your configuration is 100% safe. Infinity Guard securely preserves all your welcome texts, auto-replies, and blacklists in our encrypted vault. When you renew, everything restores instantly without re-typing.</p>
+                </div>
+                <div class="light-card p-4 rounded-2xl">
+                    <h4 class="text-xs font-bold text-slate-900">How does the 1-Click Policy Cloner work?</h4>
+                    <p class="text-xs text-slate-500 mt-1">Once you configure any group, click "Clone Settings" in the header, select your other groups, and all filters, welcome banners, and auto-replies replicate across all target communities instantly.</p>
+                </div>
+                <div class="light-card p-4 rounded-2xl">
+                    <h4 class="text-xs font-bold text-slate-900">How does the 7-day grace period protect my group?</h4>
+                    <p class="text-xs text-slate-500 mt-1">When your 30-day term ends, Infinity Guard gives you 7 extra days of protection with an amber warning, giving you ample time to contact @Blackmoney54 for renewal before defenses shut down.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="w-full bg-white border-t border-slate-200 py-8 px-6 text-center text-xs text-slate-400 relative z-10">
+            <div class="flex items-center justify-center gap-2 mb-2">
+                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793533146217_Untitled.png" class="w-5 h-5 object-cover rounded">
+                <span class="font-extrabold text-slate-800">Infinity Guard Cloud</span>
+            </div>
+            <p>© 2026 Infinity Guard Autonomous Security Core. Engineered by Vareon Studio.</p>
+        </footer>
     </div>
 
     <!-- SECTION 2: MAIN DASHBOARD VIEW -->
@@ -334,7 +449,7 @@
         <!-- SUB-VIEW B: FULL GROUP PANEL -->
         <div id="dedicatedGroupPanelView" class="hidden flex-1 w-full h-full overflow-hidden flex flex-col">
             
-            <!-- PANEL HEADER WITH SECRET 15-CLICK LISTENER -->
+            <!-- PANEL HEADER WITH CLONE SETTINGS & SECRET 15-CLICK LISTENER -->
             <div class="frosted-nav px-5 md:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 z-30 shadow-sm">
                 <div class="flex items-center gap-3.5">
                     <button onclick="backToCommunities()" class="w-9 h-9 rounded-xl border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-700 transition shrink-0 shadow-sm">
@@ -352,6 +467,12 @@
                 </div>
 
                 <div class="flex items-center gap-2">
+                    <!-- 1-CLICK CLONE SETTINGS BUTTON -->
+                    <button onclick="openCloneSettingsModal()" class="px-3.5 py-1.5 rounded-xl bg-brand-50 border border-brand-200 hover:bg-brand-100 text-brand-700 font-bold text-xs transition flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="copy" class="w-3.5 h-3.5 text-brand-600"></i>
+                        <span>Clone Settings</span>
+                    </button>
+
                     <button onclick="backToCommunities()" class="px-3.5 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50 font-semibold text-xs text-slate-700 transition flex items-center gap-1.5">
                         <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
                         <span>Back to Hub</span>
@@ -1394,6 +1515,84 @@
 
     </div>
 
+    <!-- MODAL: 1-CLICK CLONE SETTINGS TO OTHER COMMUNITIES -->
+    <div id="cloneSettingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-xl rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-200 relative text-left space-y-4 max-h-[92vh] overflow-y-auto pane-scroll">
+            <button onclick="closeCloneSettingsModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold shadow-sm">
+                    <i data-lucide="copy" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-extrabold text-slate-900">Clone Community Policy</h3>
+                    <p class="text-xs text-slate-500">Duplicate this community's settings directly to your other groups & channels</p>
+                </div>
+            </div>
+
+            <div class="p-3.5 bg-brand-50/50 rounded-2xl border border-brand-100 text-xs text-brand-900">
+                <b>Source Community:</b> <span id="cloneSourceTitle" class="font-bold">Group</span> (<span id="cloneSourceId" class="font-mono text-[10px]">ID</span>)
+            </div>
+
+            <!-- What to clone checkboxes -->
+            <div class="space-y-2">
+                <label class="text-[11px] font-bold text-slate-700 uppercase block">1. Select Modules to Clone:</label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptWelcome" checked class="accent-brand-600">
+                        <span>Welcome Banner</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptEmoji" checked class="accent-brand-600">
+                        <span>Emoji Policy</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptAntiLink" checked class="accent-brand-600">
+                        <span>Anti-Link + Whitelist</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptForward" checked class="accent-brand-600">
+                        <span>Anti-Forward</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptButton" checked class="accent-brand-600">
+                        <span>Anti-Button Bot</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptBadWords" checked class="accent-brand-600">
+                        <span>Profanity Words</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptAutoReply" checked class="accent-brand-600">
+                        <span>Auto-Replies</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                        <input type="checkbox" id="cloneOptCommands" checked class="accent-brand-600">
+                        <span>Slash Commands</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Target communities list -->
+            <div class="space-y-2 pt-2">
+                <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-bold text-slate-700 uppercase">2. Select Target Communities:</label>
+                    <button type="button" onclick="toggleSelectAllCloneTargets()" class="text-[11px] font-bold text-brand-600 hover:text-brand-800">Select All</button>
+                </div>
+                <div id="cloneTargetCommunitiesList" class="space-y-1.5 max-h-48 overflow-y-auto pane-scroll p-1"></div>
+            </div>
+
+            <div class="pt-3 flex gap-2">
+                <button onclick="closeCloneSettingsModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+                <button onclick="submitCloneSettings()" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-md shadow-brand-500/25 transition flex items-center justify-center gap-1.5">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                    <span>Apply & Clone Settings</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: QUOTA RESOLUTION POPUP (ALLOWS USER TO CHOOSE ACTIVE COMMUNITY) -->
     <div id="quotaResolverModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
         <div class="bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-200 relative text-left space-y-4">
@@ -1416,7 +1615,7 @@
     </div>
 
     <!-- SECRET EASTER EGG: 15-CLICKS TELEGRAM OWNERSHIP TRANSFER MODAL -->
-    <div id="secretOwnershipModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+    <div id="secretOwnershipModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-955/85 backdrop-blur-md">
         <div class="bg-slate-900 text-white w-full max-w-md rounded-3xl p-7 shadow-2xl border border-brand-500/30 relative text-left space-y-4">
             <button onclick="closeSecretOwnershipModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white">
                 <i data-lucide="x" class="w-5 h-5"></i>
@@ -1490,7 +1689,7 @@
                 <div>
                     <h4 class="text-sm font-bold text-slate-900">How to activate your protection license:</h4>
                     <p class="text-xs text-slate-600 mt-1 leading-relaxed">
-                        To purchase an official license key, please message the administrator directly on Telegram. You will receive an exclusive license key formatted as <code class="bg-white px-1.5 py-0.5 rounded border border-slate-300 font-bold text-brand-600">VS-XXXX-XXXX</code> immediately after payment.
+                        To purchase an official license key, please message the administrator directly on Telegram. You will receive an exclusive license key formatted as <code class="bg-white px-1.5 py-0.5 rounded border border-slate-300 font-bold text-brand-600">IG-XXXX-XXXX</code> immediately after payment.
                     </p>
                 </div>
             </div>
@@ -1520,7 +1719,7 @@
             <div class="space-y-3">
                 <div>
                     <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Your License Key</label>
-                    <input id="inputClaimKey" type="text" placeholder="VS-A1B2-C3D4" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:ring-2 focus:ring-brand-500">
+                    <input id="inputClaimKey" type="text" placeholder="IG-A1B2-C3D4" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-slate-900 uppercase outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
                 <div class="pt-2 flex gap-2">
                     <button onclick="closeClaimLicenseModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
@@ -1669,6 +1868,104 @@
                 animArea.classList.add('hidden');
                 btn.disabled = false;
                 Swal.fire('Transfer Error', e.message, 'error');
+            }
+        }
+
+        // =========================================================================
+        // 1-CLICK CLONE SETTINGS ACROSS COMMUNITIES
+        // =========================================================================
+        function openCloneSettingsModal() {
+            if (!activeGroupId) return;
+            const currentItem = loadedItemsMap[activeGroupId] || { title: "Community", id: activeGroupId };
+            
+            document.getElementById('cloneSourceTitle').innerText = currentItem.title;
+            document.getElementById('cloneSourceId').innerText = activeGroupId;
+
+            const targetList = document.getElementById('cloneTargetCommunitiesList');
+            targetList.innerHTML = '';
+
+            const allOtherItems = Object.values(loadedItemsMap).filter(i => i.id !== activeGroupId);
+            if (allOtherItems.length === 0) {
+                targetList.innerHTML = `<p class="text-xs text-slate-400 italic py-3 text-center">No other communities connected to clone into.</p>`;
+            } else {
+                allOtherItems.forEach(item => {
+                    const row = document.createElement('label');
+                    row.className = "flex items-center justify-between p-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 cursor-pointer text-xs";
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2.5">
+                            <input type="checkbox" name="cloneTargetChat" value="${item.id}" class="w-4 h-4 accent-brand-600 rounded">
+                            <span class="font-bold text-slate-800">${item.title}</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-mono">ID: ${item.id}</span>
+                    `;
+                    targetList.appendChild(row);
+                });
+            }
+
+            document.getElementById('cloneSettingsModal').classList.remove('hidden');
+        }
+
+        function closeCloneSettingsModal() {
+            document.getElementById('cloneSettingsModal').classList.add('hidden');
+        }
+
+        function toggleSelectAllCloneTargets() {
+            const boxes = document.querySelectorAll('input[name="cloneTargetChat"]');
+            const allChecked = Array.from(boxes).every(b => b.checked);
+            boxes.forEach(b => b.checked = !allChecked);
+        }
+
+        async function submitCloneSettings() {
+            const selectedBoxes = Array.from(document.querySelectorAll('input[name="cloneTargetChat"]:checked'));
+            const targetChatIds = selectedBoxes.map(b => b.value);
+
+            if (targetChatIds.length === 0) {
+                return Swal.fire('No Target Selected', 'Please select at least 1 community to clone settings into.', 'warning');
+            }
+
+            const sections = {
+                welcome: document.getElementById('cloneOptWelcome').checked,
+                emojiSpam: document.getElementById('cloneOptEmoji').checked,
+                antiLink: document.getElementById('cloneOptAntiLink').checked,
+                antiForward: document.getElementById('cloneOptForward').checked,
+                antiButton: document.getElementById('cloneOptButton').checked,
+                badWords: document.getElementById('cloneOptBadWords').checked,
+                autoReplies: document.getElementById('cloneOptAutoReply').checked,
+                commands: document.getElementById('cloneOptCommands').checked
+            };
+
+            Swal.fire({
+                title: 'Cloning Policies...',
+                text: `Duplicating configurations across ${targetChatIds.length} community(s)...`,
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const res = await fetch('/api/tg/clone-settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        sourceChatId: activeGroupId,
+                        targetChatIds,
+                        sections
+                    })
+                });
+                const data = await res.json();
+                Swal.close();
+
+                if (data.success) {
+                    closeCloneSettingsModal();
+                    Swal.fire({
+                        title: 'Settings Cloned!',
+                        text: `Policies successfully replicated across ${data.count} community(s)!`,
+                        icon: 'success'
+                    });
+                } else {
+                    Swal.fire('Cloning Failed', data.message || data.error, 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
             }
         }
 
@@ -2099,7 +2396,7 @@
             }
         }
 
-        // AUTO-PROMPT QUOTA RESOLVER IF OVERLIMIT (SCREENSHOT FIX)
+        // AUTO-PROMPT QUOTA RESOLVER IF OVERLIMIT
         function checkAndPromptQuotaOverlimit() {
             if (currentMaxCommunities > 0 && currentMaxCommunities < 9999 && currentConnectedCount > currentMaxCommunities) {
                 openQuotaResolverModal();
@@ -3237,7 +3534,7 @@
             lucide.createIcons();
         }
 
-        // 3D Canvas
+        // 3D Canvas with enhanced lighting
         (function() {
             const canvas = document.getElementById('threeCanvas');
             if (!canvas) return;
@@ -3250,14 +3547,14 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
             const geometry = new THREE.TorusKnotGeometry(9, 2.5, 120, 24);
-            const material = new THREE.MeshStandardMaterial({ color: 0x4F46E5, roughness: 0.2, metalness: 0.8, wireframe: true });
+            const material = new THREE.MeshStandardMaterial({ color: 0x4F46E5, roughness: 0.15, metalness: 0.85, wireframe: true });
             const mesh = new THREE.Mesh(geometry, material);
             scene.add(mesh);
 
-            const light = new THREE.DirectionalLight(0xffffff, 1.2);
+            const light = new THREE.DirectionalLight(0xffffff, 1.4);
             light.position.set(10, 20, 15);
             scene.add(light);
-            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
             camera.position.z = 28;
 
