@@ -28,7 +28,7 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 
 // Bot & Telegram Credentials
-const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFy2RiubtlGSLOHIwR_I8f5XJVtjL5V0u4";
+const BOT_TOKEN = process.env.BOT_TOKEN || "9180319761:AAFXmcsrSsDUbahabHLXG7JNADw8PcW0_6Y";
 let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
