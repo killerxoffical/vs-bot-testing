@@ -28,7 +28,7 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 
 // NEW UPDATED BOT TOKEN
-const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFy2RiubtlGSLOHIwR_I8f5XJVtjL5V0u4";
+const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFs7WmMJ-Yc65EO6_bX_saipnF5s8tHymI";
 let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
@@ -606,7 +606,7 @@ async function extractCommunities(client) {
         const e = d.entity;
         if (!e) continue;
 
-        if (e.deactivated || e.migratedTo) continue;
+        if (e.deactivated) continue;
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') continue;
 
         const isCreator = Boolean(e.creator);
@@ -1237,5 +1237,5 @@ app.listen(PORT, '0.0.0.0', () => {
         .catch(e => console.error("[VS Protection] Engine Warning:", e.message));
 });
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => { try { bot.stop('SIGINT'); } catch (e) {} });
+process.once('SIGTERM', () => { try { bot.stop('SIGTERM'); } catch (e) {} });
