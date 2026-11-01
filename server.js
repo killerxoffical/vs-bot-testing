@@ -86,7 +86,7 @@ function parseDuration(str) {
 }
 
 // =============================================================================
-// SUBSCRIPTION CHECKER WITH AUTO-RECOVERY
+// SUBSCRIPTION CHECKER WITH AUTO-RECOVERY & QUOTA ENFORCEMENT
 // =============================================================================
 let subscriptionCache = {};
 
@@ -526,7 +526,6 @@ bot.on('message', async (ctx, next) => {
                     });
                 }
             } else {
-                // Initialize User Record
                 await userHistoryRef.set({
                     currentName: fullName,
                     currentUsername: currentUsername,
@@ -536,7 +535,7 @@ bot.on('message', async (ctx, next) => {
         }
 
         // =========================================================================
-        // B. SCAMMER LIVE WARNING AUTOMATION (FIRES ON ANY SCAMMER MESSAGE)
+        // B. SCAMMER LIVE WARNING AUTOMATION
         // =========================================================================
         const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
         if (scammerSnap.val()) {
@@ -594,7 +593,7 @@ bot.on('message', async (ctx, next) => {
             const cmd = parts[0].toLowerCase().replace(`@${BOT_USERNAME.toLowerCase()}`, '');
             const targetRepliedUser = ctx.message.reply_to_message?.from;
 
-            // --- COMMAND: /bio (WITH DETAILED ALTERATION HISTORY) ---
+            // --- COMMAND: /bio ---
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
@@ -609,7 +608,6 @@ bot.on('message', async (ctx, next) => {
                 const warnsCount = warnSnap.val() || 0;
                 const isScammer = (await db.ref(`groups/${chatId}/scammers/${targetId}`).once('value')).val();
 
-                // Profile Alteration History lookup
                 const histSnap = await db.ref(`groups/${chatId}/name_history/${targetId}`).once('value');
                 const histData = histSnap.val() || {};
 
@@ -655,7 +653,6 @@ bot.on('message', async (ctx, next) => {
                         });
                         return ctx.replyWithMarkdown(`🔇 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been muted for **${durationObj.text}**.`);
                     } else {
-                        // Permanent Mute
                         await ctx.restrictChatMember(targetRepliedUser.id, {
                             permissions: { can_send_messages: false }
                         });
@@ -1212,7 +1209,9 @@ app.post('/api/tg/ban-member', async (req, res) => {
     }
 });
 
-// BOT AUTO-ADD & PROMOTE
+// =============================================================================
+// BOT AUTO-ADD & PROMOTE WITH STRICT COMMUNITY QUOTA ENFORCEMENT
+// =============================================================================
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId: rawChatId, userId } = req.body;
     const chatId = normalizeChatId(rawChatId);
@@ -1226,7 +1225,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             const me = await client.getMe();
             if (me && me.id) {
                 myTgId = me.id.toString();
-                await db.ref(`groups/${chatId}/merged_owner`).set(myTgId);
             }
         } catch (e) {}
 
@@ -1247,6 +1245,35 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 error: "NO_ACTIVE_LICENSE",
                 message: "You need an active subscription license to add VS Protection Bot."
             });
+        }
+
+        // STRICT COMMUNITY QUOTA VERIFICATION
+        const maxCommunities = sub.maxCommunities || 1;
+        if (maxCommunities < 9999) {
+            const connectedSnap = await db.ref('connected_bots').once('value');
+            const connectedMap = connectedSnap.val() || {};
+            let userConnectedCount = 0;
+
+            const existingKeys = Object.keys(connectedMap);
+            for (const cKey of existingKeys) {
+                if (cKey === chatId) continue; // Already counting this chat if re-connecting
+                const ownerSnap = await db.ref(`groups/${cKey}/merged_owner`).once('value');
+                if (ownerSnap.val() === myTgId) {
+                    userConnectedCount++;
+                }
+            }
+
+            if (userConnectedCount >= maxCommunities) {
+                return res.status(403).json({
+                    success: false,
+                    error: "QUOTA_EXCEEDED",
+                    message: `Community Limit Reached! Your plan allows up to ${maxCommunities} active communities. Upgrade your plan with @Blackmoney54 to connect more!`
+                });
+            }
+        }
+
+        if (myTgId) {
+            await db.ref(`groups/${chatId}/merged_owner`).set(myTgId);
         }
 
         const dialogs = await client.getDialogs({ limit: 500 });
@@ -1590,7 +1617,7 @@ app.post('/api/license/claim', async (req, res) => {
     }
 });
 
-// GET SUBSCRIPTION STATUS
+// GET SUBSCRIPTION STATUS & LIFECYCLE
 app.post('/api/license/status', async (req, res) => {
     const { userId, ownerTelegramId } = req.body;
     try {
