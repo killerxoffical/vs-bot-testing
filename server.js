@@ -27,7 +27,7 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
-// NEW UPDATED BOT TOKEN
+// Bot & Telegram Credentials
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFy2RiubtlGSLOHIwR_I8f5XJVtjL5V0u4";
 let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
@@ -43,22 +43,41 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
-// Separate Admin Route (/admin -> admin.html)
+// Admin Route
 app.get('/admin', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'admin.html');
     const p2 = path.join(__dirname, 'admin.html');
     if (fs.existsSync(p1)) return res.sendFile(p1);
     if (fs.existsSync(p2)) return res.sendFile(p2);
-    res.status(404).send("<h2>admin.html not found. Please upload admin.html to public/ folder.</h2>");
+    res.status(404).send("<h2>admin.html not found.</h2>");
 });
 
 // =============================================================================
-// SUBSCRIPTION CHECKER WITH AUTO-OWNER RECOVERY
+// CHAT ID NORMALIZATION HELPER
+// =============================================================================
+function normalizeChatId(rawId) {
+    if (!rawId) return "";
+    let s = rawId.toString().trim();
+    if (s.startsWith('-100')) return s;
+    if (s.startsWith('-')) {
+        // If length is large (supergroup/channel formatted without 100), e.g. -2487293847
+        let digits = s.substring(1);
+        if (digits.length >= 9) return `-100${digits}`;
+        return s;
+    }
+    // If positive number
+    return `-100${s}`;
+}
+
+// =============================================================================
+// SUBSCRIPTION CHECKER WITH AUTO-RECOVERY
 // =============================================================================
 let subscriptionCache = {};
 
-async function isChatSubscriptionActive(chatId, ctx = null) {
+async function isChatSubscriptionActive(rawChatId, ctx = null) {
+    const chatId = normalizeChatId(rawChatId);
     const now = Date.now();
+
     if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 20000)) {
         return subscriptionCache[chatId].isActive;
     }
@@ -66,6 +85,15 @@ async function isChatSubscriptionActive(chatId, ctx = null) {
     try {
         let ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
         let ownerTgId = ownerSnap.val();
+
+        // Also check un-normalized ID if previously saved that way
+        if (!ownerTgId) {
+            let unNormSnap = await db.ref(`groups/${rawChatId}/merged_owner`).once('value');
+            ownerTgId = unNormSnap.val();
+            if (ownerTgId) {
+                await db.ref(`groups/${chatId}/merged_owner`).set(ownerTgId);
+            }
+        }
 
         // Auto-detect group creator if missing
         if (!ownerTgId && ctx) {
@@ -85,7 +113,7 @@ async function isChatSubscriptionActive(chatId, ctx = null) {
             sub = subSnap.val();
         }
 
-        // Check if any active user subscription exists
+        // Fallback: Check if any active user subscription exists
         if (!sub) {
             const allSubsSnap = await db.ref('subscriptions/by_uid').once('value');
             const allSubs = allSubsSnap.val() || {};
@@ -115,8 +143,8 @@ async function isChatSubscriptionActive(chatId, ctx = null) {
     }
 }
 
-async function getOwnerSubByChat(chatId) {
-    const active = await isChatSubscriptionActive(chatId);
+async function getOwnerSubByChat(rawChatId) {
+    const active = await isChatSubscriptionActive(rawChatId);
     if (!active) {
         return {
             hasSub: false,
@@ -134,20 +162,31 @@ const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
 let botId = null;
 
-// Dynamically fetch and bind Bot Profile
 bot.telegram.getMe().then(info => {
     botId = info.id;
     BOT_USERNAME = info.username;
     console.log(`[VS Protection] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
 }).catch(err => {
-    console.error("[VS Protection] BOT TOKEN ERROR: Please verify your token with @BotFather:", err.message);
+    console.error("[VS Protection] BOT TOKEN ERROR:", err.message);
 });
 
-async function getChatSettings(chatId) {
+async function getChatSettings(rawChatId) {
+    const chatId = normalizeChatId(rawChatId);
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
+
     try {
-        const snap = await db.ref(`groups/${chatId}/settings`).once('value');
-        const settings = snap.val() || {
+        let snap = await db.ref(`groups/${chatId}/settings`).once('value');
+        let settings = snap.val();
+
+        if (!settings) {
+            let legacySnap = await db.ref(`groups/${rawChatId}/settings`).once('value');
+            settings = legacySnap.val();
+            if (settings) {
+                await db.ref(`groups/${chatId}/settings`).set(settings);
+            }
+        }
+
+        const defaultSettings = {
             welcome: { enabled: true, photoUrl: "", text: "👋 Welcome {mention} to {chat}! Please adhere to our guidelines.", buttons: [], autoDeleteSeconds: 0 },
             goodbye: { enabled: true, text: "👋 Goodbye {mention}! We hope to see you again soon in {chat}.", autoDeleteSeconds: 10 },
             banSystem: { enabled: true, silent: false, msg: "⛔ {name} has been permanently removed from {chat}." },
@@ -165,8 +204,10 @@ async function getChatSettings(chatId) {
             chatLocked: false,
             lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*"
         };
-        chatSettingsCache[chatId] = settings;
-        return settings;
+
+        const merged = Object.assign({}, defaultSettings, settings || {});
+        chatSettingsCache[chatId] = merged;
+        return merged;
     } catch (e) {
         return {};
     }
@@ -174,7 +215,10 @@ async function getChatSettings(chatId) {
 
 db.ref('groups').on('child_changed', (snap) => {
     const val = snap.val();
-    if (val && val.settings) chatSettingsCache[snap.key] = val.settings;
+    const normalizedKey = normalizeChatId(snap.key);
+    if (val && val.settings) {
+        chatSettingsCache[normalizedKey] = val.settings;
+    }
 });
 
 function buildInlineButtons(buttonsArray) {
@@ -188,17 +232,44 @@ function buildInlineButtons(buttonsArray) {
     return inlineRows.length > 0 ? Markup.inlineKeyboard(inlineRows) : null;
 }
 
-function countEmojis(str) {
-    if (!str) return 0;
+function countEmojis(message) {
+    let count = 0;
+    const text = message.text || message.caption || "";
+
+    // 1. Regex for standard Unicode emojis
     const emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F926}-\u{1F939}\u{1F1E6}-\u{1F1FF}]/gu;
-    const matches = str.match(emojiRegex);
-    return matches ? matches.length : 0;
+    const matches = text.match(emojiRegex);
+    if (matches) count += matches.length;
+
+    // 2. Custom Telegram Emojis via entities
+    const entities = message.entities || message.caption_entities || [];
+    for (const ent of entities) {
+        if (ent.type === 'custom_emoji') {
+            count += 1;
+        }
+    }
+
+    return count;
+}
+
+function hasLinks(message) {
+    const text = message.text || message.caption || "";
+    // Check entities first (Telegram detects links automatically)
+    const entities = message.entities || message.caption_entities || [];
+    for (const ent of entities) {
+        if (ent.type === 'url' || ent.type === 'text_link') {
+            return true;
+        }
+    }
+    // Regex fallback
+    const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
+    return linkRegex.test(text);
 }
 
 // 1. Welcome New Members
 bot.on('new_chat_members', async (ctx) => {
     try {
-        const chatId = ctx.chat.id;
+        const chatId = normalizeChatId(ctx.chat.id);
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) return;
 
@@ -247,7 +318,7 @@ bot.on('new_chat_members', async (ctx) => {
 // 2. Member Left Tracker
 bot.on('left_chat_member', async (ctx) => {
     try {
-        const chatId = ctx.chat.id;
+        const chatId = normalizeChatId(ctx.chat.id);
         const user = ctx.message.left_chat_member;
         if (!user || user.is_bot) return;
 
@@ -302,17 +373,16 @@ bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
 
-        const chatId = ctx.chat.id;
+        const chatId = normalizeChatId(ctx.chat.id);
         const text = ctx.message.text || ctx.message.caption || "";
 
-        // Instant Health Check in Group: /ping
+        // Ping check
         if (text === '/ping') {
-            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Operational & Guarding Community*`);
+            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Active & Guarding Community*`);
         }
 
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) {
-            // Helpful prompt if unlicensed
             if (text.startsWith('/bio') || text.startsWith('/scam')) {
                 return ctx.reply("⚠️ VS Protection Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
             }
@@ -472,15 +542,16 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
+        // Admins bypass normal filtering rules (Chat lock, link, emoji, badwords)
         if (isAdmin) return next();
 
-        // 1. Chat Lock
+        // 1. Chat Lock Filter
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 2. Anti-Button Messages Block
+        // 2. Anti-Button Filter
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
@@ -493,15 +564,20 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 3. Emoji Spam Guard
+        // 3. Emoji Spam Filter
         if (settings.emojiSpam?.enabled) {
-            const emojiCount = countEmojis(text);
+            const emojiCount = countEmojis(ctx.message);
             const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
 
             if (emojiCount > maxAllowed) {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.emojiSpam.silent && settings.emojiSpam.msg) {
-                    const response = settings.emojiSpam.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title).replace(/{count}/g, emojiCount).replace(/{limit}/g, maxAllowed);
+                    const response = (settings.emojiSpam.msg || "⚠️ {mention}, excessive emojis are prohibited!")
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{chat}/g, ctx.chat.title)
+                        .replace(/{count}/g, emojiCount)
+                        .replace(/{limit}/g, maxAllowed);
+
                     const sentWarn = await ctx.replyWithMarkdown(response).catch(() => {});
                     const delSec = parseInt(settings.emojiSpam.autoDeleteSeconds || 5);
                     if (delSec > 0 && sentWarn && sentWarn.message_id) {
@@ -512,7 +588,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 4. Anti-Forward Check
+        // 4. Anti-Forward Filter
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
             if (!settings.antiForward.silent && settings.antiForward.msg) {
@@ -522,13 +598,14 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
-        // 5. Anti-Link Check
+        // 5. Anti-Link Filter
         if (settings.antiLink?.enabled) {
-            const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
-            if (linkRegex.test(text)) {
+            if (hasLinks(ctx.message)) {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.antiLink.silent && settings.antiLink.msg) {
-                    const response = settings.antiLink.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                    const response = (settings.antiLink.msg || "⚠️ {mention}, external links are restricted!")
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{chat}/g, ctx.chat.title);
                     ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
@@ -536,9 +613,10 @@ bot.on('message', async (ctx, next) => {
         }
 
         // 6. Bad Words Filter
-        if (settings.badWords?.enabled && Array.isArray(settings.badWords.words)) {
+        if (settings.badWords?.enabled && Array.isArray(settings.badWords.words) && settings.badWords.words.length > 0) {
+            const lowerText = text.toLowerCase();
             const foundBadWord = settings.badWords.words.some(word => 
-                word.trim() && text.toLowerCase().includes(word.trim().toLowerCase())
+                word.trim() && lowerText.includes(word.trim().toLowerCase())
             );
 
             if (foundBadWord) {
@@ -584,17 +662,20 @@ bot.on('message', async (ctx, next) => {
                 return;
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Message handler error:", e.message);
+    }
     return next();
 });
 
 // =============================================================================
-// GRAMJS MTPROTO (STRICT OWNER & PROMOTABLE ADMIN FILTER)
+// GRAMJS MTPROTO (ALL OLD & NEW CHATS WITH ADMIN AUTHORITY)
 // =============================================================================
 const tempAuthClients = {};
 
 async function extractCommunities(client) {
-    const dialogs = await client.getDialogs({ limit: 100 });
+    // Fetch up to 500 dialogs so old groups are never missed
+    const dialogs = await client.getDialogs({ limit: 500 });
     const groups = [];
     const channels = [];
 
@@ -609,11 +690,18 @@ async function extractCommunities(client) {
         if (e.deactivated) continue;
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') continue;
 
+        // Check ownership or admin rights across both Chat & Channel
         const isCreator = Boolean(e.creator);
-        const hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo));
-        const isBasicAdmin = Boolean(e.admin);
+        let hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo || e.adminRights.deleteMessages));
+        let isBasicAdmin = Boolean(e.admin);
 
+        // For legacy chats without explicit flags, creator is always admin
         if (!isCreator && !hasAdminRights && !isBasicAdmin) {
+            // Check if user has can_manage / edit rights
+            if (e.defaultBannedRights && e.defaultBannedRights.sendMessages) {
+                // If member, continue
+                continue;
+            }
             continue;
         }
 
@@ -628,9 +716,10 @@ async function extractCommunities(client) {
         } catch (err) {}
 
         const isBroadcastChannel = d.isChannel && !e.megagroup;
-        const chatIdStr = d.id.toString();
+        // Consistent Chat ID starting with -100 for Supergroup/Channel, or - for Basic Chat
+        let chatIdStr = d.isChannel ? `-100${Math.abs(e.id)}` : `-${Math.abs(e.id)}`;
 
-        let isBotConnected = Boolean(connectedMap[chatIdStr] || connectedMap[`-100${e.id}`]);
+        let isBotConnected = Boolean(connectedMap[chatIdStr] || connectedMap[chatIdStr.replace('-100', '')]);
         if (!isBotConnected && botId) {
             try {
                 const botMember = await bot.telegram.getChatMember(chatIdStr, botId);
@@ -744,9 +833,23 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-// BOT AUTO-ADD & PROMOTE (WITH DUAL USER/TELEGRAM BIND)
+// Get Settings for Single Group (For Dashboard View)
+app.post('/api/tg/get-group-settings', async (req, res) => {
+    const { chatId } = req.body;
+    if (!chatId) return res.status(400).json({ error: "chatId missing" });
+    try {
+        const settings = await getChatSettings(chatId);
+        res.json({ success: true, settings });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// BOT AUTO-ADD & PROMOTE
 app.post('/api/tg/connect-group', async (req, res) => {
-    const { session, chatId, userId } = req.body;
+    const { session, chatId: rawChatId, userId } = req.body;
+    const chatId = normalizeChatId(rawChatId);
+
     try {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
@@ -760,7 +863,6 @@ app.post('/api/tg/connect-group', async (req, res) => {
             }
         } catch (e) {}
 
-        // Check plan by UID or Telegram ID
         let sub = null;
         if (userId) {
             const sUid = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
@@ -780,15 +882,16 @@ app.post('/api/tg/connect-group', async (req, res) => {
             });
         }
 
-        const dialogs = await client.getDialogs({ limit: 100 });
-        const cleanId = chatId.toString().replace('-100', '').replace('-', '');
+        const dialogs = await client.getDialogs({ limit: 500 });
+        const cleanId = chatId.replace('-100', '').replace('-', '');
+
         let targetDialog = dialogs.find(d => 
             (d.isChannel || d.entity?.className === 'Channel') &&
-            (d.id.toString() === chatId.toString() || String(d.entity?.id) === cleanId)
+            (d.id.toString() === chatId || String(d.entity?.id) === cleanId)
         );
 
         if (!targetDialog) {
-            targetDialog = dialogs.find(d => d.id.toString() === chatId.toString() || String(d.entity?.id) === cleanId);
+            targetDialog = dialogs.find(d => d.id.toString() === chatId || String(d.entity?.id) === cleanId);
         }
 
         if (!targetDialog || !targetDialog.entity) throw new Error("Community dialog entity not found.");
@@ -815,7 +918,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             } catch (migErr) {}
 
             if (!targetInputChannel) {
-                const freshDialogs = await client.getDialogs({ limit: 30 });
+                const freshDialogs = await client.getDialogs({ limit: 50 });
                 const fresh = freshDialogs.find(d => d.isChannel && d.title === targetEntity.title);
                 if (fresh && fresh.entity) targetInputChannel = new Api.InputChannel({ channelId: fresh.entity.id, accessHash: fresh.entity.accessHash });
             }
@@ -848,9 +951,11 @@ app.post('/api/tg/connect-group', async (req, res) => {
     }
 });
 
-// Broadcast
+// Broadcast Announcement
 app.post('/api/tg/broadcast', async (req, res) => {
-    const { chatId, text, photoUrl, buttons } = req.body;
+    const { chatId: rawChatId, text, photoUrl, buttons } = req.body;
+    const chatId = normalizeChatId(rawChatId);
+
     try {
         const check = await getOwnerSubByChat(chatId);
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
@@ -872,9 +977,11 @@ app.post('/api/tg/broadcast', async (req, res) => {
     }
 });
 
-// Section Save
+// Section Save Handler
 app.post('/api/tg/save-section', async (req, res) => {
-    const { chatId, sectionKey, data } = req.body;
+    const { chatId: rawChatId, sectionKey, data } = req.body;
+    const chatId = normalizeChatId(rawChatId);
+
     try {
         if (!chatId || !sectionKey) throw new Error("Missing parameters");
         
@@ -882,60 +989,14 @@ app.post('/api/tg/save-section', async (req, res) => {
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
         await db.ref(`groups/${chatId}/settings/${sectionKey}`).set(data);
-        if (chatSettingsCache[chatId]) chatSettingsCache[chatId][sectionKey] = data;
+
+        // Update active in-memory cache immediately
+        if (!chatSettingsCache[chatId]) {
+            chatSettingsCache[chatId] = await getChatSettings(chatId);
+        }
+        chatSettingsCache[chatId][sectionKey] = data;
+
         res.json({ success: true, message: "Section policy saved successfully!" });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Test Welcome
-app.post('/api/tg/test-welcome', async (req, res) => {
-    const { chatId, photoUrl, text, buttons, autoDeleteSeconds } = req.body;
-    try {
-        const check = await getOwnerSubByChat(chatId);
-        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
-
-        const testUser = `[Admin (Test)](tg://user?id=${botId || 0})`;
-        const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
-        const formatted = (text || "Welcome {mention} to {chat}!")
-            .replace(/{mention}/g, testUser).replace(/{user}/g, testUser).replace(/{name}/g, "Admin User").replace(/{username}/g, "@AdminUser").replace(/{chat}/g, chatInfo.title);
-
-        const keyboard = buildInlineButtons(buttons);
-        const extra = { parse_mode: 'Markdown' };
-        if (keyboard) extra.reply_markup = keyboard.reply_markup;
-
-        let sentMsg;
-        const validPhoto = (photoUrl || "").trim();
-        if (validPhoto && (validPhoto.startsWith('http://') || validPhoto.startsWith('https://'))) {
-            sentMsg = await bot.telegram.sendPhoto(chatId, validPhoto, { caption: `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, ...extra }).catch(async () => {
-                return await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, extra);
-            });
-        } else {
-            sentMsg = await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, extra);
-        }
-
-        const sec = parseInt(autoDeleteSeconds || 0);
-        if (sec > 0 && sentMsg && sentMsg.message_id) {
-            setTimeout(() => { bot.telegram.deleteMessage(chatId, sentMsg.message_id).catch(() => {}); }, sec * 1000);
-        }
-        res.json({ success: true, message: `Test welcome delivered! ${sec > 0 ? `(Auto-deletes in ${sec}s)` : ''}` });
-    } catch (e) {
-        res.status(500).json({ error: e.message || "Failed to send test message." });
-    }
-});
-
-// Announce Lock
-app.post('/api/tg/announce-lock', async (req, res) => {
-    const { chatId, locked, message } = req.body;
-    try {
-        const check = await getOwnerSubByChat(chatId);
-        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
-
-        const defaultMsg = locked ? "🔒 *This conversation has been temporarily muted by community administrators.*" : "🔓 *Conversation restriction lifted. Members may now post messages.*";
-        const broadcast = message && message.trim() ? message.trim() : defaultMsg;
-        await bot.telegram.sendMessage(chatId, broadcast, { parse_mode: 'Markdown' });
-        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -943,7 +1004,7 @@ app.post('/api/tg/announce-lock', async (req, res) => {
 
 // Left Members & Scammers
 app.post('/api/tg/get-left-members', async (req, res) => {
-    const { chatId } = req.body;
+    const chatId = normalizeChatId(req.body.chatId);
     try {
         const snap = await db.ref(`groups/${chatId}/left_members`).once('value');
         const data = snap.val() || {};
@@ -955,12 +1016,29 @@ app.post('/api/tg/get-left-members', async (req, res) => {
 });
 
 app.post('/api/tg/get-scammers', async (req, res) => {
-    const { chatId } = req.body;
+    const chatId = normalizeChatId(req.body.chatId);
     try {
         const snap = await db.ref(`groups/${chatId}/scammers`).once('value');
         const data = snap.val() || {};
         const list = Object.keys(data).map(uid => ({ id: uid, ...data[uid] }));
         res.json({ success: true, scammers: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Announce Lock
+app.post('/api/tg/announce-lock', async (req, res) => {
+    const chatId = normalizeChatId(req.body.chatId);
+    const { locked, message } = req.body;
+    try {
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
+
+        const defaultMsg = locked ? "🔒 *This conversation has been temporarily muted by community administrators.*" : "🔓 *Conversation restriction lifted. Members may now post messages.*";
+        const broadcast = message && message.trim() ? message.trim() : defaultMsg;
+        await bot.telegram.sendMessage(chatId, broadcast, { parse_mode: 'Markdown' });
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -1079,7 +1157,7 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
-// CLAIM LICENSE (BINDS TO USER ACCOUNT UID & EMAIL)
+// CLAIM LICENSE
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, userId, userEmail, session, ownerTelegramId: providedTgId } = req.body;
     try {
