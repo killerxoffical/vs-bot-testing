@@ -28,7 +28,7 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 
 // Bot & Telegram Credentials
-const BOT_TOKEN = process.env.BOT_TOKEN || "9180319761:AAFXmcsrSsDUbahabHLXG7JNADw8PcW0_6Y";
+const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFy2RiubtlGSLOHIwR_I8f5XJVtjL5V0u4";
 let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
@@ -217,7 +217,7 @@ async function getChatSettings(rawChatId) {
             autoReplies: {},
             
             warnLimit: 3,
-            warnAction: 'ban',
+            warnAction: 'ban', // 'ban' | 'mute' | 'kick'
             
             chatLocked: false,
             lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*"
@@ -492,7 +492,7 @@ async function getUserRole(ctx, userId) {
     }
 }
 
-// Core Moderation, Slash Commands, Name Change Tracker & Scammer Auto-Warning
+// Core Moderation & Automation Engine
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -746,7 +746,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`⚠️ [${target.first_name}](tg://user?id=${target.id}) has \`${count}/${settings.warnLimit || 3}\` warnings.`);
             }
 
-            // /scam, /scammer, /unscam, /unscammer
+            // /scam or /scammer
             if ((cmd === '/scam' || cmd === '/scammer') && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/scam` or `/scammer`.");
                 
@@ -759,6 +759,7 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown(`🚨 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been added to the **Scammer Blacklist**!\n*All future messages will trigger security warnings.*`);
             }
 
+            // /unscam or /unscammer
             if ((cmd === '/unscam' || cmd === '/unscammer') && isAdmin) {
                 if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unscam` or `/unscammer`.");
                 await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).remove();
@@ -819,6 +820,7 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
+        // Admins bypass normal filter enforcement
         if (isAdmin) return next();
 
         // 1. Chat Lock Enforcement
@@ -1166,6 +1168,55 @@ app.post('/api/tg/get-group-settings', async (req, res) => {
     }
 });
 
+// =============================================================================
+// 1-CLICK POLICY CLONE ENGINE
+// =============================================================================
+app.post('/api/tg/clone-settings', async (req, res) => {
+    const { sourceChatId: rawSource, targetChatIds, sections } = req.body;
+    const sourceChatId = normalizeChatId(rawSource);
+    
+    try {
+        if (!sourceChatId || !targetChatIds || !Array.isArray(targetChatIds) || targetChatIds.length === 0) {
+            throw new Error("Missing source or target communities.");
+        }
+
+        const sourceSnap = await db.ref(`groups/${sourceChatId}/settings`).once('value');
+        const sourceSettings = sourceSnap.val();
+
+        if (!sourceSettings) throw new Error("No settings found in the source community to clone.");
+
+        let successCount = 0;
+
+        for (let target of targetChatIds) {
+            const targetChatId = normalizeChatId(target);
+            const targetRef = db.ref(`groups/${targetChatId}/settings`);
+
+            const updates = {};
+            if (sections.welcome && sourceSettings.welcome) updates['welcome'] = sourceSettings.welcome;
+            if (sections.emojiSpam && sourceSettings.emojiSpam) updates['emojiSpam'] = sourceSettings.emojiSpam;
+            if (sections.antiLink && sourceSettings.antiLink) updates['antiLink'] = sourceSettings.antiLink;
+            if (sections.antiForward && sourceSettings.antiForward) updates['antiForward'] = sourceSettings.antiForward;
+            if (sections.antiButton && sourceSettings.antiButton) updates['antiButton'] = sourceSettings.antiButton;
+            if (sections.badWords && sourceSettings.badWords) updates['badWords'] = sourceSettings.badWords;
+            if (sections.autoReplies && sourceSettings.autoReplies) updates['autoReplies'] = sourceSettings.autoReplies;
+            if (sections.commands) {
+                if (sourceSettings.commands) updates['commands'] = sourceSettings.commands;
+                if (sourceSettings.customCommands) updates['customCommands'] = sourceSettings.customCommands;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                await targetRef.update(updates);
+                chatSettingsCache[targetChatId] = await getChatSettings(targetChatId); // Re-cache
+                successCount++;
+            }
+        }
+
+        res.json({ success: true, count: successCount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Warnings & Strikes Management Endpoints
 app.post('/api/tg/get-warnings', async (req, res) => {
     const chatId = normalizeChatId(req.body.chatId);
@@ -1312,7 +1363,6 @@ app.post('/api/tg/transfer-ownership', async (req, res) => {
             accessHash: targetEntity.accessHash
         });
 
-        // First promote user with full rights
         const adminRights = new Api.ChatAdminRights({
             changeInfo: true,
             postMessages: true,
@@ -1334,7 +1384,6 @@ app.post('/api/tg/transfer-ownership', async (req, res) => {
             rank: 'New Owner'
         })).catch(() => {});
 
-        // Try Transfer Creator Rights
         let passwordCheck = new Api.InputCheckPasswordEmpty();
         if (password) {
             const pwd = await client.invoke(new Api.account.GetPassword());
