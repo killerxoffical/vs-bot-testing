@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
@@ -67,7 +66,7 @@
                 <p class="text-xs text-slate-500 mt-1">Enter your master PIN to access system controls</p>
             </div>
             <div>
-                <input id="masterPinInput" type="password" placeholder="Enter PIN (Default: admin123)" class="w-full text-center tracking-widest text-lg font-bold bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500">
+                <input id="masterPinInput" type="password" placeholder="Enter PIN (Default: admin123)" class="w-full text-center tracking-widest text-lg font-bold bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-brand-500" onkeydown="if(event.key==='Enter') verifyMasterPin()">
             </div>
             <button onclick="verifyMasterPin()" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-brand-500/25">
                 Unlock Master Console
@@ -204,12 +203,15 @@
 
                     <!-- Licenses Roster -->
                     <div class="light-card p-6 md:p-8 rounded-3xl space-y-4">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                             <div>
                                 <h4 class="text-base font-extrabold text-slate-900">All Deployed Licenses</h4>
                                 <p class="text-xs text-slate-500">Track claim state, owner bindings and validity</p>
                             </div>
-                            <span id="licensesCountBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">0 Total</span>
+                            <div class="flex items-center gap-3">
+                                <input id="licenseSearchInput" oninput="filterLicensesList()" type="text" placeholder="Search by key or email..." class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-brand-500 w-full sm:w-60">
+                                <span id="licensesCountBadge" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 shrink-0">0 Total</span>
+                            </div>
                         </div>
 
                         <div id="adminLicensesTableContainer" class="space-y-2.5 max-h-[500px] overflow-y-auto pane-scroll pr-1"></div>
@@ -241,7 +243,7 @@
         lucide.createIcons();
 
         // 1. PIN GATE VERIFICATION
-        const MASTER_PIN = "admin123"; // Change this PIN anytime
+        const MASTER_PIN = "admin123";
 
         function verifyMasterPin() {
             const input = document.getElementById('masterPinInput').value.trim();
@@ -264,7 +266,6 @@
             location.reload();
         }
 
-        // Auto-unlock if authenticated in this session
         if (sessionStorage.getItem('vs_admin_auth') === 'true') {
             unlockAdmin();
         }
@@ -343,6 +344,8 @@
         }
 
         // 5. LOAD ALL LICENSES
+        let allLicensesCache = [];
+
         async function loadLicensesList() {
             const container = document.getElementById('adminLicensesTableContainer');
             container.innerHTML = `<div class="py-6 text-center text-xs text-slate-400">Loading licenses...</div>`;
@@ -350,53 +353,71 @@
             try {
                 const res = await fetch('/api/admin/list-licenses');
                 const data = await res.json();
-                container.innerHTML = '';
-
-                if (data.success && data.licenses.length > 0) {
-                    document.getElementById('licensesCountBadge').innerText = `${data.licenses.length} Total`;
-
-                    data.licenses.forEach(lic => {
-                        let statusColor = "bg-emerald-50 text-emerald-600 border-emerald-200";
-                        if (lic.status === 'claimed') statusColor = "bg-indigo-50 text-brand-600 border-indigo-200";
-                        if (lic.status === 'revoked') statusColor = "bg-rose-50 text-rose-600 border-rose-200";
-
-                        const row = document.createElement('div');
-                        row.className = "p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3";
-                        row.innerHTML = `
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <span class="font-mono font-extrabold text-slate-900 text-sm select-all">${lic.key}</span>
-                                    <button onclick="navigator.clipboard.writeText('${lic.key}'); Swal.fire('Copied', 'Key copied!', 'success');" class="text-slate-400 hover:text-slate-600"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
-                                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">${lic.status.toUpperCase()}</span>
-                                </div>
-                                <div class="text-[11px] text-slate-500 mt-1">
-                                    Plan: <b class="text-slate-700">${lic.planName}</b> • Price: ৳${lic.bdt} ($${lic.usdt}) • Duration: ${lic.durationDays} Days
-                                    ${lic.claimedBy ? `<br>Claimed By: <span class="text-brand-600 font-semibold">${lic.claimedBy}</span> (TG ID: ${lic.ownerTelegramId || 'N/A'})` : ''}
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-2 shrink-0">
-                                <button onclick="extendLicenseKey('${lic.key}')" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-700 transition flex items-center gap-1 shadow-sm">
-                                    <i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-brand-600"></i>
-                                    <span>+30 Days</span>
-                                </button>
-                                ${lic.status !== 'revoked' ? `
-                                    <button onclick="revokeLicenseKey('${lic.key}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition flex items-center gap-1">
-                                        <i data-lucide="ban" class="w-3.5 h-3.5"></i>
-                                        <span>Revoke</span>
-                                    </button>
-                                ` : ''}
-                            </div>
-                        `;
-                        container.appendChild(row);
-                    });
-                } else {
-                    container.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center italic">No license keys generated yet.</p>`;
+                if (data.success) {
+                    allLicensesCache = data.licenses || [];
+                    document.getElementById('licensesCountBadge').innerText = `${allLicensesCache.length} Total`;
+                    renderLicensesList(allLicensesCache);
                 }
             } catch (e) {
                 container.innerHTML = `<p class="text-xs text-rose-500 py-6 text-center">Failed to load licenses: ${e.message}</p>`;
             }
+        }
+
+        function renderLicensesList(licenses) {
+            const container = document.getElementById('adminLicensesTableContainer');
+            container.innerHTML = '';
+
+            if (licenses.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 py-6 text-center italic">No license keys found.</p>`;
+                return;
+            }
+
+            licenses.forEach(lic => {
+                let statusColor = "bg-emerald-50 text-emerald-600 border-emerald-200";
+                if (lic.status === 'claimed') statusColor = "bg-indigo-50 text-brand-600 border-indigo-200";
+                if (lic.status === 'revoked') statusColor = "bg-rose-50 text-rose-600 border-rose-200";
+
+                const row = document.createElement('div');
+                row.className = "p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3";
+                row.innerHTML = `
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-mono font-extrabold text-slate-900 text-sm select-all">${lic.key}</span>
+                            <button onclick="navigator.clipboard.writeText('${lic.key}'); Swal.fire('Copied', 'Key copied!', 'success');" class="text-slate-400 hover:text-slate-600"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full border ${statusColor}">${lic.status.toUpperCase()}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 mt-1">
+                            Plan: <b class="text-slate-700">${lic.planName}</b> • Price: ৳${lic.bdt} ($${lic.usdt}) • Duration: ${lic.durationDays} Days
+                            ${lic.claimedBy ? `<br>Claimed By: <span class="text-brand-600 font-semibold">${lic.claimedBy}</span> (TG ID: ${lic.ownerTelegramId || 'N/A'})` : ''}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="extendLicenseKey('${lic.key}')" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-700 transition flex items-center gap-1 shadow-sm">
+                            <i data-lucide="calendar-plus" class="w-3.5 h-3.5 text-brand-600"></i>
+                            <span>+30 Days</span>
+                        </button>
+                        ${lic.status !== 'revoked' ? `
+                            <button onclick="revokeLicenseKey('${lic.key}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                                <i data-lucide="ban" class="w-3.5 h-3.5"></i>
+                                <span>Revoke</span>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
             lucide.createIcons();
+        }
+
+        function filterLicensesList() {
+            const q = document.getElementById('licenseSearchInput').value.toLowerCase().trim();
+            const filtered = allLicensesCache.filter(l => 
+                l.key.toLowerCase().includes(q) || 
+                (l.claimedBy && l.claimedBy.toLowerCase().includes(q)) ||
+                (l.ownerTelegramId && l.ownerTelegramId.toString().includes(q))
+            );
+            renderLicensesList(filtered);
         }
 
         async function extendLicenseKey(key) {
@@ -459,7 +480,7 @@
                 const res = await fetch('/api/admin/users-list');
                 const data = await res.json();
                 if (data.success) {
-                    allUsersCache = data.users;
+                    allUsersCache = data.users || [];
                     renderUsersVault(allUsersCache);
                 }
             } catch (e) {
