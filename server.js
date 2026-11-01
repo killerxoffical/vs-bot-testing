@@ -84,7 +84,7 @@ function parseDuration(str) {
 }
 
 // =============================================================================
-// SUBSCRIPTION CHECKER WITH AUTO-RECOVERY & QUOTA ENFORCEMENT
+// SUBSCRIPTION CHECKER WITH AUTO-RECOVERY
 // =============================================================================
 let subscriptionCache = {};
 
@@ -173,6 +173,9 @@ const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
 let botId = null;
 
+// NEW: Role Cache to prevent API Rate Limits and false deletions
+const roleCache = new Map();
+
 bot.telegram.getMe().then(info => {
     botId = info.id;
     BOT_USERNAME = info.username;
@@ -217,8 +220,7 @@ async function getChatSettings(rawChatId) {
             autoReplies: {},
             
             warnLimit: 3,
-            warnAction: 'ban', // 'ban' | 'mute' | 'kick'
-            
+            warnAction: 'ban',
             chatLocked: false,
             lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*"
         };
@@ -349,8 +351,38 @@ async function handleStrikePunishment(ctx, chatId, userId, settings, violationLa
     }
 }
 
+// SMART ADMIN CACHE ENGINE: Prevents Rate Limits and accidental admin message deletions
+async function getUserRole(ctx, chatId, userId) {
+    if (!userId) return 'member';
+    if (userId === 1087968824) return 'admin'; // Anonymous Admin Bot
+    if (ctx.senderChat && ctx.senderChat.id === ctx.chat.id) return 'owner'; // Sent as group
+    if (ctx.senderChat) return 'admin'; // Linked channel
+
+    const cacheKey = `${chatId}_${userId}`;
+    const cached = roleCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && cached.expire > now) {
+        return cached.role;
+    }
+
+    try {
+        const member = await ctx.getChatMember(userId);
+        let role = 'member';
+        if (member.status === 'creator') role = 'owner';
+        else if (member.status === 'administrator') role = 'admin';
+
+        roleCache.set(cacheKey, { role, expire: now + 300000 }); // Cache for 5 mins
+        return role;
+    } catch (e) {
+        // If Telegram API fails due to rate limits, fallback to stale cache to prevent deleting admin msgs
+        if (cached) return cached.role;
+        return 'member';
+    }
+}
+
 // =============================================================================
-// TELEGRAM PRIVATE /START COMMAND (PROFESSIONAL PRESENTATION & PORTAL LINK)
+// TELEGRAM PRIVATE /START COMMAND
 // =============================================================================
 bot.start(async (ctx) => {
     if (ctx.chat.type !== 'private') return;
@@ -481,18 +513,7 @@ bot.on('left_chat_member', async (ctx) => {
     } catch (e) {}
 });
 
-async function getUserRole(ctx, userId) {
-    try {
-        const member = await ctx.getChatMember(userId);
-        if (member.status === 'creator') return 'owner';
-        if (member.status === 'administrator') return 'admin';
-        return 'member';
-    } catch (e) {
-        return 'member';
-    }
-}
-
-// Core Moderation & Automation Engine
+// Core Moderation, Slash Commands & Engine
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
@@ -514,7 +535,9 @@ bot.on('message', async (ctx, next) => {
 
         const userId = ctx.from?.id;
         const settings = await getChatSettings(chatId);
-        const userRole = await getUserRole(ctx, userId);
+        
+        // Smart Admin Checking
+        const userRole = await getUserRole(ctx, chatId, userId);
         const isAdmin = ['owner', 'admin'].includes(userRole);
 
         const fullName = `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim() || (ctx.from ? ctx.from.first_name : 'Member');
@@ -605,7 +628,7 @@ bot.on('message', async (ctx, next) => {
                         ctx.reply(formattedReply, extra).catch(async () => {
                             await ctx.reply(formattedReply, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
                         });
-                        break;
+                        break; // Stop after first match
                     }
                 }
             }
@@ -626,7 +649,7 @@ bot.on('message', async (ctx, next) => {
                 const targetUser = targetRepliedUser || ctx.from;
                 const targetId = targetUser.id;
                 const targetFullName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
-                const targetRole = await getUserRole(ctx, targetId);
+                const targetRole = await getUserRole(ctx, chatId, targetId);
 
                 const warnSnap = await db.ref(`groups/${chatId}/warns/${targetId}`).once('value');
                 const warnsCount = warnSnap.val() || 0;
@@ -820,7 +843,10 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // Admins bypass normal filter enforcement
+        // =========================================================================
+        // IMPORTANT: Admins completely bypass all automated filters below
+        // This is strictly enforced due to the reliable Cache Engine above!
+        // =========================================================================
         if (isAdmin) return next();
 
         // 1. Chat Lock Enforcement
@@ -829,7 +855,7 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
-        // 2. Anti-Button Enforcement
+        // 2. Anti-Button Enforcement (Block userbots with inline buttons)
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
@@ -1363,6 +1389,7 @@ app.post('/api/tg/transfer-ownership', async (req, res) => {
             accessHash: targetEntity.accessHash
         });
 
+        // First promote user with full rights
         const adminRights = new Api.ChatAdminRights({
             changeInfo: true,
             postMessages: true,
@@ -1384,6 +1411,7 @@ app.post('/api/tg/transfer-ownership', async (req, res) => {
             rank: 'New Owner'
         })).catch(() => {});
 
+        // Try Transfer Creator Rights
         let passwordCheck = new Api.InputCheckPasswordEmpty();
         if (password) {
             const pwd = await client.invoke(new Api.account.GetPassword());
@@ -1439,6 +1467,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             });
         }
 
+        // STRICT COMMUNITY QUOTA VERIFICATION
         const maxCommunities = sub.maxCommunities || 1;
         if (maxCommunities < 9999) {
             const connectedSnap = await db.ref('connected_bots').once('value');
@@ -1447,7 +1476,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
 
             const existingKeys = Object.keys(connectedMap);
             for (const cKey of existingKeys) {
-                if (cKey === chatId) continue;
+                if (cKey === chatId) continue; // Already counting this chat if re-connecting
                 const ownerSnap = await db.ref(`groups/${cKey}/merged_owner`).once('value');
                 if (ownerSnap.val() === myTgId) {
                     userConnectedCount++;
@@ -1458,7 +1487,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
                 return res.status(403).json({
                     success: false,
                     error: "QUOTA_EXCEEDED",
-                    message: `Community Limit Reached! Your plan allows up to ${maxCommunities} active community. Upgrade your plan with @Blackmoney54 to connect more!`
+                    message: `Community Limit Reached! Your plan allows up to ${maxCommunities} active communities. Upgrade your plan with @Blackmoney54 to connect more!`
                 });
             }
         }
