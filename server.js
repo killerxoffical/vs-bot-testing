@@ -156,6 +156,39 @@ bot.telegram.getMe().then(info => {
     console.error("[VS Protection] BOT TOKEN ERROR: Please verify your token with @BotFather:", err.message);
 });
 
+function checkFakeAdmin(firstName, lastName, username, keywords) {
+    const fullName = `${firstName || ''} ${lastName || ''}`.toLowerCase();
+    const cleanUser = (username || '').toLowerCase().replace(/^@/, '');
+    if (!Array.isArray(keywords) || keywords.length === 0) return null;
+
+    // Normalization for common leetspeak / lookalikes
+    const normalize = (s) => s.replace(/[@4]/g, 'a')
+                             .replace(/[1!|]/g, 'i')
+                             .replace(/[0]/g, 'o')
+                             .replace(/[$5]/g, 's')
+                             .replace(/[3]/g, 'e')
+                             .replace(/[\s_\-\.]+/g, '');
+
+    const normName = normalize(fullName);
+    const normUser = normalize(cleanUser);
+
+    for (const k of keywords) {
+        const word = (k || '').trim().toLowerCase();
+        if (!word || word.length < 2) continue;
+        const normWord = normalize(word);
+
+        if (
+            fullName.includes(word) ||
+            cleanUser.includes(word) ||
+            normName.includes(normWord) ||
+            normUser.includes(normWord)
+        ) {
+            return k.trim();
+        }
+    }
+    return null;
+}
+
 async function getChatSettings(chatId) {
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
     try {
@@ -169,6 +202,7 @@ async function getChatSettings(chatId) {
             antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!", autoDeleteSeconds: 5 },
             emojiSpam: { enabled: false, mode: 'only_emoji', onlyEmoji: true, maxCount: 2, silent: false, msg: "⚠️ {mention}, sending standalone emoji messages without text is prohibited in {chat}!", autoDeleteSeconds: 5 },
             badWords: { enabled: false, rules: [], words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, prohibited text '{word}' detected in {chat}!", autoDeleteSeconds: 6 },
+            fakeAdmin: { enabled: false, keywords: ["admin", "administrator", "owner", "support", "helpdesk", "mod", "moderator", "official", "creator"], deleteMessage: true, sendReply: true, silent: false, msg: "⚠️ {mention}, using protected title '{word}' in your display name or username is prohibited in {chat}! Please remove '{word}' to chat.", autoDeleteSeconds: 5 },
             scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*" },
             nameTracker: { enabled: true },
             leaveTracker: { enabled: true },
@@ -474,7 +508,7 @@ bot.on('message', async (ctx, next) => {
         const rawText = (text || "").trim();
         const codePattern = /\b(VS-[A-Z0-9]{4,12})\b/i;
         const codeMatch = rawText.match(codePattern);
-        const isConnectCmd = rawText.startsWith('/connect') || rawText.startsWith('/pair') || rawText.startsWith('/bind') || (rawText.startsWith('/start') && rawText.includes('connect_'));
+        const isConnectCmd = rawText.startsWith('/connect') || rawText.startsWith('/claim') || rawText.startsWith('/pair') || rawText.startsWith('/bind') || (rawText.startsWith('/start') && rawText.includes('connect_'));
 
         if (isConnectCmd || codeMatch) {
             let inputCode = "";
@@ -639,6 +673,8 @@ bot.on('message', async (ctx, next) => {
                 owner_email: codeData.userEmail || "",
                 merged_owner: senderTgId,
                 connected_at: now,
+                claim_code: inputCode,
+                connect_code: inputCode,
                 isBotConnected: true,
                 role: "Owner"
             };
@@ -864,6 +900,44 @@ bot.on('message', async (ctx, next) => {
         }
 
         if (isAdmin) return next();
+
+        // 0. Fake Admin & Impersonation Guard (ভুয়া অ্যাডমিন প্রোটেকশন)
+        if (settings.fakeAdmin?.enabled) {
+            const keywords = Array.isArray(settings.fakeAdmin.keywords) && settings.fakeAdmin.keywords.length > 0
+                ? settings.fakeAdmin.keywords
+                : ["admin", "administrator", "owner", "support", "helpdesk", "mod", "moderator", "official", "creator"];
+
+            const matchedWord = checkFakeAdmin(ctx.from?.first_name, ctx.from?.last_name, ctx.from?.username, keywords);
+
+            if (matchedWord) {
+                const shouldDelete = settings.fakeAdmin.deleteMessage !== false;
+                if (shouldDelete) {
+                    await ctx.deleteMessage().catch(() => {});
+                }
+
+                const isReplyEnabled = settings.fakeAdmin.sendReply !== false && !settings.fakeAdmin.silent;
+                if (isReplyEnabled) {
+                    const template = settings.fakeAdmin.msg || "⚠️ {mention}, using protected title '{word}' in your name or username is prohibited in {chat}! Please remove '{word}' to chat.";
+                    const response = template
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title || "Community")
+                        .replace(/{word}/g, matchedWord);
+
+                    const delSec = parseInt(settings.fakeAdmin.autoDeleteSeconds ?? 5);
+                    ctx.replyWithMarkdown(response).then(m => {
+                        if (delSec > 0 && m && m.message_id) {
+                            setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), delSec * 1000);
+                        }
+                    }).catch(async () => {
+                        await ctx.reply(response).catch(() => {});
+                    });
+                }
+                return;
+            }
+        }
 
         // 1. Chat Lock
         if (settings.chatLocked === true) {
@@ -1520,7 +1594,8 @@ app.post('/api/tg/user-communities', async (req, res) => {
                     isChannel: g.type === 'channel',
                     isBotConnected: true,
                     role: g.role || "Owner",
-                    connected_at: g.connected_at || Date.now()
+                    connected_at: g.connected_at || Date.now(),
+                    claim_code: g.claim_code || g.connect_code || null
                 };
                 if (item.isChannel) {
                     userChannels.push(item);
@@ -1581,7 +1656,9 @@ app.post('/api/tg/get-settings', async (req, res) => {
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
         const settings = await getChatSettings(chatId);
-        res.json({ success: true, settings });
+        const groupSnap = await db.ref(`groups/${chatId}`).once('value');
+        const g = groupSnap.val() || {};
+        res.json({ success: true, settings, claim_code: g.claim_code || g.connect_code || null });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
