@@ -1342,6 +1342,16 @@
     <script>
         lucide.createIcons();
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyBkL3ObqERCiDBuyXz4lr3Y7PYxzxt4hqA",
             authDomain: "vsprotection1.firebaseapp.com",
@@ -2292,6 +2302,154 @@ function saveEmojiSection() {
             saveSection('autoReplies', autoRepliesMap, 'Auto-Replies Database');
         }
 
+        function addAutoReplyRule() {
+            const trigger = document.getElementById('newReplyTrigger')?.value.trim();
+            const target = document.getElementById('newReplyTarget')?.value || 'everyone';
+            const response = document.getElementById('newReplyResponse')?.value.trim();
+
+            if (!trigger || !response) {
+                return Swal.fire('Incomplete Rule', 'Please provide trigger keyword and bot response.', 'warning');
+            }
+
+            const ruleKey = trigger.toLowerCase();
+            autoRepliesMap[ruleKey] = {
+                trigger,
+                target,
+                response,
+                buttons: autoRepliesMap[ruleKey]?.buttons || []
+            };
+
+            document.getElementById('newReplyTrigger').value = '';
+            document.getElementById('newReplyResponse').value = '';
+            renderAutoReplies();
+            saveAutoRepliesSection();
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Auto-reply rule saved!',
+                showConfirmButton: false,
+                timer: 1400
+            });
+        }
+
+        function cloneAutoReplyRule(key) {
+            const item = autoRepliesMap[key];
+            if (!item) return;
+            document.getElementById('newReplyTrigger').value = item.trigger + '_copy';
+            document.getElementById('newReplyTarget').value = item.target || 'everyone';
+            document.getElementById('newReplyResponse').value = item.response || '';
+            document.getElementById('newReplyTrigger').focus();
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Rule cloned into form!',
+                text: 'Change trigger keyword and click "Add Reply" to save.',
+                timer: 2200,
+                showConfirmButton: false
+            });
+        }
+
+        function editAutoReplyRule(key) {
+            const item = autoRepliesMap[key];
+            if (!item) return;
+            Swal.fire({
+                title: 'Edit Auto-Reply Rule',
+                html: 
+                    '<div class="space-y-3 text-left">' +
+                        '<div>' +
+                            '<label class="text-xs font-bold text-slate-700 block mb-1">Trigger Keyword:</label>' +
+                            '<input id="swalEditReplyTrigger" class="swal2-input !m-0 !w-full text-xs font-bold" value="' + escapeHtml(item.trigger) + '">' +
+                        '</div>' +
+                        '<div>' +
+                            '<label class="text-xs font-bold text-slate-700 block mb-1">Sender Role:</label>' +
+                            '<select id="swalEditReplyTarget" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none">' +
+                                '<option value="everyone" ' + (item.target === 'everyone' ? 'selected' : '') + '>Everyone</option>' +
+                                '<option value="admin_owner" ' + (item.target === 'admin_owner' ? 'selected' : '') + '>Only Admin & Owner</option>' +
+                                '<option value="owner_only" ' + (item.target === 'owner_only' ? 'selected' : '') + '>Only Owner</option>' +
+                            '</select>' +
+                        '</div>' +
+                        '<div>' +
+                            '<label class="text-xs font-bold text-slate-700 block mb-1">Bot Response Message:</label>' +
+                            '<textarea id="swalEditReplyResponse" rows="3" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs text-slate-800 outline-none">' + escapeHtml(item.response) + '</textarea>' +
+                        '</div>' +
+                    '</div>',
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                confirmButtonColor: '#4F46E5',
+                preConfirm: () => {
+                    const trig = document.getElementById('swalEditReplyTrigger').value.trim();
+                    const tgt = document.getElementById('swalEditReplyTarget').value;
+                    const resp = document.getElementById('swalEditReplyResponse').value.trim();
+                    if (!trig || !resp) {
+                        Swal.showValidationMessage('Both trigger keyword and response are required.');
+                        return false;
+                    }
+                    return { trig, tgt, resp };
+                }
+            }).then(res => {
+                if (res.isConfirmed && res.value) {
+                    delete autoRepliesMap[key];
+                    autoRepliesMap[res.value.trig.toLowerCase()] = {
+                        trigger: res.value.trig,
+                        target: res.value.tgt,
+                        response: res.value.resp,
+                        buttons: item.buttons || []
+                    };
+                    renderAutoReplies();
+                    saveAutoRepliesSection();
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Auto-reply updated!', timer: 1400, showConfirmButton: false });
+                }
+            });
+        }
+
+        function renderAutoReplies() {
+            const container = document.getElementById('autoRepliesList');
+            if (!container) return;
+
+            const keys = Object.keys(autoRepliesMap);
+            if (keys.length === 0) {
+                container.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs italic">No auto-reply rules added yet.</div>';
+                return;
+            }
+
+            container.innerHTML = keys.map(k => {
+                const item = autoRepliesMap[k];
+                return `
+                    <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3 shadow-2xs hover:bg-slate-50/60 transition">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="px-2 py-0.5 rounded-md bg-indigo-50 text-brand-600 font-bold text-xs font-mono">${escapeHtml(item.trigger)}</span>
+                                <span class="text-[10px] text-slate-500 font-medium capitalize">Target: ${escapeHtml(item.target)}</span>
+                            </div>
+                            <p class="text-xs text-slate-700 truncate font-medium">${escapeHtml(item.response)}</p>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="editAutoReplyRule('${k}')" title="Edit Rule" class="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition cursor-pointer">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button type="button" onclick="cloneAutoReplyRule('${k}')" title="Clone Rule" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                            </button>
+                            <button type="button" onclick="deleteAutoReplyRule('${k}')" title="Delete Rule" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function deleteAutoReplyRule(key) {
+            delete autoRepliesMap[key];
+            renderAutoReplies();
+            saveAutoRepliesSection();
+        }
+
+
         function saveBadWordsSection() {
             saveSection('badWords', {
                 enabled: document.getElementById('toggleBadWords').checked,
@@ -2714,10 +2872,16 @@ function saveEmojiSection() {
             cachedGroupsList = groups;
             cachedChannelsList = channels;
 
-            // Auto-hide connect code box when communities exist
-            if (groups.length > 0) {
-                closeConnectCodeBox();
+            // Automatically hide the overview static connect card when groups exist!
+            const staticConnectCard = document.getElementById('codeConnectCard');
+            if (staticConnectCard) {
+                if (groups.length > 0) {
+                    staticConnectCard.classList.add('hidden');
+                } else {
+                    staticConnectCard.classList.remove('hidden');
+                }
             }
+            closeConnectCodeBox();
 
             const groupsGrid = document.getElementById('groupsGrid');
             const groupCountBadge = document.getElementById('groupCountBadge');
