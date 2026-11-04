@@ -164,15 +164,16 @@ async function getChatSettings(chatId) {
             welcome: { enabled: true, photoUrl: "", text: "👋 Welcome {mention} to {chat}! Please adhere to our guidelines.", buttons: [], autoDeleteSeconds: 0 },
             goodbye: { enabled: true, text: "👋 Goodbye {mention}! We hope to see you again soon in {chat}.", autoDeleteSeconds: 10 },
             banSystem: { enabled: true, silent: false, msg: "⛔ {name} has been permanently removed from {chat}." },
-            antiLink: { enabled: false, silent: false, msg: "⚠️ {mention}, external links are restricted in this community!" },
-            antiForward: { enabled: false, silent: false, msg: "⚠️ {mention}, forwarded messages are not permitted!" },
-            antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!" },
+            antiLink: { enabled: false, whitelist: [], silent: false, msg: "⚠️ {mention}, external links are restricted in this community!", autoDeleteSeconds: 5 },
+            antiForward: { enabled: false, silent: false, msg: "⚠️ {mention}, forwarded messages are not permitted!", autoDeleteSeconds: 5 },
+            antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!", autoDeleteSeconds: 5 },
             emojiSpam: { enabled: false, mode: 'only_emoji', onlyEmoji: true, maxCount: 2, silent: false, msg: "⚠️ {mention}, sending standalone emoji messages without text is prohibited in {chat}!", autoDeleteSeconds: 5 },
             badWords: { enabled: false, rules: [], words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, prohibited text '{word}' detected in {chat}!", autoDeleteSeconds: 6 },
             scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*" },
             nameTracker: { enabled: true },
             leaveTracker: { enabled: true },
             commands: { bio: { enabled: true, role: 'all' } },
+            customCommands: {},
             autoReplies: {},
             warnLimit: 3,
             chatLocked: false,
@@ -258,53 +259,105 @@ bot.start((ctx) => {
     );
 });
 
-// 1. Welcome New Members
-bot.on('new_chat_members', async (ctx) => {
+// Robust Welcome Greeting Dispatcher
+async function sendWelcomeGreeting(ctx, chatId, member) {
+    if (!member || member.is_bot) return;
+
     try {
-        const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) return;
 
         const settings = await getChatSettings(chatId);
-        if (!settings.welcome?.enabled) return;
+        if (!settings.welcome || settings.welcome.enabled === false) return;
 
-        for (const member of ctx.message.new_chat_members) {
-            if (member.is_bot) continue;
+        const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.first_name || 'Member';
+        const userMention = `[${fullName}](tg://user?id=${member.id})`;
+        const usernameTag = member.username ? `@${member.username}` : fullName;
+        const chatTitle = ctx.chat?.title || "Community";
 
-            const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.first_name;
-            const userMention = `[${fullName}](tg://user?id=${member.id})`;
-            const usernameTag = member.username ? `@${member.username}` : fullName;
+        const template = settings.welcome.text || "👋 Welcome {mention} to {chat}! Please adhere to our guidelines.";
+        const msg = template
+            .replace(/{mention}/g, userMention)
+            .replace(/{user}/g, userMention)
+            .replace(/{name}/g, fullName)
+            .replace(/{username}/g, usernameTag)
+            .replace(/{chat}/g, chatTitle);
 
-            const msg = (settings.welcome.text || "Welcome {mention} to {chat}!")
-                .replace(/{mention}/g, userMention)
-                .replace(/{user}/g, userMention)
-                .replace(/{name}/g, fullName)
-                .replace(/{username}/g, usernameTag)
-                .replace(/{chat}/g, ctx.chat.title || "Community");
+        const keyboard = buildInlineButtons(settings.welcome.buttons);
+        const extra = { parse_mode: 'Markdown' };
+        if (keyboard) extra.reply_markup = keyboard.reply_markup;
 
-            const keyboard = buildInlineButtons(settings.welcome.buttons);
-            const extra = { parse_mode: 'Markdown' };
-            if (keyboard) extra.reply_markup = keyboard.reply_markup;
+        let sentWelcome = null;
+        const photoUrl = (settings.welcome.photoUrl || "").trim();
 
-            let sentWelcome;
-            const photoUrl = (settings.welcome.photoUrl || "").trim();
-
-            if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
-                sentWelcome = await ctx.replyWithPhoto(photoUrl, { caption: msg, ...extra }).catch(async () => {
-                    return await ctx.replyWithMarkdown(msg, extra).catch(() => {});
-                });
-            } else {
-                sentWelcome = await ctx.replyWithMarkdown(msg, extra).catch(() => {});
+        if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+            try {
+                sentWelcome = await ctx.replyWithPhoto(photoUrl, { caption: msg, ...extra });
+            } catch (pErr) {
+                try {
+                    sentWelcome = await ctx.replyWithMarkdown(msg, extra);
+                } catch (mErr) {
+                    const plainMsg = template.replace(/{mention}|{user}/g, fullName).replace(/{name}/g, fullName).replace(/{username}/g, usernameTag).replace(/{chat}/g, chatTitle);
+                    sentWelcome = await ctx.reply(plainMsg, keyboard ? { reply_markup: keyboard.reply_markup } : {}).catch(() => {});
+                }
             }
-
-            const deleteSec = parseInt(settings.welcome.autoDeleteSeconds || 0);
-            if (deleteSec > 0 && sentWelcome && sentWelcome.message_id) {
-                setTimeout(() => {
-                    ctx.deleteMessage(sentWelcome.message_id).catch(() => {});
-                }, deleteSec * 1000);
+        } else {
+            try {
+                sentWelcome = await ctx.replyWithMarkdown(msg, extra);
+            } catch (mErr) {
+                const plainMsg = template.replace(/{mention}|{user}/g, fullName).replace(/{name}/g, fullName).replace(/{username}/g, usernameTag).replace(/{chat}/g, chatTitle);
+                sentWelcome = await ctx.reply(plainMsg, keyboard ? { reply_markup: keyboard.reply_markup } : {}).catch(() => {});
             }
         }
+
+        const deleteSec = parseInt(settings.welcome.autoDeleteSeconds || 0);
+        if (deleteSec > 0 && sentWelcome && sentWelcome.message_id) {
+            setTimeout(() => {
+                ctx.deleteMessage(sentWelcome.message_id).catch(() => {});
+            }, deleteSec * 1000);
+        }
+    } catch (globalWelcomeErr) {
+        console.error("[Welcome] Error sending welcome greeting:", globalWelcomeErr.message);
+    }
+}
+
+// 1. Welcome New Members (Standard Service Message)
+bot.on('new_chat_members', async (ctx) => {
+    try {
+        const chatId = ctx.chat.id;
+        for (const member of ctx.message.new_chat_members) {
+            await sendWelcomeGreeting(ctx, chatId, member);
+        }
     } catch (err) {}
+});
+
+// 1.1 Welcome New Members (Chat Member Update: covers Supergroups with hidden join messages & invite links)
+bot.on('chat_member', async (ctx) => {
+    try {
+        const update = ctx.chatMember;
+        if (!update || !ctx.chat) return;
+        const oldStatus = update.old_chat_member?.status;
+        const newStatus = update.new_chat_member?.status;
+
+        // User joined group or was accepted from join request
+        if (['left', 'kicked'].includes(oldStatus) && newStatus === 'member') {
+            await sendWelcomeGreeting(ctx, ctx.chat.id, update.new_chat_member.user);
+        }
+        
+        // Track departed member if left
+        if (['member', 'administrator'].includes(oldStatus) && ['left', 'kicked'].includes(newStatus)) {
+            const user = update.old_chat_member.user;
+            if (user && !user.is_bot) {
+                const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.first_name || 'Member';
+                await db.ref(`groups/${ctx.chat.id}/left_members/${user.id}`).set({
+                    id: user.id.toString(),
+                    name: fullName,
+                    username: user.username ? `@${user.username}` : 'No username',
+                    timestamp: Date.now()
+                }).catch(() => {});
+            }
+        }
+    } catch (cmErr) {}
 });
 
 // 2. Member Left Tracker
@@ -715,6 +768,48 @@ bot.on('message', async (ctx, next) => {
                 return;
             }
 
+            // Custom Slash Commands Engine (Configured from Web Dashboard)
+            if (settings.customCommands && typeof settings.customCommands === 'object') {
+                const customKeys = Object.keys(settings.customCommands);
+                for (const k of customKeys) {
+                    const customCmd = settings.customCommands[k];
+                    if (!customCmd || !customCmd.command) continue;
+                    const trigger = (customCmd.command.startsWith('/') ? customCmd.command : `/${customCmd.command}`).toLowerCase();
+                    if (cmd === trigger) {
+                        const roleAllowed = customCmd.role || 'all';
+                        let allowed = false;
+                        if (roleAllowed === 'all') allowed = true;
+                        else if (roleAllowed === 'admin' && isAdmin) allowed = true;
+                        else if (roleAllowed === 'owner' && userRole === 'owner') allowed = true;
+
+                        if (allowed) {
+                            const formattedResp = (customCmd.response || "")
+                                .replace(/{mention}/g, userMention)
+                                .replace(/{user}/g, userMention)
+                                .replace(/{name}/g, fullName)
+                                .replace(/{username}/g, usernameTag)
+                                .replace(/{chat}/g, ctx.chat.title || "Community");
+
+                            const keyboard = buildInlineButtons(customCmd.buttons);
+                            const extra = { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' };
+                            if (keyboard) extra.reply_markup = keyboard.reply_markup;
+
+                            const photoUrl = (customCmd.photoUrl || "").trim();
+                            if (photoUrl && (photoUrl.startsWith('http://') || photoUrl.startsWith('https://'))) {
+                                ctx.replyWithPhoto(photoUrl, { caption: formattedResp, ...extra }).catch(async () => {
+                                    await ctx.reply(formattedResp, extra).catch(() => {});
+                                });
+                            } else {
+                                ctx.replyWithMarkdown(formattedResp, extra).catch(async () => {
+                                    await ctx.reply(formattedResp, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+                                });
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
@@ -837,16 +932,49 @@ bot.on('message', async (ctx, next) => {
             return;
         }
 
-        // 5. Anti-Link Check
+        // 5. Anti-Link Check (With Whitelist for Allowed Bots & Websites)
         if (settings.antiLink?.enabled) {
             const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
-            if (linkRegex.test(text)) {
-                await ctx.deleteMessage().catch(() => {});
-                if (!settings.antiLink.silent && settings.antiLink.msg) {
-                    const response = settings.antiLink.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
+            const matches = text.match(linkRegex);
+            if (matches && matches.length > 0) {
+                const rawWhitelist = settings.antiLink.whitelist;
+                const whitelist = Array.isArray(rawWhitelist)
+                    ? rawWhitelist
+                    : (typeof rawWhitelist === 'string' ? rawWhitelist.split(',') : []);
+
+                // Check if any link in the message is NOT whitelisted
+                const hasUnauthorizedLink = matches.some(link => {
+                    const cleanLink = link.trim().toLowerCase();
+                    if (!cleanLink) return false;
+                    const isAllowed = whitelist.some(item => {
+                        const w = (item || "").trim().toLowerCase();
+                        if (!w) return false;
+                        const cleanPattern = w.replace(/^https?:\/\//, '').replace(/^\/+|\/+$/g, '');
+                        return cleanLink.includes(cleanPattern);
+                    });
+                    return !isAllowed;
+                });
+
+                if (hasUnauthorizedLink) {
+                    await ctx.deleteMessage().catch(() => {});
+                    if (!settings.antiLink.silent && settings.antiLink.msg) {
+                        const response = settings.antiLink.msg
+                            .replace(/{mention}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
+                            .replace(/{chat}/g, ctx.chat.title || "Community");
+
+                        const delSec = parseInt(settings.antiLink.autoDeleteSeconds ?? 5);
+                        ctx.replyWithMarkdown(response).then(m => {
+                            if (delSec > 0 && m && m.message_id) {
+                                setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), delSec * 1000);
+                            }
+                        }).catch(async () => {
+                            await ctx.reply(response).catch(() => {});
+                        });
+                    }
+                    return;
                 }
-                return;
             }
         }
 
