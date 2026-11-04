@@ -255,12 +255,12 @@
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <div id="displayConnectCode" class="flex-1 bg-white border-2 border-indigo-300 rounded-xl px-4 py-2 text-center font-mono text-base font-extrabold text-brand-700 tracking-widest select-all">
-                            VS-CONN-XXXXXX
+                        <div id="displayConnectCode" class="flex-1 bg-white border-2 border-indigo-300 rounded-xl px-4 py-2.5 text-center font-mono text-sm sm:text-base font-extrabold text-brand-700 tracking-wide select-all overflow-x-auto">
+                            /connect VS-CONN-XXXXXX
                         </div>
-                        <button type="button" onclick="copyConnectCode()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                        <button type="button" onclick="copyConnectCode()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shrink-0">
                             <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-                            <span>Copy</span>
+                            <span>Copy Command</span>
                         </button>
                     </div>
 
@@ -1621,36 +1621,42 @@
             }
         }
 
+        let activeFullConnectCmd = "";
+
         function displayGeneratedConnectCode(code, isExisting = false) {
             const box = document.getElementById('activeCodeBox');
             if (!box) return;
             box.classList.remove('hidden');
 
-            document.getElementById('displayConnectCode').innerText = code;
-            document.getElementById('cmdConnectCodeText').innerText = `/connect ${code}`;
-            const deepLink = `https://t.me/InfinityGuardofc_Bot?startgroup=connect_${code}`;
+            const cleanCode = (code || "").trim().replace(/^\/connect\s*/i, '');
+            activeFullConnectCmd = `/connect ${cleanCode}`;
+
+            document.getElementById('displayConnectCode').innerText = activeFullConnectCmd;
+            document.getElementById('cmdConnectCodeText').innerText = activeFullConnectCmd;
+            const deepLink = `https://t.me/InfinityGuardofc_Bot?startgroup=connect_${cleanCode}`;
             document.getElementById('btnDeepLinkBot').href = deepLink;
 
             if (!isExisting) {
                 Swal.fire({
-                    title: 'Connect Code Created!',
-                    html: `<p class="text-xs text-slate-500 mb-2">Code: <b class="text-base text-brand-600 font-mono">${code}</b></p><p class="text-xs text-slate-600">Add @InfinityGuardofc_Bot to your Telegram group as Admin, then send <b>/connect ${code}</b> inside the group.</p>`,
+                    title: 'Connect Command Ready!',
+                    html: `<p class="text-xs text-slate-500 mb-2">Full Command: <b class="text-base text-brand-600 font-mono">${activeFullConnectCmd}</b></p><p class="text-xs text-slate-600">Add @InfinityGuardofc_Bot to your Telegram group as Admin, then send <b>${activeFullConnectCmd}</b> inside the group.</p>`,
                     icon: 'success'
                 });
             }
         }
 
         function copyConnectCode() {
-            const code = document.getElementById('displayConnectCode').innerText.trim();
-            if (!code) return;
-            navigator.clipboard.writeText(code).then(() => {
+            const cmdToCopy = activeFullConnectCmd || document.getElementById('displayConnectCode').innerText.trim() || "/connect";
+            if (!cmdToCopy) return;
+            navigator.clipboard.writeText(cmdToCopy).then(() => {
                 Swal.fire({
                     toast: true,
                     position: 'top-end',
                     icon: 'success',
-                    title: `Code ${code} copied!`,
+                    title: 'Full command copied!',
+                    text: `${cmdToCopy}`,
                     showConfirmButton: false,
-                    timer: 1400
+                    timer: 2000
                 });
             });
         }

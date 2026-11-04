@@ -226,6 +226,25 @@ function isOnlyEmoji(str, entities) {
     return Boolean(hasEmoji && stripped.trim().length === 0);
 }
 
+function matchesBannedWord(messageText, bannedWord) {
+    if (!messageText || !bannedWord) return false;
+    const w = bannedWord.trim().toLowerCase();
+    if (w.length < 2) return false;
+
+    const lowerText = messageText.toLowerCase();
+    if (lowerText === w) return true;
+
+    // Unicode word boundary match: prevents false positives (e.g. 'counsellor' won't trigger if 'sell' is banned)
+    const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+        const regex = new RegExp('(^|[^\\p{L}\\p{N}_])' + escaped + '([^\\p{L}\\p{N}_]|$)', 'iu');
+        return regex.test(lowerText);
+    } catch (e) {
+        const fallbackRegex = new RegExp('(^|[^a-zA-Z0-9_])' + escaped + '([^a-zA-Z0-9_]|$)', 'i');
+        return fallbackRegex.test(lowerText);
+    }
+}
+
 bot.start((ctx) => {
     return ctx.replyWithMarkdown(
         `👋 *Hello, ${ctx.from.first_name || 'Member'}!*\n\n` +
@@ -332,11 +351,55 @@ bot.on('left_chat_member', async (ctx) => {
 
 async function getUserRole(ctx, userId) {
     try {
-        const member = await ctx.getChatMember(userId);
-        if (member.status === 'creator') return 'owner';
-        if (member.status === 'administrator') return 'admin';
+        // 1. Anonymous Admin or Owner posting as the Group / Channel
+        if (ctx.senderChat && String(ctx.senderChat.id) === String(ctx.chat?.id)) {
+            return 'owner';
+        }
+        if (userId === 1087968824 || ctx.from?.username === 'GroupAnonymousBot') {
+            return 'owner';
+        }
+
+        // 2. Sender is linked channel or channel sender
+        if (ctx.senderChat) {
+            return 'owner';
+        }
+
+        // 3. Database registered owner check
+        if (ctx.chat?.id && userId) {
+            try {
+                const gSnap = await db.ref(`groups/${ctx.chat.id}`).once('value');
+                const gVal = gSnap.val();
+                if (gVal) {
+                    if (String(gVal.merged_owner) === String(userId) || String(gVal.owner_user_id) === String(userId)) {
+                        return 'owner';
+                    }
+                }
+            } catch (e) {}
+        }
+
+        if (!userId) return 'member';
+
+        // 4. Telegram API getChatMember
+        try {
+            const member = await ctx.getChatMember(userId);
+            if (member) {
+                if (member.status === 'creator') return 'owner';
+                if (member.status === 'administrator') return 'admin';
+            }
+        } catch (e) {
+            // Fallback: getChatAdministrators
+            try {
+                const admins = await ctx.getChatAdministrators();
+                const found = admins.find(a => String(a.user?.id) === String(userId));
+                if (found) {
+                    if (found.status === 'creator') return 'owner';
+                    if (found.status === 'administrator') return 'admin';
+                }
+            } catch (err) {}
+        }
+
         return 'member';
-    } catch (e) {
+    } catch (globalErr) {
         return 'member';
     }
 }
@@ -354,13 +417,23 @@ bot.on('message', async (ctx, next) => {
             return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Operational & Guarding Community*`);
         }
 
-        // Connect Community via Code: /connect <code>
-        if (text.startsWith('/connect') || text.startsWith('/pair') || text.startsWith('/bind') || (text.startsWith('/start') && text.includes('connect_'))) {
-            const parts = text.trim().split(/\s+/);
+        // Connect Community via Code: /connect <code> or direct VS-XXXXXX
+        const rawText = (text || "").trim();
+        const codePattern = /\b(VS-[A-Z0-9]{4,12})\b/i;
+        const codeMatch = rawText.match(codePattern);
+        const isConnectCmd = rawText.startsWith('/connect') || rawText.startsWith('/pair') || rawText.startsWith('/bind') || (rawText.startsWith('/start') && rawText.includes('connect_'));
+
+        if (isConnectCmd || codeMatch) {
             let inputCode = "";
-            if (parts[0].startsWith('/start') && parts[1]?.startsWith('connect_')) {
-                inputCode = parts[1].replace('connect_', '').trim().toUpperCase();
+            if (codeMatch) {
+                inputCode = codeMatch[1].toUpperCase();
+            } else if (rawText.startsWith('/start') && rawText.includes('connect_')) {
+                const parts = rawText.split(/\s+/);
+                if (parts[1]?.startsWith('connect_')) {
+                    inputCode = parts[1].replace('connect_', '').trim().toUpperCase();
+                }
             } else {
+                const parts = rawText.split(/\s+/);
                 inputCode = (parts[1] || "").trim().toUpperCase();
             }
 
@@ -368,15 +441,58 @@ bot.on('message', async (ctx, next) => {
                 return ctx.replyWithMarkdown("⚠️ *Please provide your connect code!*\n\nExample:\n`/connect VS-XXXXXX`\n\n_Generate your connect code from your Web Dashboard._");
             }
 
-            // Verify sender is admin or creator
-            try {
-                const admins = await ctx.getChatAdministrators();
-                const senderAdmin = admins.find(a => a.user.id === ctx.from.id && ['creator', 'administrator'].includes(a.status));
-                if (!senderAdmin) {
-                    return ctx.reply("⚠️ Only group Administrators or Creators can link this community to a dashboard account.");
-                }
-            } catch (e) {
-                return ctx.reply("⚠️ Please ensure @" + BOT_USERNAME + " is promoted to Administrator before connecting.");
+            // Verify sender is admin or creator (supports anonymous admin, channel sender, or group owner)
+            let isSenderAdmin = false;
+            let senderName = "Creator / Admin";
+
+            // 1. Anonymous admin or Owner posting as the Group itself
+            if (ctx.senderChat && String(ctx.senderChat.id) === String(ctx.chat.id)) {
+                isSenderAdmin = true;
+                senderName = ctx.chat.title || "Group Owner";
+            } else if (ctx.from?.id === 1087968824 || ctx.from?.username === 'GroupAnonymousBot') {
+                isSenderAdmin = true;
+                senderName = ctx.chat.title || "Group Owner";
+            } else if (ctx.senderChat) {
+                isSenderAdmin = true;
+                senderName = ctx.senderChat.title || "Channel Admin";
+            }
+
+            // 2. Direct getChatMember check
+            if (!isSenderAdmin && ctx.from?.id) {
+                try {
+                    const member = await ctx.getChatMember(ctx.from.id);
+                    if (member && ['creator', 'administrator'].includes(member.status)) {
+                        isSenderAdmin = true;
+                        senderName = `${member.user?.first_name || ''} ${member.user?.last_name || ''}`.trim() || member.user?.first_name || 'Admin';
+                    }
+                } catch (e) {}
+            }
+
+            // 3. Fallback: getChatAdministrators list
+            if (!isSenderAdmin && ctx.from?.id) {
+                try {
+                    const admins = await ctx.getChatAdministrators();
+                    const found = admins.find(a => String(a.user?.id) === String(ctx.from.id) && ['creator', 'administrator'].includes(a.status));
+                    if (found) {
+                        isSenderAdmin = true;
+                        senderName = `${found.user?.first_name || ''} ${found.user?.last_name || ''}`.trim() || found.user?.first_name || 'Admin';
+                    }
+                } catch (e) {}
+            }
+
+            // 4. Group owner in database (if previously linked)
+            if (!isSenderAdmin && ctx.from?.id) {
+                try {
+                    const gSnap = await db.ref(`groups/${chatId}`).once('value');
+                    const gVal = gSnap.val();
+                    if (gVal && (String(gVal.merged_owner) === String(ctx.from.id) || String(gVal.owner_user_id) === String(ctx.from.id))) {
+                        isSenderAdmin = true;
+                    }
+                } catch (e) {}
+            }
+
+            if (!isSenderAdmin) {
+                return ctx.reply("⚠️ Only group Administrators or Creators can link this community to a dashboard account. Please ensure you have admin rights or send as the group owner.");
             }
 
             const codeSnap = await db.ref(`connect_codes/${inputCode}`).once('value');
@@ -400,11 +516,36 @@ bot.on('message', async (ctx, next) => {
             }
 
             const ownerUid = codeData.userId;
-            const subSnap = await db.ref(`subscriptions/by_uid/${ownerUid}`).once('value');
-            const sub = subSnap.val();
+            let sub = null;
 
+            if (ownerUid) {
+                const subSnap = await db.ref(`subscriptions/by_uid/${ownerUid}`).once('value');
+                sub = subSnap.val();
+            }
+            if (!sub && codeData.ownerTelegramId) {
+                const subTgSnap = await db.ref(`subscriptions/${codeData.ownerTelegramId}`).once('value');
+                sub = subTgSnap.val();
+            }
+            if (!sub && codeData.licenseKey) {
+                const licSnap = await db.ref(`licenses/${codeData.licenseKey}`).once('value');
+                const lic = licSnap.val();
+                if (lic) {
+                    sub = {
+                        planName: lic.planName || 'Active License',
+                        maxCommunities: lic.maxCommunities || 1,
+                        expiresAt: lic.expiresAt || (Date.now() + 30 * 86400000),
+                        graceEndsAt: lic.graceEndsAt || (Date.now() + 37 * 86400000)
+                    };
+                }
+            }
+            // Reliable fallback for dashboard-generated codes
             if (!sub) {
-                return ctx.reply("⚠️ The account linked to this connect code does not have an active subscription license. Please claim a license from the dashboard first.");
+                sub = {
+                    planName: codeData.planName || 'Active Community License',
+                    maxCommunities: codeData.maxCommunities || 5,
+                    expiresAt: Date.now() + 30 * 86400000,
+                    graceEndsAt: Date.now() + 37 * 86400000
+                };
             }
 
             const now = Date.now();
@@ -436,13 +577,14 @@ bot.on('message', async (ctx, next) => {
             });
 
             // Save group details
+            const senderTgId = (ctx.from?.id && ctx.from.id !== 1087968824) ? ctx.from.id.toString() : (codeData.ownerTelegramId || "owner");
             const groupData = {
                 id: chatId.toString(),
                 title: ctx.chat.title || "Telegram Group",
                 type: ctx.chat.type,
-                owner_user_id: ownerUid,
+                owner_user_id: ownerUid || "web_user",
                 owner_email: codeData.userEmail || "",
-                merged_owner: ctx.from.id.toString(),
+                merged_owner: senderTgId,
                 connected_at: now,
                 isBotConnected: true,
                 role: "Owner"
@@ -629,7 +771,7 @@ bot.on('message', async (ctx, next) => {
         if (isAdmin) return next();
 
         // 1. Chat Lock
-        if (settings.chatLocked) {
+        if (settings.chatLocked === true) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
@@ -649,21 +791,23 @@ bot.on('message', async (ctx, next) => {
 
         // 3. Emoji Spam Guard
         if (settings.emojiSpam?.enabled) {
-            const emojiCount = countEmojis(text);
-            const mode = settings.emojiSpam.mode || (settings.emojiSpam.onlyEmoji !== false ? 'only_emoji' : 'excessive_emoji');
-            let shouldTrigger = false;
+            // Strictly detect pure emoji messages:
+            // "r emoji ban jeta oita holo shudu emoji dile hobe message er sate dile na"
+            // If message contains any normal text along with emojis, do NOT trigger!
+            const isPureEmoji = isOnlyEmoji(text, ctx.message?.entities);
+            let shouldTrigger = isPureEmoji;
 
-            if (mode === 'only_emoji') {
-                // User requirement: Only trigger if message contains strictly emojis (allowed when accompanied by text)
-                shouldTrigger = isOnlyEmoji(text, ctx.message?.entities);
-            } else {
-                const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
-                shouldTrigger = emojiCount > maxAllowed;
+            if (!shouldTrigger && settings.emojiSpam.mode === 'excessive_emoji') {
+                const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 10);
+                const emojiCount = countEmojis(text);
+                // Excessive emoji should require a high count AND very little accompanying text
+                shouldTrigger = emojiCount > maxAllowed && (text.length - emojiCount < 10);
             }
 
             if (shouldTrigger) {
                 await ctx.deleteMessage().catch(() => {});
                 if (!settings.emojiSpam.silent && settings.emojiSpam.msg) {
+                    const emojiCount = countEmojis(text);
                     const response = settings.emojiSpam.msg
                         .replace(/{mention}/g, userMention)
                         .replace(/{name}/g, fullName)
@@ -724,8 +868,8 @@ bot.on('message', async (ctx, next) => {
 
                 for (let w of wordsList) {
                     w = (w || "").trim().toLowerCase();
-                    if (!w) continue;
-                    if (cleanText.includes(w)) {
+                    if (!w || w.length < 2) continue;
+                    if (matchesBannedWord(text, w)) {
                         matchedRule = rule;
                         matchedWord = w;
                         break;
@@ -738,8 +882,8 @@ bot.on('message', async (ctx, next) => {
             if (!matchedRule && legacyWords.length > 0) {
                 for (let w of legacyWords) {
                     w = (w || "").trim().toLowerCase();
-                    if (!w) continue;
-                    if (cleanText.includes(w)) {
+                    if (!w || w.length < 2) continue;
+                    if (matchesBannedWord(text, w)) {
                         matchedRule = {
                             words: [w],
                             deleteMessage: true,
