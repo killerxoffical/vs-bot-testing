@@ -81,12 +81,12 @@
     <!-- SPLASH SCREEN / PRELOADER -->
     <div id="splashScreen" class="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center transition-opacity duration-300">
         <div class="flex flex-col items-center gap-4">
-            <div class="w-16 h-16 rounded-2xl p-1 bg-white border border-slate-200 shadow-xl shadow-brand-500/10 flex items-center justify-center overflow-hidden animate-pulse">
-                <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" alt="Logo" class="w-full h-full object-cover rounded-xl">
+            <div class="w-20 h-20 rounded-2xl p-1 bg-white border-2 border-brand-200 shadow-xl shadow-brand-500/20 flex items-center justify-center overflow-hidden animate-pulse">
+                <img src="/logo.jpg" alt="Infinity Guard" class="w-full h-full object-cover rounded-xl">
             </div>
             <div class="text-center">
-                <h2 class="text-lg font-extrabold text-slate-900 tracking-tight">VS Protection<span class="text-brand-600">.</span></h2>
-                <p class="text-xs font-semibold text-slate-400 mt-0.5">Initializing Enterprise Cloud Interface...</p>
+                <h2 class="text-xl font-extrabold text-slate-900 tracking-tight">Infinity Guard<span class="text-brand-600">.</span></h2>
+                <p class="text-xs font-semibold text-slate-500 mt-0.5">Your Ultimate Telegram Protection Bot</p>
             </div>
             <div class="w-7 h-7 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin mt-2"></div>
         </div>
@@ -96,12 +96,12 @@
     <header id="mainTopNavbar" class="frosted-nav sticky top-0 z-40 shrink-0 h-16">
         <div class="w-full px-5 md:px-8 h-full flex justify-between items-center">
             <div class="flex items-center gap-3 cursor-pointer" onclick="showLandingView()">
-                <div class="w-9 h-9 rounded-xl overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-white shrink-0">
-                    <img src="https://pub-4c6b2dbf3a0c4862a8964b1546de6283.r2.dev/1793093965707_Untitled.webp" alt="VS Logo" class="w-8 h-8 object-cover">
+                <div class="w-10 h-10 rounded-xl overflow-hidden border border-brand-200 shadow-sm flex items-center justify-center bg-white shrink-0">
+                    <img src="/logo.jpg" alt="Infinity Guard Logo" class="w-full h-full object-cover">
                 </div>
                 <div>
-                    <span class="font-extrabold text-base tracking-tight text-slate-900 block leading-tight">VS Protection<span class="text-brand-600">.</span></span>
-                    <span class="text-[9px] font-bold tracking-wider uppercase text-slate-400">Enterprise Cloud</span>
+                    <span class="font-extrabold text-base tracking-tight text-slate-900 block leading-tight">Infinity Guard<span class="text-brand-600">.</span></span>
+                    <span class="text-[9px] font-bold tracking-wider uppercase text-brand-600">Protection Bot</span>
                 </div>
             </div>
 
@@ -883,7 +883,7 @@
                         </div>
                     </div>
 
-                    <!-- Ban Text & Blacklist Tab -->
+                    <!-- Ban Text & Bad Words Filter Tab -->
                     <div id="tabContent-profanity" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-6">
                             <!-- Header & Master Toggle -->
@@ -893,94 +893,86 @@
                                         <i data-lucide="shield-ban" class="w-5 h-5"></i>
                                     </div>
                                     <div>
-                                        <h3 class="text-base font-bold text-slate-900">Ban Text & Content Filter</h3>
-                                        <p class="text-xs text-slate-500">Ban single or multiple keywords/messages with custom reply notes, delete controls, and flexible enforcement</p>
+                                        <h3 class="text-base font-bold text-slate-900">Banned Words Filter (গ্রুপে নিষিদ্ধ শব্দ ফিল্টার)</h3>
+                                        <p class="text-xs text-slate-500">গ্রুপে যেসব শব্দ লেখা নিষেধ (যেমন: sell, buy, promo, গালিগালাজ)। ইউজার এই শব্দগুলো লিখলে বটের অ্যাকশন নির্ধারিত হবে।</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs font-bold text-slate-600">Active Guard:</span>
+                                    <span class="text-xs font-bold text-slate-600">Active Filter:</span>
                                     <input type="checkbox" id="toggleBadWords" class="w-5 h-5 accent-brand-600 cursor-pointer">
                                 </div>
                             </div>
 
-                            <!-- Add New Rule Builder -->
-                            <div class="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-4">
+                            <!-- 1-Step Easy Rule Builder -->
+                            <div class="p-5 rounded-2xl bg-slate-50/90 border border-slate-200 space-y-4">
                                 <div class="flex items-center justify-between">
-                                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                                         <i data-lucide="plus-circle" class="w-4 h-4 text-brand-600"></i>
-                                        <span>Add New Ban Text Rule</span>
+                                        <span id="banRuleFormTitle">Add New Banned Words Rule (নতুন নিষিদ্ধ শব্দ যোগ করুন)</span>
                                     </h4>
-                                    <span class="text-[10px] text-slate-400 font-medium">Supports Single or Multiple Comma-Separated Keywords</span>
+                                    <button type="button" id="btnCancelEditBanRule" onclick="resetBanRuleForm()" class="hidden text-xs text-rose-600 font-bold hover:underline">
+                                        Cancel Edit
+                                    </button>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
                                     <!-- Banned Word(s) Input -->
-                                    <div class="md:col-span-7">
+                                    <div class="md:col-span-6">
                                         <label class="text-[11px] font-bold text-slate-700 block mb-1">
-                                            Banned Text / Keywords <span class="text-rose-500">*</span>
+                                            নিষিদ্ধ শব্দসমূহ (Banned Words) <span class="text-rose-500">*</span>
                                         </label>
-                                        <input id="newBanWordsInput" oninput="updateBanNotePreview()" type="text" placeholder="e.g. sell (single) or sell, buy, promo (multiple)" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400 outline-none focus:border-brand-500 transition">
-                                        <p class="text-[10px] text-slate-400 mt-1">Single word or multiple comma-separated words (e.g. <span class="font-semibold text-slate-600">sell, buy, hack</span>)</p>
+                                        <input id="newBanWordsInput" oninput="updateBanNotePreview()" type="text" placeholder="e.g. sell, buy, promo, 18+ (১টি বা একাধিক শব্দ কমা দিয়ে লিখুন)" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400 outline-none focus:border-brand-500 transition">
+                                        <p class="text-[10px] text-slate-400 mt-1">কমা দিয়ে একাধিক শব্দও একবারে যোগ করতে পারেন (যেমন: <span class="font-semibold text-slate-600">sell, buy, promo</span>)</p>
                                     </div>
 
-                                    <!-- Message Action (Clear & Simple: Delete or Keep Message) -->
-                                    <div class="md:col-span-5">
+                                    <!-- Action Mode: Delete & Reply / Silent / Warn Only -->
+                                    <div class="md:col-span-6">
                                         <label class="text-[11px] font-bold text-slate-700 block mb-1">
-                                            Action on User's Message <span class="text-rose-500">*</span>
+                                            বট কী অ্যাকশন নিবে (Action on User Message) <span class="text-rose-500">*</span>
                                         </label>
                                         <select id="newBanDeleteOption" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition">
-                                            <option value="single" selected>🗑️ Delete Message & Send Note (মেসেজ ডিলিট করবে)</option>
-                                            <option value="none">👁️ Keep Message & Send Note (মেসেজ রেখে শুধু নোট দিবে)</option>
+                                            <option value="delete_reply" selected>🗑️ ডিলিট করবে এবং ওয়ার্নিং রিপ্লাই দিবে (Delete & Warn)</option>
+                                            <option value="silent_delete">🔇 সাইলেন্টলি ডিলিট করবে, কোনো রিপ্লাই দিবে না (Silent Delete)</option>
+                                            <option value="warn_only">👁️ মেসেজ রেখে শুধু ওয়ার্নিং রিপ্লাই দিবে (Warn Only)</option>
                                         </select>
-                                        <p class="text-[10px] text-slate-400 mt-1">Select whether bot deletes user's message or keeps it.</p>
+                                        <p class="text-[10px] text-slate-400 mt-1">ইউজার নিষিদ্ধ শব্দ লিখলে মেসেজ ডিলিট ও ওয়ার্নিং কীভাবে দিবে তা নির্ধারণ করুন।</p>
                                     </div>
                                 </div>
 
-                                <!-- Custom Note / Reply Message & Reply ON/OFF Toggle -->
-                                <div class="space-y-2">
-                                    <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl">
-                                        <div>
-                                            <span class="text-xs font-bold text-slate-800">Send Warning Reply Note in Group</span>
-                                            <p class="text-[10px] text-slate-400">If OFF, bot takes action silently without sending warning note</p>
-                                        </div>
-                                        <input type="checkbox" id="newBanSendReplyCheck" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                <!-- Custom Warning Message -->
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-[11px] font-bold text-slate-700 block">
+                                            ইউজারকে কী সতর্কবার্তা পাঠাবে (Warning Note Shown to User) <span class="text-rose-500">*</span>
+                                        </label>
                                     </div>
-
-                                    <div>
-                                        <div class="flex items-center justify-between mb-1">
-                                            <label class="text-[11px] font-bold text-slate-700 block">
-                                                Custom Warning Note (Shown to User) <span class="text-rose-500">*</span>
-                                            </label>
-                                        </div>
-                                        <!-- Interactive Tag Pills Bar -->
-                                        <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-white rounded-lg border border-slate-200">
-                                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
-                                            <button type="button" onclick="insertTag('newBanNoteInput', '{mention}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
-                                            <button type="button" onclick="insertTag('newBanNoteInput', '{name}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
-                                            <button type="button" onclick="insertTag('newBanNoteInput', '{username}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
-                                            <button type="button" onclick="insertTag('newBanNoteInput', '{chat}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
-                                            <button type="button" onclick="insertTag('newBanNoteInput', '{word}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {word}</button>
-                                            <button type="button" onclick="insertTag('newBanNoteInput', '{limit}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {limit}</button>
-                                        </div>
-                                        <textarea id="newBanNoteInput" oninput="updateBanNotePreview()" rows="2" placeholder="e.g. ⚠️ {mention}, prohibited word '{word}' detected in {chat}!" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-800 outline-none focus:border-brand-500 transition"></textarea>
+                                    <!-- Interactive Tag Pills Bar -->
+                                    <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-white rounded-lg border border-slate-200">
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                        <button type="button" onclick="insertTag('newBanNoteInput', '{mention}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('newBanNoteInput', '{name}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                        <button type="button" onclick="insertTag('newBanNoteInput', '{username}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
+                                        <button type="button" onclick="insertTag('newBanNoteInput', '{chat}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                        <button type="button" onclick="insertTag('newBanNoteInput', '{word}', updateBanNotePreview)" class="tag-pill px-2 py-0.5 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 border border-rose-200 text-rose-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {word}</button>
                                     </div>
+                                    <textarea id="newBanNoteInput" oninput="updateBanNotePreview()" rows="2" placeholder="e.g. ⚠️ {mention}, prohibited word '{word}' detected in {chat}!" class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-800 outline-none focus:border-brand-500 transition"></textarea>
                                 </div>
 
-                                <!-- Auto Delete Timer & Add Button -->
+                                <!-- Timer & Add Button -->
                                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
                                     <div class="sm:col-span-6">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Auto Delete Warning Note:</label>
+                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">ওয়ার্নিং অটো-ডিলিট টাইমার (Auto Delete Timer):</label>
                                         <select id="newBanAutoDelete" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="5" selected>After 5 Seconds</option>
-                                            <option value="10">After 10 Seconds</option>
-                                            <option value="15">After 15 Seconds</option>
-                                            <option value="0">Keep Note (Never Delete)</option>
+                                            <option value="5" selected>৫ সেকেন্ড পর মুছে যাবে (5s)</option>
+                                            <option value="10">১০ সেকেন্ড পর মুছে যাবে (10s)</option>
+                                            <option value="3">৩ সেকেন্ড পর মুছে যাবে (3s)</option>
+                                            <option value="0">গ্রুপে থাকবে, মুছবে না (Never Delete)</option>
                                         </select>
                                     </div>
                                     <div class="sm:col-span-6 flex items-end">
-                                        <button type="button" onclick="addBanTextRule()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                        <button type="button" id="btnAddBanRuleBtn" onclick="addBanTextRule()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
                                             <i data-lucide="plus" class="w-4 h-4"></i>
-                                            <span>Add Ban Text Rule</span>
+                                            <span>Add Banned Words Rule</span>
                                         </button>
                                     </div>
                                 </div>
@@ -989,59 +981,26 @@
                                 <div id="banTextPreviewContainer"></div>
                             </div>
 
-                            <!-- Rules Toolbar (Search, Single & Multiple Deletion Controls) -->
-                            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                                <div class="flex items-center gap-2 flex-1">
-                                    <div class="relative flex-1 max-w-xs">
-                                        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                        <input id="banRuleSearchInput" type="text" oninput="filterBanRules()" placeholder="Search banned words..." class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-brand-500">
-                                    </div>
-                                    <span id="banRulesCountBadge" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0">0 Rules</span>
+                            <!-- Search Toolbar -->
+                            <div class="flex items-center justify-between gap-3 pt-2">
+                                <div class="relative flex-1 max-w-sm">
+                                    <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input id="banRuleSearchInput" type="text" oninput="filterBanRules()" placeholder="Search banned words..." class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:border-brand-500">
                                 </div>
-                                <div class="flex items-center gap-2 shrink-0">
-                                    <button type="button" onclick="toggleSelectAllBanRules()" class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-700 text-xs font-bold transition flex items-center gap-1.5">
-                                        <input type="checkbox" id="selectAllBanRulesCheck" class="cursor-pointer" onclick="event.stopPropagation(); toggleSelectAllBanRules();">
-                                        <span>Select All</span>
-                                    </button>
-                                    <button type="button" id="btnDeleteSelectedBanRules" onclick="deleteSelectedBanRules()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5">
-                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                        <span>Delete Selected</span>
-                                    </button>
-                                    <button type="button" onclick="clearAllBanRules()" class="px-3 py-1.5 hover:bg-slate-100 border border-slate-200 text-slate-500 rounded-xl text-xs font-bold transition">
-                                        Clear All
-                                    </button>
-                                </div>
+                                <span id="banRulesCountBadge" class="text-[11px] font-bold px-3 py-1 rounded-lg bg-slate-100 text-slate-700 shrink-0">0 Rules Active</span>
                             </div>
 
                             <!-- Rules List Container -->
-                            <div id="banRulesListContainer" class="space-y-2.5 min-h-[120px]">
-                                <!-- Rendered dynamically -->
-                            </div>
-
-                            <!-- Quick Bulk Comma Separated Accordion (Legacy / Power User sync) -->
-                            <div class="border border-slate-200/80 rounded-xl overflow-hidden">
-                                <button type="button" onclick="document.getElementById('quickBulkWordsPanel').classList.toggle('hidden')" class="w-full px-4 py-2.5 bg-slate-50/70 hover:bg-slate-100/80 flex items-center justify-between text-left transition">
-                                    <span class="text-xs font-bold text-slate-700 flex items-center gap-2">
-                                        <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-500"></i>
-                                        <span>Quick Bulk Import / Raw Word List</span>
-                                    </span>
-                                    <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
-                                </button>
-                                <div id="quickBulkWordsPanel" class="hidden p-4 bg-white border-t border-slate-200/80 space-y-3">
-                                    <p class="text-[11px] text-slate-500">Paste words separated by commas to quickly add or sync with rules:</p>
-                                    <textarea id="badWordsInput" rows="3" placeholder="badword1, scam, abusive, fake" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
-                                    <div class="flex justify-end">
-                                        <button type="button" onclick="importFromRawWordsInput()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition">Sync to Rules</button>
-                                    </div>
-                                </div>
+                            <div id="banRulesListContainer" class="space-y-2.5 min-h-[100px]">
+                                <!-- Rendered dynamically with Edit, Clone, Delete -->
                             </div>
 
                             <!-- Save Button -->
                             <div class="flex items-center justify-between pt-4 border-t border-slate-100">
                                 <span class="text-xs text-slate-400 italic">Changes take effect immediately on your community.</span>
-                                <button type="button" onclick="saveBadWordsSection()" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2">
+                                <button type="button" onclick="saveBadWordsSection()" class="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 cursor-pointer">
                                     <i data-lucide="check" class="w-4 h-4"></i>
-                                    <span>Save Ban Text Policy</span>
+                                    <span>Save Banned Words Policy</span>
                                 </button>
                             </div>
                         </div>
@@ -1805,6 +1764,93 @@
             }, 'Fake Admin Shield Policy');
         }
 
+        // CREATE ADD COMMUNITY CARD (+ BOX IN GRID)
+        function createAddCommunityCard() {
+            const card = document.createElement('div');
+            card.onclick = () => openConnectModal();
+            card.className = "light-card rounded-2xl p-6 border-2 border-dashed border-brand-300 hover:border-brand-500 bg-brand-50/15 hover:bg-brand-50/40 transition-all cursor-pointer flex flex-col items-center justify-center text-center min-h-[220px] group shadow-2xs";
+            card.innerHTML = 
+                '<div class="w-12 h-12 rounded-2xl bg-brand-50 group-hover:bg-brand-600 text-brand-600 group-hover:text-white flex items-center justify-center transition-all mb-3 shadow-xs">' +
+                    '<i data-lucide="plus" class="w-6 h-6 stroke-[2.5]"></i>' +
+                '</div>' +
+                '<h4 class="text-sm font-bold text-slate-800 group-hover:text-brand-600 transition">Add New Group</h4>' +
+                '<p class="text-[11px] text-slate-400 mt-1 max-w-[190px] leading-tight">Connect another Telegram group using a Connect Code</p>' +
+                '<span class="mt-3.5 px-3 py-1 rounded-full bg-brand-100 text-brand-700 font-bold text-[10px] group-hover:bg-brand-600 group-hover:text-white transition">' +
+                    '+ Connect Group' +
+                '</span>';
+            return card;
+        }
+
+        // CONNECT COMMUNITY MODAL FUNCTIONS
+        let currentModalConnectCode = "";
+
+        async function openConnectModal() {
+            const modal = document.getElementById('connectCommunityModal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+
+            const modalQuotaEl = document.getElementById('modalQuotaText');
+            if (modalQuotaEl) {
+                modalQuotaEl.innerHTML = document.getElementById('quotaText')?.innerHTML || '<span>Active Community License</span>';
+            }
+
+            await generateNewConnectCode(false);
+            lucide.createIcons();
+        }
+
+        function closeConnectModal() {
+            const modal = document.getElementById('connectCommunityModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function generateNewConnectCode(forceNew = false) {
+            if (!currentUser) return;
+            try {
+                const res = await fetch('/api/tg/create-connect-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId: currentUser.uid, userEmail: currentUser.email || "" })
+                });
+                const data = await res.json();
+                if (data.success && data.code) {
+                    const cleanCode = data.code.replace(/^\/connect\s*/i, '').trim();
+                    currentModalConnectCode = cleanCode;
+                    const fullCmd = '/connect ' + cleanCode;
+
+                    const displayCodeEl = document.getElementById('modalDisplayCode');
+                    const cmdTextEl = document.getElementById('modalCmdText');
+                    const deepLinkEl = document.getElementById('modalDeepLinkBot');
+
+                    if (displayCodeEl) displayCodeEl.innerText = fullCmd;
+                    if (cmdTextEl) cmdTextEl.innerText = fullCmd;
+                    if (deepLinkEl) deepLinkEl.href = 'https://t.me/InfinityGuardofc_Bot?startgroup=connect_' + cleanCode;
+                } else {
+                    if (data.error === "NO_ACTIVE_LICENSE" || data.error === "SUBSCRIPTION_EXPIRED" || data.error === "LIMIT_REACHED") {
+                        closeConnectModal();
+                        promptSubscriptionGate(data.message);
+                    }
+                }
+            } catch (e) {
+                console.error("Error generating connect code:", e);
+            }
+        }
+
+        function copyModalConnectCode() {
+            const code = currentModalConnectCode || "VS-CONN";
+            const fullCmd = '/connect ' + code;
+            navigator.clipboard.writeText(fullCmd).then(() => {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Connect command copied!',
+                    text: fullCmd,
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            });
+        }
+
         // TAG INSERTION HELPER & CONNECT BOX CONTROLS
         function insertTag(textareaId, tag, previewFn) {
             const el = document.getElementById(textareaId);
@@ -1927,7 +1973,7 @@
                         '</span>' +
                     '</div>' +
                     '<div class="flex items-start gap-2.5">' +
-                        '<img src="https://api.dicebear.com/7.x/bottts/svg?seed=InfinityGuard" alt="Bot" class="w-8 h-8 rounded-full border border-brand-400/30 bg-slate-800 shrink-0 mt-0.5">' +
+                        '<img src="/logo.jpg" alt="Infinity Guard Bot" class="w-9 h-9 rounded-full border border-brand-400/40 bg-slate-900 shrink-0 mt-0.5 object-cover shadow-sm">' +
                         '<div class="flex-1 space-y-1.5 min-w-0">' +
                             '<div class="flex items-center gap-1.5">' +
                                 '<span class="text-xs font-bold text-slate-100">INFINITY GUARD</span>' +
@@ -2696,6 +2742,8 @@ function saveEmojiSection() {
                     groups.forEach(g => {
                         groupsGrid.appendChild(createCommunityCard(g, false));
                     });
+                    // Append "+ Add New Group" card right beside existing group boxes!
+                    groupsGrid.appendChild(createAddCommunityCard());
                 }
             }
 
@@ -2723,9 +2771,12 @@ function saveEmojiSection() {
             const card = document.createElement('div');
             card.className = "light-card p-5 rounded-2xl flex flex-col justify-between border hover:border-brand-500 transition shadow-sm";
 
-            const avatarHtml = item.photo
-                ? `<img src="${item.photo}" class="w-10 h-10 rounded-xl object-cover shrink-0">`
-                : `<div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex items-center justify-center font-bold text-sm shrink-0">${item.title ? item.title[0].toUpperCase() : 'C'}</div>`;
+            const photoUrl = item.photo || `/api/tg/chat-photo/${item.id}`;
+            const avatarHtml = `
+                <div class="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-slate-200 shadow-2xs bg-slate-100 flex items-center justify-center">
+                    <img src="${photoUrl}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='/logo.jpg';">
+                </div>
+            `;
 
             const metaText = isChannel ? "Broadcast Channel" : "Group Community";
             const botBadgeHtml = `<span class="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60"><i data-lucide="shield-check" class="w-3 h-3"></i> Active Admin</span>`;
@@ -2859,25 +2910,14 @@ function saveEmojiSection() {
             }
         }
 
-        // BAN TEXT RULES ENGINE & SETTINGS MANAGEMENT
+        // BANNED WORDS RULES ENGINE (SIMPLIFIED & INTUITIVE)
         let banRulesList = [];
-
-        function toggleEmojiModeVisibility() {
-            const mode = document.getElementById('emojiMode')?.value || 'only_emoji';
-            const maxCountContainer = document.getElementById('emojiMaxCountContainer');
-            if (maxCountContainer) {
-                if (mode === 'excessive_emoji') {
-                    maxCountContainer.classList.remove('hidden');
-                } else {
-                    maxCountContainer.classList.add('hidden');
-                }
-            }
-        }
+        let editingBanRuleId = null;
 
         function addBanTextRule() {
-            const wordsInput = document.getElementById('newBanWordsInput').value.trim();
+            const wordsInput = document.getElementById('newBanWordsInput')?.value.trim();
             if (!wordsInput) {
-                return Swal.fire('Missing Text', 'Please enter at least one keyword or phrase to ban (e.g. sell).', 'warning');
+                return Swal.fire('শব্দ লিখুন', 'অনুগ্রহ করে অন্তত একটি নিষিদ্ধ শব্দ লিখুন (যেমন: sell, buy, promo)।', 'warning');
             }
 
             const words = wordsInput.split(',').map(w => w.trim()).filter(Boolean);
@@ -2885,36 +2925,178 @@ function saveEmojiSection() {
                 return Swal.fire('Invalid Input', 'Please enter valid words or phrases.', 'warning');
             }
 
-            const deleteMode = document.getElementById('newBanDeleteOption').value;
-            const note = document.getElementById('newBanNoteInput').value.trim() || "⚠️ {mention}, prohibited text '{word}' detected in {chat}!";
-            const autoDeleteSeconds = parseInt(document.getElementById('newBanAutoDelete').value || 5);
-            const action = document.getElementById('newBanAction')?.value || 'delete';
-            const sendReply = document.getElementById('newBanSendReplyCheck')?.checked !== false;
+            const deleteOption = document.getElementById('newBanDeleteOption')?.value || 'delete_reply';
+            const note = document.getElementById('newBanNoteInput')?.value.trim() || "⚠️ {mention}, prohibited word '{word}' detected in {chat}!";
+            const autoDelete = parseInt(document.getElementById('newBanAutoDelete')?.value || 5);
 
-            const newRule = {
-                id: 'rule_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-                words: words,
-                deleteMode: deleteMode,
-                deleteMessage: deleteMode !== 'none',
-                sendReply: sendReply,
-                silent: !sendReply,
-                note: note,
-                autoDeleteSeconds: autoDeleteSeconds,
-                action: action
-            };
+            let deleteMessage = true;
+            let deleteMode = 'single';
+            let sendReply = true;
+            let silent = false;
 
-            banRulesList.unshift(newRule);
+            if (deleteOption === 'delete_reply') {
+                deleteMessage = true;
+                deleteMode = 'single';
+                sendReply = true;
+                silent = false;
+            } else if (deleteOption === 'silent_delete') {
+                deleteMessage = true;
+                deleteMode = 'single';
+                sendReply = false;
+                silent = true;
+            } else if (deleteOption === 'warn_only') {
+                deleteMessage = false;
+                deleteMode = 'none';
+                sendReply = true;
+                silent = false;
+            }
+
+            if (editingBanRuleId) {
+                const ruleIdx = banRulesList.findIndex(r => r.id === editingBanRuleId);
+                if (ruleIdx !== -1) {
+                    banRulesList[ruleIdx] = {
+                        ...banRulesList[ruleIdx],
+                        words,
+                        text: words.join(', '),
+                        deleteOption,
+                        deleteMessage,
+                        deleteMode,
+                        sendReply,
+                        silent,
+                        note,
+                        autoDeleteSeconds: autoDelete
+                    };
+                }
+                editingBanRuleId = null;
+                const titleEl = document.getElementById('banRuleFormTitle');
+                if (titleEl) titleEl.innerText = 'Add New Banned Words Rule (নতুন নিষিদ্ধ শব্দ যোগ করুন)';
+                const addBtn = document.getElementById('btnAddBanRuleBtn');
+                if (addBtn) addBtn.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i><span>Add Banned Words Rule</span>';
+                document.getElementById('btnCancelEditBanRule')?.classList.add('hidden');
+            } else {
+                const newRule = {
+                    id: 'rule_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    words,
+                    text: words.join(', '),
+                    deleteOption,
+                    deleteMessage,
+                    deleteMode,
+                    sendReply,
+                    silent,
+                    note,
+                    autoDeleteSeconds: autoDelete
+                };
+                banRulesList.unshift(newRule);
+            }
+
             document.getElementById('newBanWordsInput').value = '';
             document.getElementById('newBanNoteInput').value = '';
             renderBanRulesList();
+            saveBadWordsSection();
+
             Swal.fire({
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: 'Ban rule added to draft!',
+                title: 'Banned words policy updated!',
                 showConfirmButton: false,
-                timer: 1500
+                timer: 1400
             });
+        }
+
+        function editBanRule(ruleId) {
+            const rule = banRulesList.find(r => r.id === ruleId);
+            if (!rule) return;
+            editingBanRuleId = ruleId;
+
+            document.getElementById('newBanWordsInput').value = (rule.words || []).join(', ');
+
+            let opt = rule.deleteOption;
+            if (!opt) {
+                if (rule.deleteMessage === false || rule.deleteMode === 'none') opt = 'warn_only';
+                else if (rule.sendReply === false || rule.silent === true) opt = 'silent_delete';
+                else opt = 'delete_reply';
+            }
+            document.getElementById('newBanDeleteOption').value = opt;
+            document.getElementById('newBanNoteInput').value = rule.note || '';
+            document.getElementById('newBanAutoDelete').value = rule.autoDeleteSeconds ?? 5;
+
+            const titleEl = document.getElementById('banRuleFormTitle');
+            if (titleEl) titleEl.innerText = 'Edit Banned Words Rule (রুল এডিট করুন)';
+            const addBtn = document.getElementById('btnAddBanRuleBtn');
+            if (addBtn) addBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Update Rule</span>';
+            document.getElementById('btnCancelEditBanRule')?.classList.remove('hidden');
+
+            document.getElementById('newBanWordsInput').focus();
+            updateBanNotePreview();
+            lucide.createIcons();
+        }
+
+        function cloneBanRule(ruleId) {
+            const rule = banRulesList.find(r => r.id === ruleId);
+            if (!rule) return;
+
+            document.getElementById('newBanWordsInput').value = (rule.words || []).join(', ') + '_copy';
+            let opt = rule.deleteOption;
+            if (!opt) {
+                if (rule.deleteMessage === false || rule.deleteMode === 'none') opt = 'warn_only';
+                else if (rule.sendReply === false || rule.silent === true) opt = 'silent_delete';
+                else opt = 'delete_reply';
+            }
+            document.getElementById('newBanDeleteOption').value = opt;
+            document.getElementById('newBanNoteInput').value = rule.note || '';
+            document.getElementById('newBanAutoDelete').value = rule.autoDeleteSeconds ?? 5;
+
+            editingBanRuleId = null;
+            const titleEl = document.getElementById('banRuleFormTitle');
+            if (titleEl) titleEl.innerText = 'Add New Banned Words Rule (Cloned Rule)';
+            document.getElementById('btnCancelEditBanRule')?.classList.remove('hidden');
+            document.getElementById('newBanWordsInput').focus();
+            updateBanNotePreview();
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'Rule cloned into form!',
+                text: 'Adjust words and click "Add Banned Words Rule" to save.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+
+        function resetBanRuleForm() {
+            editingBanRuleId = null;
+            document.getElementById('newBanWordsInput').value = '';
+            document.getElementById('newBanNoteInput').value = '';
+            document.getElementById('newBanDeleteOption').value = 'delete_reply';
+            document.getElementById('newBanAutoDelete').value = '5';
+            const titleEl = document.getElementById('banRuleFormTitle');
+            if (titleEl) titleEl.innerText = 'Add New Banned Words Rule (নতুন নিষিদ্ধ শব্দ যোগ করুন)';
+            const addBtn = document.getElementById('btnAddBanRuleBtn');
+            if (addBtn) addBtn.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i><span>Add Banned Words Rule</span>';
+            document.getElementById('btnCancelEditBanRule')?.classList.add('hidden');
+            updateBanNotePreview();
+            lucide.createIcons();
+        }
+
+        function deleteSingleBanRule(ruleId) {
+            banRulesList = banRulesList.filter(r => r.id !== ruleId);
+            renderBanRulesList(document.getElementById('banRuleSearchInput')?.value || '');
+            saveBadWordsSection();
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Rule deleted',
+                timer: 1200,
+                showConfirmButton: false
+            });
+        }
+
+        function filterBanRules() {
+            const q = document.getElementById('banRuleSearchInput')?.value || '';
+            renderBanRulesList(q);
         }
 
         function renderBanRulesList(filterQuery = '') {
@@ -2931,67 +3113,59 @@ function saveEmojiSection() {
 
             const countBadge = document.getElementById('banRulesCountBadge');
             if (countBadge) {
-                countBadge.innerText = `${banRulesList.length} Rule${banRulesList.length === 1 ? '' : 's'}`;
+                countBadge.innerText = `${banRulesList.length} Active Rule${banRulesList.length === 1 ? '' : 's'}`;
             }
 
             if (filteredRules.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-10 px-4 bg-slate-50/60 rounded-2xl border border-dashed border-slate-200">
-                        <i data-lucide="shield-check" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
-                        <p class="text-xs font-bold text-slate-500">No ban text rules configured yet.</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Use the form above to add single (e.g. "sell") or multiple (e.g. "sell, buy") keywords with custom reply notes.</p>
-                    </div>
-                `;
+                container.innerHTML = 
+                    '<div class="text-center py-8 px-4 bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">' +
+                        '<i data-lucide="shield-check" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>' +
+                        '<p class="text-xs font-bold text-slate-700">কোনো নিষিদ্ধ শব্দ রুল যোগ করা নেই</p>' +
+                        '<p class="text-[11px] text-slate-400 mt-0.5">উপরের ফর্ম থেকে নিষিদ্ধ শব্দ (যেমন: "sell, buy, promo") লিখে যোগ করুন।</p>' +
+                    '</div>';
                 lucide.createIcons();
                 return;
             }
 
             container.innerHTML = filteredRules.map(rule => {
                 const wordsBadges = (rule.words || []).map(w => 
-                    `<span class="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200/80 font-mono text-[11px] font-bold">"${w}"</span>`
+                    '<span class="px-2.5 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 font-mono text-xs font-bold shadow-2xs">"' + w + '"</span>'
                 ).join(' ');
 
-                let deleteBadge = '';
-                if (rule.deleteMode === 'none' || rule.deleteMessage === false) {
-                    deleteBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"><i data-lucide="eye" class="w-3 h-3"></i> Message Kept (No Delete)</span>`;
-                } else if (rule.deleteMode === 'recent') {
-                    deleteBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200"><i data-lucide="layers" class="w-3 h-3"></i> Purge Recent Messages</span>`;
+                let actionBadge = '';
+                if (rule.deleteMessage === false || rule.deleteMode === 'none') {
+                    actionBadge = '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"><i data-lucide="eye" class="w-3 h-3"></i> Warn Only (No Delete)</span>';
+                } else if (rule.sendReply === false || rule.silent === true) {
+                    actionBadge = '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300"><i data-lucide="volume-x" class="w-3 h-3"></i> Silent Delete</span>';
                 } else {
-                    deleteBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200"><i data-lucide="trash-2" class="w-3 h-3"></i> Delete Message</span>`;
+                    actionBadge = '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200"><i data-lucide="trash-2" class="w-3 h-3"></i> Delete & Warn</span>';
                 }
 
-                let timerBadge = rule.autoDeleteSeconds > 0 
-                    ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"><i data-lucide="clock" class="w-3 h-3"></i> ${rule.autoDeleteSeconds}s</span>`
-                    : `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"><i data-lucide="infinity" class="w-3 h-3"></i> Persistent</span>`;
-
-                const replyBadge = (rule.sendReply !== false && !rule.silent)
-                    ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"><i data-lucide="message-square" class="w-3 h-3"></i> Reply: ON</span>'
-                    : '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"><i data-lucide="volume-x" class="w-3 h-3"></i> Silent (No Reply)</span>';
-
-                let actionBadge = rule.action === 'warn'
-                    ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">Warn Infraction</span>`
-                    : (rule.action === 'ban' ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">Instant Ban</span>` : '');
+                const timerBadge = rule.autoDeleteSeconds > 0 
+                    ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"><i data-lucide="clock" class="w-3 h-3"></i> ' + rule.autoDeleteSeconds + 's</span>'
+                    : '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200"><i data-lucide="infinity" class="w-3 h-3"></i> Persistent</span>';
 
                 return `
-                    <div class="p-3.5 bg-white hover:bg-slate-50/80 rounded-xl border border-slate-200/90 shadow-sm transition space-y-2">
+                    <div class="p-4 bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200 shadow-2xs transition space-y-2.5">
                         <div class="flex items-center justify-between gap-3">
-                            <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                                <input type="checkbox" class="ban-rule-check w-4 h-4 accent-brand-600 cursor-pointer" data-id="${rule.id}">
-                                <div class="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
-                                    ${wordsBadges}
-                                </div>
+                            <div class="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+                                ${wordsBadges}
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                ${deleteBadge}
-                                ${replyBadge}
                                 ${actionBadge}
                                 ${timerBadge}
-                                <button type="button" onclick="deleteSingleBanRule('${rule.id}')" title="Delete single rule" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                                <button type="button" onclick="editBanRule('${rule.id}')" title="Edit Rule" class="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition cursor-pointer">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" onclick="cloneBanRule('${rule.id}')" title="Clone Rule" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
+                                <button type="button" onclick="deleteSingleBanRule('${rule.id}')" title="Delete Rule" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer">
                                     <i data-lucide="trash-2" class="w-4 h-4"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="pl-6.5 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 flex items-start gap-1.5">
+                        <div class="text-[11px] text-slate-600 bg-slate-50/90 p-2.5 rounded-xl border border-slate-100 flex items-start gap-2">
                             <i data-lucide="message-square" class="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5"></i>
                             <div class="min-w-0 flex-1 truncate font-medium">
                                 <span class="font-bold text-slate-700">Reply Note:</span> "${rule.note || 'No note set'}"
@@ -3000,152 +3174,7 @@ function saveEmojiSection() {
                     </div>
                 `;
             }).join('');
-
             lucide.createIcons();
-        }
-
-        function deleteSingleBanRule(ruleId) {
-            banRulesList = banRulesList.filter(r => r.id !== ruleId);
-            renderBanRulesList(document.getElementById('banRuleSearchInput')?.value || '');
-        }
-
-        function deleteSelectedBanRules() {
-            const checkedBoxes = document.querySelectorAll('.ban-rule-check:checked');
-            if (checkedBoxes.length === 0) {
-                return Swal.fire('No Selection', 'Please check at least one rule to delete.', 'info');
-            }
-
-            const idsToDelete = Array.from(checkedBoxes).map(cb => cb.getAttribute('data-id'));
-            banRulesList = banRulesList.filter(r => !idsToDelete.includes(r.id));
-            const selectAll = document.getElementById('selectAllBanRulesCheck');
-            if (selectAll) selectAll.checked = false;
-            renderBanRulesList(document.getElementById('banRuleSearchInput')?.value || '');
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: `${idsToDelete.length} rule${idsToDelete.length === 1 ? '' : 's'} deleted!`,
-                showConfirmButton: false,
-                timer: 1400
-            });
-        }
-
-        function toggleSelectAllBanRules() {
-            const masterCheck = document.getElementById('selectAllBanRulesCheck');
-            const checked = masterCheck ? masterCheck.checked : false;
-            const checkboxes = document.querySelectorAll('.ban-rule-check');
-            checkboxes.forEach(cb => { cb.checked = checked; });
-        }
-
-        function clearAllBanRules() {
-            if (banRulesList.length === 0) return;
-            Swal.fire({
-                title: 'Clear All Ban Rules?',
-                text: 'This will remove all configured ban text rules in the editor.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Yes, clear all',
-                confirmButtonColor: '#E11D48',
-                cancelButtonColor: '#64748B'
-            }).then((res) => {
-                if (res.isConfirmed) {
-                    banRulesList = [];
-                    renderBanRulesList();
-                }
-            });
-        }
-
-        function filterBanRules() {
-            const q = document.getElementById('banRuleSearchInput')?.value || '';
-            renderBanRulesList(q);
-        }
-
-        function importFromRawWordsInput() {
-            const raw = document.getElementById('badWordsInput').value;
-            if (!raw.trim()) return;
-            const words = raw.split(',').map(w => w.trim()).filter(Boolean);
-            if (words.length === 0) return;
-
-            const newRule = {
-                id: 'rule_' + Date.now(),
-                words: words,
-                deleteMode: 'single',
-                deleteMessage: true,
-                note: `⚠️ {mention}, prohibited text '{word}' detected in {chat}!`,
-                autoDeleteSeconds: 5,
-                action: 'delete'
-            };
-            banRulesList.push(newRule);
-            renderBanRulesList();
-            document.getElementById('badWordsInput').value = '';
-            document.getElementById('quickBulkWordsPanel').classList.add('hidden');
-            Swal.fire('Imported!', `${words.length} keywords imported into ban rules.`, 'success');
-        }
-
-        // AUTO REPLIES ENGINE IMPLEMENTATION
-        function addAutoReplyRule() {
-            const trigger = document.getElementById('newReplyTrigger')?.value.trim();
-            const target = document.getElementById('newReplyTarget')?.value || 'everyone';
-            const response = document.getElementById('newReplyResponse')?.value.trim();
-
-            if (!trigger || !response) {
-                return Swal.fire('Incomplete Rule', 'Please provide trigger keyword and bot response.', 'warning');
-            }
-
-            const ruleKey = trigger.toLowerCase();
-            autoRepliesMap[ruleKey] = {
-                trigger,
-                target,
-                response,
-                buttons: []
-            };
-
-            document.getElementById('newReplyTrigger').value = '';
-            document.getElementById('newReplyResponse').value = '';
-            renderAutoReplies();
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Auto-reply rule added!',
-                showConfirmButton: false,
-                timer: 1400
-            });
-        }
-
-        function renderAutoReplies() {
-            const container = document.getElementById('autoRepliesList');
-            if (!container) return;
-
-            const keys = Object.keys(autoRepliesMap);
-            if (keys.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs italic">No auto-reply rules added yet.</div>`;
-                return;
-            }
-
-            container.innerHTML = keys.map(k => {
-                const item = autoRepliesMap[k];
-                return `
-                    <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3">
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="px-2 py-0.5 rounded-md bg-indigo-50 text-brand-600 font-bold text-xs font-mono">${item.trigger}</span>
-                                <span class="text-[10px] text-slate-500 font-medium capitalize">Target: ${item.target}</span>
-                            </div>
-                            <p class="text-xs text-slate-700 truncate">${item.response}</p>
-                        </div>
-                        <button type="button" onclick="deleteAutoReplyRule('${k}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                `;
-            }).join('');
-            lucide.createIcons();
-        }
-
-        function deleteAutoReplyRule(key) {
-            delete autoRepliesMap[key];
-            renderAutoReplies();
         }
 
         // LOAD AND POPULATE COMMUNITY SETTINGS
@@ -3325,10 +3354,9 @@ function saveEmojiSection() {
             }
 
             const avatarContainer = document.getElementById('panelGroupAvatarContainer');
-            if (item.photo) {
-                avatarContainer.innerHTML = `<img src="${item.photo}" class="w-full h-full object-cover">`;
-            } else {
-                avatarContainer.innerHTML = `<div class="w-full h-full bg-gradient-to-tr from-brand-600 to-indigo-400 text-white flex items-center justify-center font-bold text-xs">${item.title ? item.title[0].toUpperCase() : 'C'}</div>`;
+            const gPhoto = item.photo || `/api/tg/chat-photo/${chatId}`;
+            if (avatarContainer) {
+                avatarContainer.innerHTML = `<img src="${gPhoto}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='/logo.jpg';">`;
             }
 
             switchTab('security');
@@ -3455,5 +3483,70 @@ function saveEmojiSection() {
             animate();
         })();
     </script>
+
+    <!-- CONNECT COMMUNITY POPUP MODAL -->
+    <div id="connectCommunityModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="light-card rounded-3xl p-6 sm:p-8 border border-slate-200 bg-white max-w-xl w-full shadow-2xl space-y-5 animate-in fade-in duration-200 relative">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center font-bold">
+                        <i data-lucide="key-round" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">Connect Telegram Community</h3>
+                        <p class="text-xs text-slate-500">Link your group to Infinity Guard with a single-use code</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeConnectModal()" class="w-8 h-8 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center transition cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- License Quota Status -->
+            <div id="modalQuotaText" class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-between">
+                <span>Checking license quota...</span>
+            </div>
+
+            <!-- Active Connect Code Display -->
+            <div class="p-4 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Your Single-Use Connect Command</span>
+                    </span>
+                    <span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">1 Group Only</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div id="modalDisplayCode" class="flex-1 bg-white border-2 border-indigo-300 rounded-xl px-4 py-2.5 text-center font-mono text-sm sm:text-base font-extrabold text-brand-700 tracking-wide select-all overflow-x-auto">
+                        /connect VS-CONN-CODE
+                    </div>
+                    <button type="button" onclick="copyModalConnectCode()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                        <span>Copy</span>
+                    </button>
+                </div>
+
+                <div class="text-[11px] text-slate-600 space-y-1.5 bg-white/90 p-3 rounded-xl border border-indigo-100">
+                    <p class="font-bold text-slate-800">Quick 2-Step Instructions:</p>
+                    <p>1. Add <a href="https://t.me/InfinityGuardofc_Bot" target="_blank" class="text-brand-600 font-bold underline">@InfinityGuardofc_Bot</a> to your Telegram Group as <b>Administrator</b>.</p>
+                    <p>2. Send this command inside the group: <code id="modalCmdText" class="bg-indigo-50 text-brand-700 font-mono font-bold px-1.5 py-0.5 rounded">/connect VS-XXXXXX</code> (or <code>/claim VS-XXXXXX</code>)</p>
+                    <p class="text-[10px] text-slate-400 pt-0.5">⚠️ The bot will instantly confirm and the group will appear in your dashboard!</p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                    <a id="modalDeepLinkBot" href="https://t.me/InfinityGuardofc_Bot" target="_blank" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm text-center">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Open Telegram & Add Bot</span>
+                    </a>
+                    <button type="button" onclick="generateNewConnectCode(true)" class="px-4 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>New Code</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

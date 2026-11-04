@@ -42,6 +42,29 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
+
+// REAL-TIME GROUP PHOTO PROXY & CACHE
+const chatPhotoCache = {};
+app.get('/api/tg/chat-photo/:chatId', async (req, res) => {
+    const { chatId } = req.params;
+    const now = Date.now();
+    if (chatPhotoCache[chatId] && chatPhotoCache[chatId].expiresAt > now) {
+        return res.redirect(chatPhotoCache[chatId].url);
+    }
+    try {
+        const chat = await bot.telegram.getChat(chatId);
+        if (chat && chat.photo && (chat.photo.small_file_id || chat.photo.big_file_id)) {
+            const fileId = chat.photo.small_file_id || chat.photo.big_file_id;
+            const link = await bot.telegram.getFileLink(fileId);
+            const fileUrl = link.href || link.toString();
+            chatPhotoCache[chatId] = { url: fileUrl, expiresAt: now + (2 * 3600000) };
+            db.ref(`groups/${chatId}/photo`).set(fileUrl).catch(() => {});
+            return res.redirect(fileUrl);
+        }
+    } catch (e) {}
+    res.redirect('/logo.jpg');
+});
+
 app.get('/api/tg/bot-info', (req, res) => res.json({ username: BOT_USERNAME, botId: botId || null }));
 
 // Separate Admin Route (/admin -> admin.html)
@@ -663,9 +686,20 @@ bot.on('message', async (ctx, next) => {
                 usedAt: now
             });
 
+            // Fetch group photo if available
+            let groupPhoto = null;
+            try {
+                const chatDetails = await bot.telegram.getChat(chatId);
+                if (chatDetails?.photo?.small_file_id) {
+                    const link = await bot.telegram.getFileLink(chatDetails.photo.small_file_id);
+                    groupPhoto = link.href || link.toString();
+                }
+            } catch (e) {}
+
             // Save group details
             const senderTgId = (ctx.from?.id && ctx.from.id !== 1087968824) ? ctx.from.id.toString() : (codeData.ownerTelegramId || "owner");
             const groupData = {
+                photo: groupPhoto,
                 id: chatId.toString(),
                 title: ctx.chat.title || "Telegram Group",
                 type: ctx.chat.type,
@@ -1590,6 +1624,7 @@ app.post('/api/tg/user-communities', async (req, res) => {
                 const item = {
                     id: gid,
                     title: g.title || "Community",
+                    photo: g.photo || `/api/tg/chat-photo/${gid}`,
                     type: g.type || "supergroup",
                     isChannel: g.type === 'channel',
                     isBotConnected: true,
@@ -1658,7 +1693,7 @@ app.post('/api/tg/get-settings', async (req, res) => {
         const settings = await getChatSettings(chatId);
         const groupSnap = await db.ref(`groups/${chatId}`).once('value');
         const g = groupSnap.val() || {};
-        res.json({ success: true, settings, claim_code: g.claim_code || g.connect_code || null });
+        res.json({ success: true, settings, claim_code: g.claim_code || g.connect_code || null, photo: g.photo || `/api/tg/chat-photo/${chatId}` });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
