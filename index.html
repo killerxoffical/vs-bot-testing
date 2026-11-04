@@ -394,434 +394,431 @@
 
                 <main class="flex-1 h-full overflow-y-auto pane-scroll p-5 md:p-8 space-y-6">
 
-                    <!-- TAB 1: SECURITY -->
+                    <!-- TAB 1: SECURITY - SEPARATE DISTINCT CARD BOXES -->
                     <div id="tabContent-security" class="space-y-6 max-w-5xl">
-                        <div class="light-card p-6 md:p-8 rounded-2xl space-y-8">
-                            
-                            <!-- 1. Emoji Spam Protection -->
-                            <div class="section-divider space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-brand-600 flex items-center justify-center">
-                                            <i data-lucide="smile" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Emoji Spam Protection</h4>
-                                            <p class="text-xs text-slate-500">Deletes pure emoji spam (messages with text + emojis are always allowed)</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleEmojiSpam" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                                </div>
 
-                                <!-- Triple Settings Row: Limit, Reply, Auto-Delete -->
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                                    <!-- Max Pure Emojis Allowed -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <label class="text-[11px] font-bold text-slate-700">Max Pure Emojis:</label>
-                                            <span class="text-[9px] font-mono font-bold text-brand-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">0 = Ban All</span>
-                                        </div>
-                                        <input id="emojiMaxCount" type="number" min="0" max="50" value="0" oninput="updateEmojiPreview()" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-brand-500">
-                                        <p class="text-[10px] text-slate-400 mt-1"><b>0</b> = ব্লক করবে যেকোনো ১টি ইমোজিও। <b>2</b> = ২টা পর্যন্ত এলাউ, ৩টা দিলে ব্লক। টেক্সটসহ ইমোজি কখনোই ব্লক হবে না।</p>
+                        <!-- 1. Emoji Spam Protection Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-indigo-50 text-brand-600 flex items-center justify-center">
+                                        <i data-lucide="smile" class="w-5 h-5"></i>
                                     </div>
-
-                                    <!-- Send Reply Toggle -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between">
-                                        <div class="flex items-center justify-between">
-                                            <div>
-                                                <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
-                                                <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
-                                            </div>
-                                            <input type="checkbox" id="toggleEmojiReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                        </div>
-                                        <p class="text-[10px] text-brand-600 font-semibold pt-1">বট গ্রুপে রিপ্লাই দিবে কিনা অন/অফ করুন</p>
-                                    </div>
-
-                                    <!-- Warning Auto-Delete Timer -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Warning Auto-Delete Timer:</label>
-                                        <select id="emojiAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="5" selected>5 Seconds</option>
-                                            <option value="10">10 Seconds</option>
-                                            <option value="3">3 Seconds</option>
-                                            <option value="0">Never Delete</option>
-                                        </select>
-                                        <p class="text-[10px] text-slate-400 mt-1">Warning cleans up automatically</p>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Emoji Spam Protection</h4>
+                                        <p class="text-xs text-slate-500">Deletes pure emoji spam (messages with text + emojis are always allowed)</p>
                                     </div>
                                 </div>
+                                <input type="checkbox" id="toggleEmojiSpam" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
 
-                                <!-- Textarea & Interactive Tag Pills -->
-                                <div>
+                            <!-- Triple Settings Row: Limit, Reply, Auto-Delete -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                                <!-- Max Pure Emojis Allowed -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
                                     <div class="flex items-center justify-between mb-1">
-                                        <label class="text-[11px] font-bold text-slate-600 uppercase">Warning Message Body:</label>
+                                        <label class="text-[11px] font-bold text-slate-700">Max Pure Emojis:</label>
+                                        <span class="text-[9px] font-mono font-bold text-brand-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">0 = Ban All</span>
                                     </div>
-                                    <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{mention}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{name}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{username}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{chat}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{count}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {count}</button>
-                                        <button type="button" onclick="insertTag('emojiWarningMsg', '{limit}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {limit}</button>
-                                    </div>
-                                    <textarea id="emojiWarningMsg" oninput="updateEmojiPreview()" rows="2" placeholder="⚠️ {mention}, sending standalone emoji messages without text is prohibited in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                                    <input id="emojiMaxCount" type="number" min="0" max="50" value="0" oninput="updateEmojiPreview()" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-brand-500">
+                                    <p class="text-[10px] text-slate-400 mt-1"><b>0</b> = ব্লক করবে যেকোনো ১টি ইমোজিও। <b>2</b> = ২টা পর্যন্ত এলাউ। টেক্সটসহ ইমোজি কখনোই ব্লক হবে না।</p>
                                 </div>
 
-                                <!-- Live Telegram Message Review -->
-                                <div id="emojiPreviewContainer"></div>
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveEmojiSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Emoji Policy</button>
-                                </div>
-                            </div>
-
-                            <!-- 2. Anti-Link Protection with Whitelist -->
-                            <div class="section-divider space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center">
-                                            <i data-lucide="link-2-off" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield & Whitelist</h4>
-                                            <p class="text-xs text-slate-500">Purges unauthorized links; allows your whitelisted bots and websites</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                                </div>
-
-                                <!-- Interactive Whitelist Builder (+ + item by item) -->
-                                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2">
+                                <!-- Send Reply Toggle -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between">
                                     <div class="flex items-center justify-between">
-                                        <label class="text-[11px] font-bold text-slate-700 block">
-                                            Allowed Link & Bot Whitelist (Allowlist)
-                                        </label>
-                                        <span class="text-[10px] text-slate-400">Users <b>CAN</b> share links/bots added here</span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="relative flex-1">
-                                            <i data-lucide="link" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                            <input id="newWhitelistInput" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();addWhitelistLink();}" placeholder="e.g. t.me/InfinityGuardofc_Bot or @mychannel or youtube.com" class="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400 outline-none focus:border-brand-500">
-                                        </div>
-                                        <button type="button" onclick="addWhitelistLink()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs shrink-0">
-                                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                                            <span>Add Whitelist</span>
-                                        </button>
-                                    </div>
-                                    <!-- Whitelist Chips Container -->
-                                    <div id="whitelistChipsContainer" class="flex flex-wrap gap-1.5 pt-1 min-h-[30px]"></div>
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <!-- Reply On / Off Toggle -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
                                         <div>
                                             <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
                                             <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
                                         </div>
-                                        <input type="checkbox" id="toggleAntiLinkReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                        <input type="checkbox" id="toggleEmojiReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
                                     </div>
-
-                                    <!-- Warning Auto-Delete Timer -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                                        <div>
-                                            <label class="text-[11px] font-bold text-slate-700 block">Warning Auto-Delete Timer:</label>
-                                            <p class="text-[10px] text-slate-400">Cleans up warning in group</p>
-                                        </div>
-                                        <select id="antiLinkAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="5" selected>5 Seconds</option>
-                                            <option value="10">10 Seconds</option>
-                                            <option value="0">Never Delete</option>
-                                        </select>
-                                    </div>
+                                    <p class="text-[10px] text-brand-600 font-semibold pt-1">বট গ্রুপে রিপ্লাই দিবে কিনা অন/অফ করুন</p>
                                 </div>
 
-                                <!-- Textarea & Tag Pills -->
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
-                                    <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{mention}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{name}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{username}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
-                                        <button type="button" onclick="insertTag('antiLinkMsg', '{chat}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
-                                    </div>
-                                    <textarea id="antiLinkMsg" oninput="updateAntiLinkPreview()" rows="2" placeholder="⚠️ {mention}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
-                                </div>
-
-                                <!-- Live Telegram Message Review -->
-                                <div id="antiLinkPreviewContainer"></div>
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveAntiLinkSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Link Policy</button>
+                                <!-- Warning Auto-Delete Timer -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Warning Auto-Delete Timer:</label>
+                                    <select id="emojiAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="5" selected>5 Seconds</option>
+                                        <option value="10">10 Seconds</option>
+                                        <option value="3">3 Seconds</option>
+                                        <option value="0">Never Delete</option>
+                                    </select>
+                                    <p class="text-[10px] text-slate-400 mt-1">Warning cleans up automatically</p>
                                 </div>
                             </div>
 
-                            <!-- 3. Anti-Forward Protection -->
-                            <div class="section-divider space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                            <i data-lucide="share-2" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Anti-Forward Protection</h4>
-                                            <p class="text-xs text-slate-500">Deletes messages forwarded from other channels, groups, or bots</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            <!-- Textarea & Interactive Tag Pills -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="text-[11px] font-bold text-slate-600 uppercase">Warning Message Body:</label>
                                 </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <!-- Reply On / Off Toggle -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                                        <div>
-                                            <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
-                                            <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
-                                        </div>
-                                        <input type="checkbox" id="toggleAntiForwardReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                    </div>
-
-                                    <!-- Warning Auto-Delete Timer -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                                        <div>
-                                            <label class="text-[11px] font-bold text-slate-700 block">Warning Auto-Delete Timer:</label>
-                                            <p class="text-[10px] text-slate-400">Cleans up warning in group</p>
-                                        </div>
-                                        <select id="antiForwardAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="5" selected>5 Seconds</option>
-                                            <option value="10">10 Seconds</option>
-                                            <option value="0">Never Delete</option>
-                                        </select>
-                                    </div>
+                                <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{mention}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{name}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{username}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{chat}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{count}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {count}</button>
+                                    <button type="button" onclick="insertTag('emojiWarningMsg', '{limit}', updateEmojiPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {limit}</button>
                                 </div>
-
-                                <!-- Textarea & Tag Pills -->
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
-                                    <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{mention}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{name}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{username}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
-                                        <button type="button" onclick="insertTag('antiForwardMsg', '{chat}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
-                                    </div>
-                                    <textarea id="antiForwardMsg" oninput="updateAntiForwardPreview()" rows="2" placeholder="⚠️ {mention}, forwarded messages are not permitted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
-                                </div>
-
-                                <!-- Live Telegram Message Review -->
-                                <div id="antiForwardPreviewContainer"></div>
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveAntiForwardSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Forward Policy</button>
-                                </div>
+                                <textarea id="emojiWarningMsg" oninput="updateEmojiPreview()" rows="2" placeholder="⚠️ {mention}, sending standalone emoji messages without text is prohibited in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
                             </div>
 
-                            <!-- 4. Anti-Button Messages Shield -->
-                            <div class="section-divider space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                                            <i data-lucide="mouse-pointer-click" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Anti-Button Messages Shield</h4>
-                                            <p class="text-xs text-slate-500">Purges messages with interactive inline buttons and bot share buttons</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleAntiButton" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                                </div>
+                            <!-- Live Telegram Message Review -->
+                            <div id="emojiPreviewContainer"></div>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveEmojiSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Emoji Policy</button>
+                            </div>
+                        </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <!-- Reply On / Off Toggle -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                                        <div>
-                                            <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
-                                            <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
-                                        </div>
-                                        <input type="checkbox" id="toggleAntiButtonReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
+                        <!-- 2. Anti-Link Protection with Whitelist Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                                        <i data-lucide="link-2-off" class="w-5 h-5"></i>
                                     </div>
-
-                                    <!-- Warning Auto-Delete Timer -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
-                                        <div>
-                                            <label class="text-[11px] font-bold text-slate-700 block">Warning Auto-Delete Timer:</label>
-                                            <p class="text-[10px] text-slate-400">Cleans up warning in group</p>
-                                        </div>
-                                        <select id="antiButtonAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="5" selected>5 Seconds</option>
-                                            <option value="10">10 Seconds</option>
-                                            <option value="0">Never Delete</option>
-                                        </select>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Anti-Link Shield & Whitelist</h4>
+                                        <p class="text-xs text-slate-500">Purges unauthorized links; allows your whitelisted bots and websites</p>
                                     </div>
                                 </div>
-
-                                <!-- Textarea & Tag Pills -->
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
-                                    <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
-                                        <button type="button" onclick="insertTag('antiButtonMsg', '{mention}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('antiButtonMsg', '{name}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
-                                        <button type="button" onclick="insertTag('antiButtonMsg', '{username}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
-                                        <button type="button" onclick="insertTag('antiButtonMsg', '{chat}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
-                                    </div>
-                                    <textarea id="antiButtonMsg" oninput="updateAntiButtonPreview()" rows="2" placeholder="⚠️ {mention}, messages containing interactive buttons are blocked in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
-                                </div>
-
-                                <!-- Live Telegram Message Review -->
-                                <div id="antiButtonPreviewContainer"></div>
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveAntiButtonSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Button Policy</button>
-                                </div>
+                                <input type="checkbox" id="toggleAntiLink" class="w-5 h-5 accent-brand-600 cursor-pointer">
                             </div>
 
-                            <!-- 5. Fake Admin & Impersonation Shield (ভুয়া অ্যাডমিন প্রোটেকশন) -->
-                            <div class="section-divider space-y-4">
+                            <!-- Interactive Whitelist Builder (+ + item by item) -->
+                            <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2">
                                 <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
-                                            <i data-lucide="user-x" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Fake Admin & Impersonation Shield</h4>
-                                            <p class="text-xs text-slate-500">Bans non-admin members having "admin", "owner", etc. in their display name or username from chatting</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleFakeAdmin" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                                    <label class="text-[11px] font-bold text-slate-700 block">
+                                        Allowed Link & Bot Whitelist (হোয়াইটলিস্ট)
+                                    </label>
+                                    <span class="text-[10px] text-slate-400">Users <b>CAN</b> share links/bots added here</span>
                                 </div>
-
-                                <!-- Protected Names Keywords Builder with (+) chips -->
-                                <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2">
-                                    <div class="flex items-center justify-between">
-                                        <label class="text-[11px] font-bold text-slate-700 block">
-                                            Protected Admin Names & Keywords
-                                        </label>
-                                        <span class="text-[10px] text-slate-400">Regular members with these words in their name/username cannot chat</span>
+                                <div class="flex items-center gap-2">
+                                    <div class="relative flex-1">
+                                        <i data-lucide="link" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input id="newWhitelistInput" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();addWhitelistLink();}" placeholder="e.g. t.me/InfinityGuardofc_Bot or @mychannel or youtube.com" class="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400 outline-none focus:border-brand-500">
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <div class="relative flex-1">
-                                            <i data-lucide="shield-alert" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                            <input id="newFakeAdminKeywordInput" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();addFakeAdminKeyword();}" placeholder="e.g. admin, owner, support, ceo, mod, official" class="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400 outline-none focus:border-brand-500">
-                                        </div>
-                                        <button type="button" onclick="addFakeAdminKeyword()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer">
-                                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                                            <span>Add Name</span>
-                                        </button>
-                                    </div>
-                                    <!-- Chips Container -->
-                                    <div id="fakeAdminChipsContainer" class="flex flex-wrap gap-1.5 pt-1 min-h-[30px]"></div>
-                                </div>
-
-                                <!-- Controls Row: Delete Option, Reply ON/OFF Toggle, Auto-Delete Timer -->
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <!-- Message Action (Delete Message) -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Action on Message:</label>
-                                        <select id="fakeAdminDeleteOption" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="delete" selected>🗑️ Delete Message</option>
-                                            <option value="none">👁️ Keep Message (Notice only)</option>
-                                        </select>
-                                        <p class="text-[10px] text-slate-400 mt-1">Deletes message instantly if member impersonates admin</p>
-                                    </div>
-
-                                    <!-- Reply On / Off Toggle -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between">
-                                        <div class="flex items-center justify-between">
-                                            <div>
-                                                <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
-                                                <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
-                                            </div>
-                                            <input type="checkbox" id="toggleFakeAdminReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
-                                        </div>
-                                        <p class="text-[10px] text-brand-600 font-semibold pt-1">বট গ্রুপে সতর্কবার্তা পাঠাবে কিনা অন/অফ করুন</p>
-                                    </div>
-
-                                    <!-- Warning Auto-Delete Timer -->
-                                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Warning Auto-Delete Timer:</label>
-                                        <select id="fakeAdminAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
-                                            <option value="5" selected>5 Seconds</option>
-                                            <option value="10">10 Seconds</option>
-                                            <option value="3">3 Seconds</option>
-                                            <option value="0">Never Delete</option>
-                                        </select>
-                                        <p class="text-[10px] text-slate-400 mt-1">Warning cleans up automatically</p>
-                                    </div>
-                                </div>
-
-                                <!-- Textarea & Tag Pills -->
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
-                                    <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
-                                        <button type="button" onclick="insertTag('fakeAdminMsg', '{mention}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
-                                        <button type="button" onclick="insertTag('fakeAdminMsg', '{name}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
-                                        <button type="button" onclick="insertTag('fakeAdminMsg', '{username}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
-                                        <button type="button" onclick="insertTag('fakeAdminMsg', '{chat}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
-                                        <button type="button" onclick="insertTag('fakeAdminMsg', '{word}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {word}</button>
-                                    </div>
-                                    <textarea id="fakeAdminMsg" oninput="updateFakeAdminPreview()" rows="2" placeholder="⚠️ {mention}, using protected title '{word}' in your name or username is prohibited in {chat}! Please remove '{word}' to chat." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
-                                </div>
-
-                                <!-- Live Telegram Message Review -->
-                                <div id="fakeAdminPreviewContainer"></div>
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveFakeAdminSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Fake Admin Policy</button>
-                                </div>
-                            </div>
-
-
-                            <!-- 5. Emergency Chat Lockdown -->
-                            <div class="space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                                            <i data-lucide="lock" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Emergency Chat Lockdown</h4>
-                                            <p class="text-xs text-slate-500">Mutes messaging for regular members and broadcasts announcement</p>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
-                                </div>
-                                <div>
-                                    <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Message:</label>
-                                    <textarea id="chatLockMsg" rows="2" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
-                                </div>
-                                <div class="flex justify-end gap-2">
-                                    <button type="button" onclick="saveChatLockSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Lock Policy</button>
-                                    <button type="button" onclick="broadcastLockState()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
-                                        <span>Apply & Broadcast</span>
+                                    <button type="button" onclick="addWhitelistLink()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                        <span>Add Whitelist</span>
                                     </button>
                                 </div>
+                                <!-- Whitelist Chips Container -->
+                                <div id="whitelistChipsContainer" class="flex flex-wrap gap-1.5 pt-1 min-h-[30px]"></div>
                             </div>
 
-                            <!-- 6. Member Name Change Tracker -->
-                            <div class="section-divider space-y-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
-                                            <i data-lucide="user-check" class="w-4 h-4"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-bold text-slate-900">Member Name Change Detection (নাম পরিবর্তন ট্র্যাকার)</h4>
-                                            <p class="text-xs text-slate-500">মেম্বার টেলিগ্রামে নাম বদল করলে স্বয়ংক্রিয় নোটিফিকেশন পাঠাবে (১০ সেকেন্ড পর অটো-মুছে যাবে)</p>
-                                        </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <!-- Reply On / Off Toggle -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
+                                        <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
                                     </div>
-                                    <input type="checkbox" id="toggleNameTracker" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                                    <input type="checkbox" id="toggleAntiLinkReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
                                 </div>
-                                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 leading-relaxed">
-                                    💡 <b>কীভাবে কাজ করে:</b> গ্রুপের কোনো মেম্বার টেলিগ্রামে তার প্রোফাইলের নাম পরিবর্তন করলে বট আগের নাম এবং বর্তমান নাম উল্লেখ করে একটি সিকিউরিটি অ্যালার্ট পাঠাবে। কেউ নাম পরিবর্তন না করলে কোনো অ্যালার্ট যাবে না।
-                                </div>
-                                <div class="flex justify-end">
-                                    <button type="button" onclick="saveNameTrackerSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Name Tracker Policy</button>
+
+                                <!-- Warning Auto-Delete Timer -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-700 block">Warning Auto-Delete Timer:</label>
+                                        <p class="text-[10px] text-slate-400">Cleans up warning in group</p>
+                                    </div>
+                                    <select id="antiLinkAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="5" selected>5 Seconds</option>
+                                        <option value="10">10 Seconds</option>
+                                        <option value="0">Never Delete</option>
+                                    </select>
                                 </div>
                             </div>
 
-                        </div>
-                    </div>
+                            <!-- Textarea & Tag Pills -->
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
+                                <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{mention}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{name}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{username}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
+                                    <button type="button" onclick="insertTag('antiLinkMsg', '{chat}', updateAntiLinkPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                </div>
+                                <textarea id="antiLinkMsg" oninput="updateAntiLinkPreview()" rows="2" placeholder="⚠️ {mention}, external links are restricted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                            </div>
 
-                    <!-- Broadcast Studio Tab -->
+                            <!-- Live Telegram Message Review -->
+                            <div id="antiLinkPreviewContainer"></div>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveAntiLinkSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Link Policy</button>
+                            </div>
+                        </div>
+
+                        <!-- 3. Anti-Forward Protection Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                        <i data-lucide="share-2" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Anti-Forward Protection</h4>
+                                        <p class="text-xs text-slate-500">Deletes messages forwarded from other channels, groups, or bots</p>
+                                    </div>
+                                </div>
+                                <input type="checkbox" id="toggleAntiForward" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <!-- Reply On / Off Toggle -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
+                                        <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
+                                    </div>
+                                    <input type="checkbox" id="toggleAntiForwardReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                </div>
+
+                                <!-- Warning Auto-Delete Timer -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-700 block">Warning Auto-Delete Timer:</label>
+                                        <p class="text-[10px] text-slate-400">Cleans up warning in group</p>
+                                    </div>
+                                    <select id="antiForwardAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="5" selected>5 Seconds</option>
+                                        <option value="10">10 Seconds</option>
+                                        <option value="0">Never Delete</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Textarea & Tag Pills -->
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
+                                <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                    <button type="button" onclick="insertTag('antiForwardMsg', '{mention}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('antiForwardMsg', '{name}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                    <button type="button" onclick="insertTag('antiForwardMsg', '{username}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
+                                    <button type="button" onclick="insertTag('antiForwardMsg', '{chat}', updateAntiForwardPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                </div>
+                                <textarea id="antiForwardMsg" oninput="updateAntiForwardPreview()" rows="2" placeholder="⚠️ {mention}, forwarded messages are not permitted in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                            </div>
+
+                            <!-- Live Telegram Message Review -->
+                            <div id="antiForwardPreviewContainer"></div>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveAntiForwardSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Forward Policy</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. Anti-Button Protection Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                                        <i data-lucide="mouse-pointer-click" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Anti-Button Messages Shield</h4>
+                                        <p class="text-xs text-slate-500">Purges messages with interactive inline buttons and bot share buttons</p>
+                                    </div>
+                                </div>
+                                <input type="checkbox" id="toggleAntiButton" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <!-- Reply On / Off Toggle -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
+                                        <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
+                                    </div>
+                                    <input type="checkbox" id="toggleAntiButtonReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                </div>
+
+                                <!-- Warning Auto-Delete Timer -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <div>
+                                        <label class="text-[11px] font-bold text-slate-700 block">Warning Auto-Delete Timer:</label>
+                                        <p class="text-[10px] text-slate-400">Cleans up warning in group</p>
+                                    </div>
+                                    <select id="antiButtonAutoDelete" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="5" selected>5 Seconds</option>
+                                        <option value="10">10 Seconds</option>
+                                        <option value="0">Never Delete</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Textarea & Tag Pills -->
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
+                                <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                    <button type="button" onclick="insertTag('antiButtonMsg', '{mention}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('antiButtonMsg', '{name}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                    <button type="button" onclick="insertTag('antiButtonMsg', '{username}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
+                                    <button type="button" onclick="insertTag('antiButtonMsg', '{chat}', updateAntiButtonPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-purple-50 hover:text-purple-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                </div>
+                                <textarea id="antiButtonMsg" oninput="updateAntiButtonPreview()" rows="2" placeholder="⚠️ {mention}, messages containing interactive buttons are blocked in {chat}!" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                            </div>
+
+                            <!-- Live Telegram Message Review -->
+                            <div id="antiButtonPreviewContainer"></div>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveAntiButtonSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Anti-Button Policy</button>
+                            </div>
+                        </div>
+
+                        <!-- 5. Fake Admin & Impersonation Shield Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                                        <i data-lucide="user-x" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Fake Admin & Impersonation Shield</h4>
+                                        <p class="text-xs text-slate-500">Bans non-admin members having "admin", "owner", etc. in their display name or username from chatting</p>
+                                    </div>
+                                </div>
+                                <input type="checkbox" id="toggleFakeAdmin" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <!-- Protected Names Keywords Builder with (+) chips -->
+                            <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-[11px] font-bold text-slate-700 block">
+                                        Protected Admin Names & Keywords
+                                    </label>
+                                    <span class="text-[10px] text-slate-400">Regular members with these words in their name/username cannot chat</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <div class="relative flex-1">
+                                        <i data-lucide="shield-alert" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                        <input id="newFakeAdminKeywordInput" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();addFakeAdminKeyword();}" placeholder="e.g. admin, owner, support, ceo, mod, official" class="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs font-bold text-slate-800 placeholder:font-normal placeholder:text-slate-400 outline-none focus:border-brand-500">
+                                    </div>
+                                    <button type="button" onclick="addFakeAdminKeyword()" class="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                        <span>Add Name</span>
+                                    </button>
+                                </div>
+                                <!-- Chips Container -->
+                                <div id="fakeAdminChipsContainer" class="flex flex-wrap gap-1.5 pt-1 min-h-[30px]"></div>
+                            </div>
+
+                            <!-- Controls Row: Delete Option, Reply ON/OFF Toggle, Auto-Delete Timer -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <!-- Message Action (Delete Message) -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Action on Message:</label>
+                                    <select id="fakeAdminDeleteOption" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="delete" selected>🗑️ Delete Message</option>
+                                        <option value="none">👁️ Keep Message (Notice only)</option>
+                                    </select>
+                                    <p class="text-[10px] text-slate-400 mt-1">Deletes message instantly if member impersonates admin</p>
+                                </div>
+
+                                <!-- Reply On / Off Toggle -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <label class="text-[11px] font-bold text-slate-700 block">Send Warning Reply:</label>
+                                            <p class="text-[10px] text-slate-400">Silent delete if OFF</p>
+                                        </div>
+                                        <input type="checkbox" id="toggleFakeAdminReply" checked class="w-4 h-4 accent-brand-600 cursor-pointer">
+                                    </div>
+                                    <p class="text-[10px] text-brand-600 font-semibold pt-1">বট গ্রুপে সতর্কবার্তা পাঠাবে কিনা অন/অফ করুন</p>
+                                </div>
+
+                                <!-- Warning Auto-Delete Timer -->
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Warning Auto-Delete Timer:</label>
+                                    <select id="fakeAdminAutoDelete" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="5" selected>5 Seconds</option>
+                                        <option value="10">10 Seconds</option>
+                                        <option value="3">3 Seconds</option>
+                                        <option value="0">Never Delete</option>
+                                    </select>
+                                    <p class="text-[10px] text-slate-400 mt-1">Warning cleans up automatically</p>
+                                </div>
+                            </div>
+
+                            <!-- Textarea & Tag Pills -->
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Warning Message Body:</label>
+                                <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                    <button type="button" onclick="insertTag('fakeAdminMsg', '{mention}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('fakeAdminMsg', '{name}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                    <button type="button" onclick="insertTag('fakeAdminMsg', '{username}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
+                                    <button type="button" onclick="insertTag('fakeAdminMsg', '{chat}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                    <button type="button" onclick="insertTag('fakeAdminMsg', '{word}', updateFakeAdminPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {word}</button>
+                                </div>
+                                <textarea id="fakeAdminMsg" oninput="updateFakeAdminPreview()" rows="2" placeholder="⚠️ {mention}, using protected title '{word}' in your name or username is prohibited in {chat}! Please remove '{word}' to chat." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                            </div>
+
+                            <!-- Live Telegram Message Review -->
+                            <div id="fakeAdminPreviewContainer"></div>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveFakeAdminSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Fake Admin Policy</button>
+                            </div>
+                        </div>
+
+                        <!-- 6. Member Name Change Detection Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                                        <i data-lucide="user-check" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Member Name Change Detection (নাম পরিবর্তন ট্র্যাকার)</h4>
+                                        <p class="text-xs text-slate-500">মেম্বার টেলিগ্রামে নাম বদল করলে স্বয়ংক্রিয় নোটিফিকেশন পাঠাবে (১০ সেকেন্ড পর অটো-মুছে যাবে)</p>
+                                    </div>
+                                </div>
+                                <input type="checkbox" id="toggleNameTracker" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+                            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 leading-relaxed">
+                                💡 <b>কীভাবে কাজ করে:</b> গ্রুপের কোনো মেম্বার টেলিগ্রামে তার প্রোফাইলের নাম পরিবর্তন করলে বট আগের নাম এবং বর্তমান নাম উল্লেখ করে একটি সিকিউরিটি অ্যালার্ট পাঠাবে। কেউ নাম পরিবর্তন না করলে কোনো অ্যালার্ট যাবে না।
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveNameTrackerSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Name Tracker Policy</button>
+                            </div>
+                        </div>
+
+                        <!-- 7. Emergency Chat Lockdown Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                        <i data-lucide="lock" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900">Emergency Chat Lockdown (গ্রুপ লকডাউন)</h4>
+                                        <p class="text-xs text-slate-500">সাধারণ মেম্বারদের মেসেজ পাঠানো বন্ধ করে দেয় এবং অ্যাডমিনদের ঘোষণা সম্প্রচার করে</p>
+                                    </div>
+                                </div>
+                                <input type="checkbox" id="toggleChatLock" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Lockdown Announcement Message:</label>
+                                <textarea id="chatLockMsg" oninput="updateChatLockPreview()" rows="2" placeholder="🔒 This conversation has been temporarily muted by community administrators." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none"></textarea>
+                            </div>
+                            <!-- Live Telegram Message Review -->
+                            <div id="chatLockPreviewContainer"></div>
+                            <div class="flex justify-end gap-2 pt-1">
+                                <button type="button" onclick="saveChatLockSection()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">Save Lock Policy</button>
+                                <button type="button" onclick="broadcastLockState()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                                    <span>Apply & Broadcast</span>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div><!-- Broadcast Studio Tab -->
                     <div id="tabContent-broadcast" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
                             <div class="border-b border-slate-100 pb-3">
@@ -830,12 +827,14 @@
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Header Image URL (Optional):</label>
-                                <input id="broadcastPhotoUrl" type="url" placeholder="https://example.com/announcement.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none">
+                                <input id="broadcastPhotoUrl" oninput="updateBroadcastPreview()" type="url" placeholder="https://example.com/announcement.jpg" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 outline-none">
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-700 uppercase block mb-1">Announcement Message Body:</label>
-                                <textarea id="broadcastText" rows="3" placeholder="📢 Attention Members! Important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
+                                <textarea id="broadcastText" oninput="updateBroadcastPreview()" rows="3" placeholder="📢 Attention Members! Important announcement..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"></textarea>
                             </div>
+                            <!-- Live Telegram Message Review -->
+                            <div id="broadcastPreviewContainer"></div>
                             <div class="flex justify-end">
                                 <button type="button" onclick="sendGroupBroadcast()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
                                     <i data-lucide="send" class="w-3.5 h-3.5"></i>
@@ -924,7 +923,7 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
                                     <div class="sm:col-span-5">
                                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Trigger Keyword</label>
-                                        <input id="newReplyTrigger" type="text" placeholder="e.g. price, rules" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <input id="newReplyTrigger" oninput="updateAutoReplyPreview()" type="text" placeholder="e.g. price, rules" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none">
                                     </div>
                                     <div class="sm:col-span-4">
                                         <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Sender Role</label>
@@ -942,9 +941,21 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[9px] font-bold text-slate-500 uppercase block mb-1">Bot Response</label>
-                                    <textarea id="newReplyResponse" rows="2" placeholder="Hi {name}, here are details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-[9px] font-bold text-slate-500 uppercase block">Bot Response</label>
+                                    </div>
+                                    <!-- Interactive Tag Pills Bar -->
+                                    <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-white rounded-lg border border-slate-200">
+                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{mention}', updateAutoReplyPreview)" class="tag-pill px-2 py-0.5 bg-slate-50 hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{name}', updateAutoReplyPreview)" class="tag-pill px-2 py-0.5 bg-slate-50 hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{username}', updateAutoReplyPreview)" class="tag-pill px-2 py-0.5 bg-slate-50 hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {username}</button>
+                                        <button type="button" onclick="insertTag('newReplyResponse', '{chat}', updateAutoReplyPreview)" class="tag-pill px-2 py-0.5 bg-slate-50 hover:bg-indigo-50 hover:text-brand-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                    </div>
+                                    <textarea id="newReplyResponse" oninput="updateAutoReplyPreview()" rows="2" placeholder="Hi {name}, here are details..." class="w-full bg-white border border-slate-300 rounded-xl p-2 text-xs text-slate-800 outline-none"></textarea>
                                 </div>
+                                <!-- Live Telegram Message Review for Auto-Replies -->
+                                <div id="autoReplyPreviewContainer"></div>
                             </div>
                             <div id="autoRepliesList" class="space-y-2"></div>
                             <div class="flex justify-end pt-2">
@@ -1001,9 +1012,11 @@
                                             বট কী অ্যাকশন নিবে (Action on User Message) <span class="text-rose-500">*</span>
                                         </label>
                                         <select id="newBanDeleteOption" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-brand-500 transition">
-                                            <option value="delete_reply" selected>🗑️ ডিলিট করবে এবং ওয়ার্নিং রিপ্লাই দিবে (Delete & Warn)</option>
-                                            <option value="silent_delete">🔇 সাইলেন্টলি ডিলিট করবে, কোনো রিপ্লাই দিবে না (Silent Delete)</option>
-                                            <option value="warn_only">👁️ মেসেজ রেখে শুধু ওয়ার্নিং রিপ্লাই দিবে (Warn Only)</option>
+                                            <option value="delete_warn" selected>🗑️⚠️ ডিলিট করবে এবং ওয়ার্নিং কাউন্ট বাড়াবে (Delete & Warn)</option>
+                                            <option value="delete_note">🗑️💬 শুধু ডিলিট ও সতর্কবার্তা দিবে, নো ওয়ার্নিং (Delete & Note, No Warn)</option>
+                                            <option value="only_delete">🗑️🔇 শুধুমাত্র মেসেজ ডিলিট করবে, কোনো রিপ্লাই বা ওয়ার্নিং নয় (Only Delete)</option>
+                                            <option value="warn_only">👁️⚠️ মেসেজ ডিলিট করবে না, শুধু ওয়ার্নিং দিবে (Warn Only)</option>
+                                            <option value="note_only">👁️💬 মেসেজ ডিলিট করবে না, শুধু সতর্কবার্তা দিবে (Note Only)</option>
                                         </select>
                                         <p class="text-[10px] text-slate-400 mt-1">ইউজার নিষিদ্ধ শব্দ লিখলে মেসেজ ডিলিট ও ওয়ার্নিং কীভাবে দিবে তা নির্ধারণ করুন।</p>
                                     </div>
@@ -2094,6 +2107,24 @@
             renderLiveTelegramPreview('antiButtonPreviewContainer', { text });
         }
 
+        
+        function updateChatLockPreview() {
+            const text = document.getElementById('chatLockMsg')?.value || "🔒 This conversation has been temporarily muted by community administrators.";
+            renderLiveTelegramPreview('chatLockPreviewContainer', { text });
+        }
+
+        function updateBroadcastPreview() {
+            const text = document.getElementById('broadcastText')?.value || "📢 Attention Members! Important announcement...";
+            const photoUrl = document.getElementById('broadcastPhotoUrl')?.value || "";
+            renderLiveTelegramPreview('broadcastPreviewContainer', { text, photoUrl });
+        }
+
+        function updateAutoReplyPreview() {
+            const trigger = document.getElementById('newReplyTrigger')?.value || "rules";
+            const text = document.getElementById('newReplyResponse')?.value || "Hi {name}, here are details...";
+            renderLiveTelegramPreview('autoReplyPreviewContainer', { text: '[Trigger: /' + trigger + ']\n\n' + text });
+        }
+
         function updateBanNotePreview() {
             const text = document.getElementById('newBanNoteInput')?.value || "⚠️ {mention}, prohibited word '{word}' detected in {chat}!";
             renderLiveTelegramPreview('banTextPreviewContainer', { text });
@@ -3175,26 +3206,42 @@ function saveEmojiSection() {
                 return Swal.fire('Invalid Input', 'Please enter valid words or phrases.', 'warning');
             }
 
-            const deleteOption = document.getElementById('newBanDeleteOption')?.value || 'delete_reply';
+            const deleteOption = document.getElementById('newBanDeleteOption')?.value || 'delete_warn';
             const note = document.getElementById('newBanNoteInput')?.value.trim() || "⚠️ {mention}, prohibited word '{word}' detected in {chat}!";
             const autoDelete = parseInt(document.getElementById('newBanAutoDelete')?.value || 5);
 
+            let action = 'delete_warn';
             let deleteMessage = true;
             let deleteMode = 'single';
             let sendReply = true;
             let silent = false;
 
-            if (deleteOption === 'delete_reply') {
+            if (deleteOption === 'delete_warn' || deleteOption === 'delete_reply') {
+                action = 'delete_warn';
                 deleteMessage = true;
                 deleteMode = 'single';
                 sendReply = true;
                 silent = false;
-            } else if (deleteOption === 'silent_delete') {
+            } else if (deleteOption === 'delete_note') {
+                action = 'delete_note';
+                deleteMessage = true;
+                deleteMode = 'single';
+                sendReply = true;
+                silent = false;
+            } else if (deleteOption === 'only_delete' || deleteOption === 'silent_delete') {
+                action = 'only_delete';
                 deleteMessage = true;
                 deleteMode = 'single';
                 sendReply = false;
                 silent = true;
             } else if (deleteOption === 'warn_only') {
+                action = 'warn_only';
+                deleteMessage = false;
+                deleteMode = 'none';
+                sendReply = true;
+                silent = false;
+            } else if (deleteOption === 'note_only') {
+                action = 'note_only';
                 deleteMessage = false;
                 deleteMode = 'none';
                 sendReply = true;
@@ -3208,6 +3255,7 @@ function saveEmojiSection() {
                         ...banRulesList[ruleIdx],
                         words,
                         text: words.join(', '),
+                        action,
                         deleteOption,
                         deleteMessage,
                         deleteMode,
@@ -3228,6 +3276,7 @@ function saveEmojiSection() {
                     id: 'rule_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                     words,
                     text: words.join(', '),
+                    action,
                     deleteOption,
                     deleteMessage,
                     deleteMode,
@@ -3280,6 +3329,9 @@ function saveEmojiSection() {
             document.getElementById('newBanWordsInput').focus();
             updateBanNotePreview();
                 updateBanSystemPreview();
+                updateChatLockPreview();
+                updateBroadcastPreview();
+                updateAutoReplyPreview();
             lucide.createIcons();
         }
 

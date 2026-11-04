@@ -1307,8 +1307,18 @@ bot.on('message', async (ctx, next) => {
             }
 
             if (matchedRule) {
-                // Delete user message or keep it: "message delete kore ba na kore user ja be oitai dekhabe"
-                const shouldDelete = matchedRule.deleteMessage !== false && matchedRule.deleteMode !== 'none';
+                // Determine exact action
+                const rawAction = matchedRule.action || matchedRule.deleteOption || settings.badWords.action || 'delete_warn';
+                const isOnlyDelete = ['only_delete', 'silent_delete', 'delete'].includes(rawAction);
+                const isDeleteNote = rawAction === 'delete_note';
+                const isDeleteWarn = ['delete_warn', 'delete_reply', 'warn'].includes(rawAction);
+                const isWarnOnly = rawAction === 'warn_only';
+                const isNoteOnly = rawAction === 'note_only';
+                const isDirectBan = rawAction === 'ban';
+
+                const shouldDelete = matchedRule.deleteMessage !== false && !isWarnOnly && !isNoteOnly;
+                const shouldReply = matchedRule.sendReply !== false && !matchedRule.silent && !isOnlyDelete;
+                const isWarningAction = isDeleteWarn || isWarnOnly;
 
                 if (shouldDelete) {
                     await ctx.deleteMessage().catch(() => {});
@@ -1321,12 +1331,24 @@ bot.on('message', async (ctx, next) => {
                     }
                 }
 
-                // Infraction action: warn / ban / delete
-                const action = matchedRule.action || settings.badWords.action || 'warn';
-                const warnLimit = parseInt(settings.warnLimit || 3);
-                let currentWarns = 0;
+                if (isDirectBan) {
+                    await ctx.banChatMember(userId).catch(() => {});
+                    if (!settings.banSystem?.silent) {
+                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed from {chat}.")
+                            .replace(/{mention}/g, userMention)
+                            .replace(/{user}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
+                            .replace(/{chat}/g, ctx.chat.title || "Community");
+                        ctx.replyWithMarkdown(banMsg).catch(() => {});
+                    }
+                    return;
+                }
 
-                if (action === 'warn') {
+                let currentWarns = 0;
+                const warnLimit = parseInt(settings.warnLimit || 3);
+
+                if (isWarningAction) {
                     const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
                     const snap = await warnRef.once('value');
                     currentWarns = (snap.val() || 0) + 1;
@@ -1350,57 +1372,43 @@ bot.on('message', async (ctx, next) => {
                         }
                         return;
                     }
-                } else if (action === 'ban') {
-                    await ctx.banChatMember(userId).catch(() => {});
-                    if (!settings.banSystem?.silent) {
-                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed from {chat}.")
-                            .replace(/{mention}/g, userMention)
-                            .replace(/{user}/g, userMention)
-                            .replace(/{name}/g, fullName)
-                            .replace(/{username}/g, usernameTag)
-                            .replace(/{chat}/g, ctx.chat.title || "Community");
-                        ctx.replyWithMarkdown(banMsg).catch(() => {});
+                }
+
+                // If shouldReply is true, send the note/warning message
+                if (shouldReply) {
+                    const noteTemplate = matchedRule.note || matchedRule.customMsg || settings.badWords.customMsg || "⚠️ {mention}, prohibited text '{word}' detected in {chat}!";
+                    let formattedNotice = noteTemplate
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{user}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title || "Community")
+                        .replace(/{word}/g, matchedWord)
+                        .replace(/{warns}/g, currentWarns)
+                        .replace(/{count}/g, currentWarns)
+                        .replace(/{warn_limit}/g, warnLimit)
+                        .replace(/{limit}/g, warnLimit);
+
+                    // If this rule is a warning action, append warning count if not in template:
+                    if (isWarningAction && !noteTemplate.includes('{warns}') && !noteTemplate.includes('{count}')) {
+                        formattedNotice += `\n⚠️ *Warning:* \`${currentWarns}/${warnLimit}\``;
                     }
-                    return;
-                }
 
-                // Send the custom note/reply to user
-                const noteTemplate = matchedRule.note || matchedRule.customMsg || settings.badWords.customMsg || "⚠️ {mention}, prohibited text '{word}' detected in {chat}!";
-                let formattedNotice = noteTemplate
-                    .replace(/{mention}/g, userMention)
-                    .replace(/{user}/g, userMention)
-                    .replace(/{name}/g, fullName)
-                    .replace(/{username}/g, usernameTag)
-                    .replace(/{chat}/g, ctx.chat.title || "Community")
-                    .replace(/{word}/g, matchedWord)
-                    .replace(/{warns}/g, currentWarns)
-                    .replace(/{count}/g, currentWarns)
-                    .replace(/{warn_limit}/g, warnLimit)
-                    .replace(/{limit}/g, warnLimit);
-
-                // If this is a warning action and user didn't include warn counts in their template, append it clearly:
-                if (action === 'warn' && !noteTemplate.includes('{warns}') && !noteTemplate.includes('{count}')) {
-                    formattedNotice += `\n⚠️ *Warning:* \`${currentWarns}/${warnLimit}\``;
-                }
-
-                let warningMsgSent = null;
-                const isReplyEnabled = matchedRule.sendReply !== false && !matchedRule.silent;
-                if (isReplyEnabled && formattedNotice) {
                     let replyExtra = { parse_mode: 'Markdown' };
                     if (!shouldDelete && ctx.message?.message_id) {
                         replyExtra.reply_to_message_id = ctx.message.message_id;
                     }
-                    warningMsgSent = await ctx.replyWithMarkdown(formattedNotice, replyExtra).catch(async () => {
+                    const warningMsgSent = await ctx.replyWithMarkdown(formattedNotice, replyExtra).catch(async () => {
                         return await ctx.reply(formattedNotice, replyExtra).catch(() => {});
                     });
-                }
 
-                // Auto delete the bot note after configured seconds
-                const deleteSec = parseInt(matchedRule.autoDeleteSeconds ?? settings.badWords.autoDeleteSeconds ?? 6);
-                if (deleteSec > 0 && warningMsgSent && warningMsgSent.message_id) {
-                    setTimeout(() => {
-                        ctx.deleteMessage(warningMsgSent.message_id).catch(() => {});
-                    }, deleteSec * 1000);
+                    // Auto delete the bot note after configured seconds
+                    const deleteSec = parseInt(matchedRule.autoDeleteSeconds ?? settings.badWords.autoDeleteSeconds ?? 6);
+                    if (deleteSec > 0 && warningMsgSent && warningMsgSent.message_id) {
+                        setTimeout(() => {
+                            ctx.deleteMessage(warningMsgSent.message_id).catch(() => {});
+                        }, deleteSec * 1000);
+                    }
                 }
 
                 return;
@@ -2218,6 +2226,83 @@ app.get('/api/admin/system-stats', async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+
+// Super Admin Global Broadcast to All Connected Communities
+app.post('/api/admin/broadcast-all', async (req, res) => {
+    const { text, photoUrl, buttons, btnText, btnUrl } = req.body;
+    try {
+        if (!text && !photoUrl) {
+            return res.status(400).json({ error: "Announcement text or image URL is required." });
+        }
+
+        const groupsSnap = await db.ref('groups').once('value');
+        const botsSnap = await db.ref('connected_bots').once('value');
+
+        const allGroups = groupsSnap.val() || {};
+        const allBots = botsSnap.val() || {};
+
+        const targetChatIds = new Set();
+
+        for (const gid of Object.keys(allGroups)) {
+            if (gid && (gid.startsWith('-') || !isNaN(gid))) {
+                targetChatIds.add(gid);
+            }
+        }
+        for (const gid of Object.keys(allBots)) {
+            if (allBots[gid]?.connected !== false && (gid.startsWith('-') || !isNaN(gid))) {
+                targetChatIds.add(gid);
+            }
+        }
+
+        const chatList = Array.from(targetChatIds);
+        if (chatList.length === 0) {
+            return res.json({ success: true, message: "No connected communities found.", total: 0, sent: 0, failed: 0 });
+        }
+
+        let buttonList = Array.isArray(buttons) ? buttons : [];
+        if (buttonList.length === 0 && btnText && btnUrl) {
+            buttonList = [{ text: btnText.trim(), url: btnUrl.trim() }];
+        }
+
+        const keyboard = buildInlineButtons(buttonList);
+        const extra = { parse_mode: 'Markdown' };
+        if (keyboard) extra.reply_markup = keyboard.reply_markup;
+
+        const validPhoto = (photoUrl || "").trim();
+        const isPhoto = validPhoto && (validPhoto.startsWith('http://') || validPhoto.startsWith('https://'));
+
+        let sent = 0;
+        let failed = 0;
+        const errors = [];
+
+        for (const chatId of chatList) {
+            try {
+                if (isPhoto) {
+                    await bot.telegram.sendPhoto(chatId, validPhoto, { caption: text || "", ...extra });
+                } else {
+                    await bot.telegram.sendMessage(chatId, text, extra);
+                }
+                sent++;
+            } catch (err) {
+                failed++;
+                errors.push({ chatId, error: err.message });
+            }
+            await new Promise(r => setTimeout(r, 60));
+        }
+
+        res.json({
+            success: true,
+            message: `Global broadcast finished! Successfully dispatched to ${sent} communities (${failed} failed).`,
+            total: chatList.length,
+            sent,
+            failed,
+            errors
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message || "Failed to execute global broadcast." });
     }
 });
 
