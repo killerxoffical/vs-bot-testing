@@ -747,21 +747,40 @@ bot.on('message', async (ctx, next) => {
         const userMention = `[${fullName}](tg://user?id=${userId})`;
         const usernameTag = ctx.from?.username ? `@${ctx.from.username}` : fullName;
 
-        // Name Change Tracker
-        if (settings.nameTracker?.enabled !== false && ctx.from) {
+        // Name Change Tracker (Avoid false alarms on legacy data, bots, or unchanged names)
+        if (settings.nameTracker?.enabled !== false && ctx.from && !ctx.from.is_bot && ctx.chat?.type !== 'channel') {
             const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
             const snap = await userHistoryRef.once('value');
-            const storedName = snap.val();
+            const stored = snap.val();
 
-            if (storedName && storedName !== fullName) {
+            // Extract string from legacy object or string
+            let previousName = null;
+            if (typeof stored === 'string') {
+                previousName = stored.trim();
+            } else if (stored && typeof stored === 'object') {
+                previousName = (stored.currentName || stored.name || '').trim();
+            }
+
+            const currentName = fullName.trim();
+
+            // Only notify if there is a real, recorded previous name and it is ACTUALLY DIFFERENT from current name
+            if (previousName && currentName && previousName !== currentName && !['Group', 'Channel', 'Member'].includes(currentName)) {
                 ctx.replyWithMarkdown(
                     `📝 *[SECURITY: NAME CHANGE DETECTED]*\n` +
-                    `Member: [${fullName}](tg://user?id=${userId})\n` +
-                    `🔄 *Previous Name:* \`${storedName}\`\n` +
-                    `✨ *Updated Name:* \`${fullName}\``
-                ).catch(() => {});
+                    `👤 Member: [${currentName}](tg://user?id=${userId})\n` +
+                    `🔄 *Previous Name:* \`${previousName}\`\n` +
+                    `✨ *Updated Name:* \`${currentName}\``
+                ).then(alertMsg => {
+                    if (alertMsg && alertMsg.message_id) {
+                        setTimeout(() => ctx.deleteMessage(alertMsg.message_id).catch(() => {}), 10000);
+                    }
+                }).catch(() => {});
             }
-            await userHistoryRef.set(fullName);
+
+            // Always update history with the current clean string
+            if (!previousName || previousName !== currentName) {
+                await userHistoryRef.set(currentName).catch(() => {});
+            }
         }
 
         // Scammer Alert
@@ -817,25 +836,158 @@ bot.on('message', async (ctx, next) => {
 
             if (cmd === '/ban' && isAdmin) {
                 let targetUser = ctx.message.reply_to_message?.from;
-                if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/ban` to execute removal.");
+                if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/ban` to execute removal.", { reply_to_message_id: ctx.message.message_id });
 
                 await ctx.banChatMember(targetUser.id).catch(() => {});
+                await db.ref(`groups/${chatId}/warns/${targetUser.id}`).remove().catch(() => {});
                 const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
                 const tMention = `[${tName}](tg://user?id=${targetUser.id})`;
                 const tUsername = targetUser.username ? `@${targetUser.username}` : tName;
 
-                if (!settings.banSystem?.silent && settings.banSystem?.msg) {
-                    const banNotice = settings.banSystem.msg
+                if (!settings.banSystem?.silent) {
+                    const warnLimit = parseInt(settings.warnLimit || 3);
+                    const defaultBanMsg = "⛔ {mention} has been permanently removed from {chat}.";
+                    const banNotice = (settings.banSystem?.msg || defaultBanMsg)
                         .replace(/{mention}/g, tMention)
                         .replace(/{user}/g, tMention)
                         .replace(/{name}/g, tName)
                         .replace(/{username}/g, tUsername)
-                        .replace(/{chat}/g, ctx.chat.title)
-                        .replace(/{admin}/g, fullName);
+                        .replace(/{chat}/g, ctx.chat.title || "Community")
+                        .replace(/{admin}/g, fullName)
+                        .replace(/{warns}/g, warnLimit)
+                        .replace(/{count}/g, warnLimit)
+                        .replace(/{warn_limit}/g, warnLimit)
+                        .replace(/{limit}/g, warnLimit);
 
-                    return ctx.replyWithMarkdown(banNotice);
+                    return ctx.replyWithMarkdown(banNotice).catch(async () => {
+                        await ctx.reply(banNotice).catch(() => {});
+                    });
                 }
                 return;
+            }
+
+            // /warn Command (Admin only: Issue infraction warning)
+            if (cmd === '/warn' && isAdmin) {
+                let targetUser = ctx.message.reply_to_message?.from;
+                if (!targetUser) {
+                    return ctx.reply("⚠️ Reply to a member's message with `/warn [optional reason]` to issue an infraction warning.", { reply_to_message_id: ctx.message.message_id });
+                }
+                if (targetUser.is_bot) {
+                    return ctx.reply("⚠️ You cannot issue warnings to bots.", { reply_to_message_id: ctx.message.message_id });
+                }
+                const targetRole = await getUserRole(ctx, targetUser.id);
+                if (['owner', 'admin'].includes(targetRole)) {
+                    return ctx.reply("⚠️ Administrators and community owners cannot be warned.", { reply_to_message_id: ctx.message.message_id });
+                }
+
+                const reason = parts.slice(1).join(' ').trim();
+                const targetId = targetUser.id;
+                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name || 'Member';
+                const tMention = `[${tName}](tg://user?id=${targetId})`;
+
+                const warnLimit = parseInt(settings.warnLimit || 3);
+                const warnRef = db.ref(`groups/${chatId}/warns/${targetId}`);
+                const snap = await warnRef.once('value');
+                const currentWarns = (snap.val() || 0) + 1;
+
+                if (currentWarns >= warnLimit) {
+                    await ctx.banChatMember(targetId).catch(() => {});
+                    await warnRef.remove().catch(() => {});
+                    const banMsg = !settings.banSystem?.silent && settings.banSystem?.msg
+                        ? settings.banSystem.msg
+                            .replace(/{mention}/g, tMention)
+                            .replace(/{user}/g, tMention)
+                            .replace(/{name}/g, tName)
+                            .replace(/{username}/g, targetUser.username ? `@${targetUser.username}` : tName)
+                            .replace(/{chat}/g, ctx.chat.title || "Community")
+                            .replace(/{admin}/g, fullName)
+                            .replace(/{warns}/g, currentWarns)
+                            .replace(/{count}/g, currentWarns)
+                            .replace(/{warn_limit}/g, warnLimit)
+                            .replace(/{limit}/g, warnLimit)
+                        : `⛔ *[MAXIMUM WARNINGS REACHED]*\n👤 Member: ${tMention}\n📊 Infractions: \`${currentWarns}/${warnLimit}\`\n🔨 Action: **Permanently Banned from ${ctx.chat.title || 'Community'}**`;
+
+                    return ctx.replyWithMarkdown(banMsg).catch(async () => {
+                        await ctx.reply(banMsg).catch(() => {});
+                    });
+                } else {
+                    await warnRef.set(currentWarns);
+                    return ctx.replyWithMarkdown(
+                        `⚠️ *[MEMBER WARNED]*\n` +
+                        `👤 Member: ${tMention}\n` +
+                        `📊 Infractions: \`${currentWarns}/${warnLimit}\`${reason ? `\n📝 Reason: \`${reason}\`` : ''}\n` +
+                        `⏳ Member will be banned at \`${warnLimit}\` warnings.`
+                    ).catch(async () => {
+                        await ctx.reply(`⚠️ Member ${tName} warned (${currentWarns}/${warnLimit}).`).catch(() => {});
+                    });
+                }
+            }
+
+            // /unwarn Command (Admin only: Remove 1 infraction warning)
+            if (cmd === '/unwarn' && isAdmin) {
+                let targetUser = ctx.message.reply_to_message?.from;
+                if (!targetUser) {
+                    return ctx.reply("⚠️ Reply to a member's message with `/unwarn` to remove an infraction warning.", { reply_to_message_id: ctx.message.message_id });
+                }
+                const targetId = targetUser.id;
+                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name || 'Member';
+                const tMention = `[${tName}](tg://user?id=${targetId})`;
+
+                const warnLimit = parseInt(settings.warnLimit || 3);
+                const warnRef = db.ref(`groups/${chatId}/warns/${targetId}`);
+                const snap = await warnRef.once('value');
+                let currentWarns = Math.max(0, (snap.val() || 0) - 1);
+
+                if (currentWarns === 0) {
+                    await warnRef.remove().catch(() => {});
+                } else {
+                    await warnRef.set(currentWarns);
+                }
+
+                return ctx.replyWithMarkdown(
+                    `✅ *[WARNING REMOVED]*\n` +
+                    `👤 Member: ${tMention}\n` +
+                    `📊 Current Infractions: \`${currentWarns}/${warnLimit}\``
+                ).catch(() => {});
+            }
+
+            // /resetwarns Command (Admin only: Reset user's infractions to 0)
+            if (cmd === '/resetwarns' && isAdmin) {
+                let targetUser = ctx.message.reply_to_message?.from;
+                if (!targetUser) {
+                    return ctx.reply("⚠️ Reply to a member's message with `/resetwarns` to reset their infraction record.", { reply_to_message_id: ctx.message.message_id });
+                }
+                const targetId = targetUser.id;
+                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name || 'Member';
+                const tMention = `[${tName}](tg://user?id=${targetId})`;
+
+                const warnLimit = parseInt(settings.warnLimit || 3);
+                await db.ref(`groups/${chatId}/warns/${targetId}`).remove().catch(() => {});
+
+                return ctx.replyWithMarkdown(
+                    `🔄 *[WARNINGS CLEARED]*\n` +
+                    `👤 Member: ${tMention}\n` +
+                    `📊 Infractions reset to: \`0/${warnLimit}\``
+                ).catch(() => {});
+            }
+
+            // /warns Command (Check active infractions)
+            if (cmd === '/warns') {
+                let targetUser = ctx.message.reply_to_message?.from || ctx.from;
+                const targetId = targetUser.id;
+                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name || 'Member';
+                const tMention = `[${tName}](tg://user?id=${targetId})`;
+
+                const warnLimit = parseInt(settings.warnLimit || 3);
+                const snap = await db.ref(`groups/${chatId}/warns/${targetId}`).once('value');
+                const currentWarns = snap.val() || 0;
+
+                return ctx.replyWithMarkdown(
+                    `📊 *[COMMUNITY INFRACTION STATUS]*\n` +
+                    `👤 Member: ${tMention}\n` +
+                    `⚠️ Active Warnings: \`${currentWarns}/${warnLimit}\``,
+                    { reply_to_message_id: ctx.message.message_id }
+                ).catch(() => {});
             }
 
             // Custom Slash Commands Engine (Configured from Web Dashboard)
@@ -1169,14 +1321,67 @@ bot.on('message', async (ctx, next) => {
                     }
                 }
 
+                // Infraction action: warn / ban / delete
+                const action = matchedRule.action || settings.badWords.action || 'warn';
+                const warnLimit = parseInt(settings.warnLimit || 3);
+                let currentWarns = 0;
+
+                if (action === 'warn') {
+                    const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
+                    const snap = await warnRef.once('value');
+                    currentWarns = (snap.val() || 0) + 1;
+                    await warnRef.set(currentWarns);
+
+                    if (currentWarns >= warnLimit) {
+                        await ctx.banChatMember(userId).catch(() => {});
+                        await warnRef.remove().catch(() => {});
+                        if (!settings.banSystem?.silent) {
+                            const banMsg = (settings.banSystem?.msg || "⛔ {mention} has reached the maximum warning limit ({count}/{limit}) and has been permanently removed from {chat}.")
+                                .replace(/{mention}/g, userMention)
+                                .replace(/{user}/g, userMention)
+                                .replace(/{name}/g, fullName)
+                                .replace(/{username}/g, usernameTag)
+                                .replace(/{chat}/g, ctx.chat.title || "Community")
+                                .replace(/{warns}/g, currentWarns)
+                                .replace(/{count}/g, currentWarns)
+                                .replace(/{warn_limit}/g, warnLimit)
+                                .replace(/{limit}/g, warnLimit);
+                            ctx.replyWithMarkdown(banMsg).catch(() => {});
+                        }
+                        return;
+                    }
+                } else if (action === 'ban') {
+                    await ctx.banChatMember(userId).catch(() => {});
+                    if (!settings.banSystem?.silent) {
+                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed from {chat}.")
+                            .replace(/{mention}/g, userMention)
+                            .replace(/{user}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
+                            .replace(/{chat}/g, ctx.chat.title || "Community");
+                        ctx.replyWithMarkdown(banMsg).catch(() => {});
+                    }
+                    return;
+                }
+
                 // Send the custom note/reply to user
                 const noteTemplate = matchedRule.note || matchedRule.customMsg || settings.badWords.customMsg || "⚠️ {mention}, prohibited text '{word}' detected in {chat}!";
-                const formattedNotice = noteTemplate
+                let formattedNotice = noteTemplate
                     .replace(/{mention}/g, userMention)
+                    .replace(/{user}/g, userMention)
                     .replace(/{name}/g, fullName)
                     .replace(/{username}/g, usernameTag)
                     .replace(/{chat}/g, ctx.chat.title || "Community")
-                    .replace(/{word}/g, matchedWord);
+                    .replace(/{word}/g, matchedWord)
+                    .replace(/{warns}/g, currentWarns)
+                    .replace(/{count}/g, currentWarns)
+                    .replace(/{warn_limit}/g, warnLimit)
+                    .replace(/{limit}/g, warnLimit);
+
+                // If this is a warning action and user didn't include warn counts in their template, append it clearly:
+                if (action === 'warn' && !noteTemplate.includes('{warns}') && !noteTemplate.includes('{count}')) {
+                    formattedNotice += `\n⚠️ *Warning:* \`${currentWarns}/${warnLimit}\``;
+                }
 
                 let warningMsgSent = null;
                 const isReplyEnabled = matchedRule.sendReply !== false && !matchedRule.silent;
@@ -1196,38 +1401,6 @@ bot.on('message', async (ctx, next) => {
                     setTimeout(() => {
                         ctx.deleteMessage(warningMsgSent.message_id).catch(() => {});
                     }, deleteSec * 1000);
-                }
-
-                // Infraction action: warn / ban
-                const action = matchedRule.action || settings.badWords.action || 'delete';
-                const warnLimit = settings.warnLimit || 3;
-
-                if (action === 'warn') {
-                    const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
-                    const snap = await warnRef.once('value');
-                    const warns = (snap.val() || 0) + 1;
-                    await warnRef.set(warns);
-
-                    if (warns >= warnLimit) {
-                        await ctx.banChatMember(userId).catch(() => {});
-                        await warnRef.remove();
-                        if (!settings.banSystem?.silent) {
-                            const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
-                                .replace(/{mention}/g, usernameTag)
-                                .replace(/{name}/g, fullName)
-                                .replace(/{chat}/g, ctx.chat.title || "Community");
-                            ctx.replyWithMarkdown(banMsg).catch(() => {});
-                        }
-                    }
-                } else if (action === 'ban') {
-                    await ctx.banChatMember(userId).catch(() => {});
-                    if (!settings.banSystem?.silent) {
-                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
-                            .replace(/{mention}/g, usernameTag)
-                            .replace(/{name}/g, fullName)
-                            .replace(/{chat}/g, ctx.chat.title || "Community");
-                        ctx.replyWithMarkdown(banMsg).catch(() => {});
-                    }
                 }
 
                 return;
