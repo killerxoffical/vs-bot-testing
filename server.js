@@ -27,7 +27,7 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
-// Bot & Telegram Credentials
+// NEW UPDATED BOT TOKEN
 const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFy2RiubtlGSLOHIwR_I8f5XJVtjL5V0u4";
 let BOT_USERNAME = "Vareonprotection_bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
@@ -41,90 +41,63 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
-app.get('/ping', (req, res) => res.status(200).send("OK - Infinity Guard Engine Active"));
+app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
-// Admin Route
+// Separate Admin Route (/admin -> admin.html)
 app.get('/admin', (req, res) => {
     const p1 = path.join(__dirname, 'public', 'admin.html');
     const p2 = path.join(__dirname, 'admin.html');
     if (fs.existsSync(p1)) return res.sendFile(p1);
     if (fs.existsSync(p2)) return res.sendFile(p2);
-    res.status(404).send("<h2>admin.html not found.</h2>");
+    res.status(404).send("<h2>admin.html not found. Please upload admin.html to public/ folder.</h2>");
 });
 
-// Helper: Normalize Telegram Chat ID
-function normalizeChatId(rawId) {
-    if (!rawId) return "";
-    let s = rawId.toString().trim();
-    if (s.startsWith('-100')) return s;
-    if (s.startsWith('-')) {
-        let digits = s.substring(1);
-        if (digits.length >= 9) return `-100${digits}`;
-        return s;
-    }
-    return `-100${s}`;
-}
-
-// Time Duration Parser
-function parseDuration(str) {
-    if (!str) return null;
-    const match = str.trim().match(/^(\d+)([smhdw]?)$/i);
-    if (!match) return null;
-    const val = parseInt(match[1]);
-    const unit = (match[2] || 'm').toLowerCase();
-
-    switch (unit) {
-        case 's': return { seconds: val, text: `${val} second(s)` };
-        case 'm': return { seconds: val * 60, text: `${val} minute(s)` };
-        case 'h': return { seconds: val * 3600, text: `${val} hour(s)` };
-        case 'd': return { seconds: val * 86400, text: `${val} day(s)` };
-        case 'w': return { seconds: val * 604800, text: `${val} week(s)` };
-        default: return { seconds: val * 60, text: `${val} minute(s)` };
-    }
-}
-
 // =============================================================================
-// SUBSCRIPTION CHECKER WITH AUTO-RECOVERY
+// SUBSCRIPTION CHECKER WITH AUTO-OWNER RECOVERY
 // =============================================================================
 let subscriptionCache = {};
 
-async function isChatSubscriptionActive(rawChatId, ctx = null) {
-    const chatId = normalizeChatId(rawChatId);
+async function isChatSubscriptionActive(chatId, ctx = null) {
     const now = Date.now();
-
     if (subscriptionCache[chatId] && (now - subscriptionCache[chatId].cachedAt < 20000)) {
         return subscriptionCache[chatId].isActive;
     }
 
     try {
-        let ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
-        let ownerTgId = ownerSnap.val();
+        let sub = null;
 
-        if (!ownerTgId) {
-            let unNormSnap = await db.ref(`groups/${rawChatId}/merged_owner`).once('value');
-            ownerTgId = unNormSnap.val();
+        // 1. Check owner_user_id (from Google Auth & Connect Code)
+        let ownerUserIdSnap = await db.ref(`groups/${chatId}/owner_user_id`).once('value');
+        let ownerUserId = ownerUserIdSnap.val();
+        if (ownerUserId) {
+            const subUidSnap = await db.ref(`subscriptions/by_uid/${ownerUserId}`).once('value');
+            sub = subUidSnap.val();
+        }
+
+        // 2. Check merged_owner
+        if (!sub) {
+            let ownerSnap = await db.ref(`groups/${chatId}/merged_owner`).once('value');
+            let ownerTgId = ownerSnap.val();
+
+            // Auto-detect group creator if missing
+            if (!ownerTgId && ctx) {
+                try {
+                    const admins = await ctx.getChatAdministrators();
+                    const creator = admins.find(a => a.status === 'creator');
+                    if (creator && creator.user) {
+                        ownerTgId = creator.user.id.toString();
+                        await db.ref(`groups/${chatId}/merged_owner`).set(ownerTgId);
+                    }
+                } catch (e) {}
+            }
+
             if (ownerTgId) {
-                await db.ref(`groups/${chatId}/merged_owner`).set(ownerTgId);
+                const subSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
+                sub = subSnap.val();
             }
         }
 
-        if (!ownerTgId && ctx) {
-            try {
-                const admins = await ctx.getChatAdministrators();
-                const creator = admins.find(a => a.status === 'creator');
-                if (creator && creator.user) {
-                    ownerTgId = creator.user.id.toString();
-                    await db.ref(`groups/${chatId}/merged_owner`).set(ownerTgId);
-                }
-            } catch (e) {}
-        }
-
-        let sub = null;
-        if (ownerTgId) {
-            const subSnap = await db.ref(`subscriptions/${ownerTgId}`).once('value');
-            sub = subSnap.val();
-        }
-
+        // Check if any active user subscription exists
         if (!sub) {
             const allSubsSnap = await db.ref('subscriptions/by_uid').once('value');
             const allSubs = allSubsSnap.val() || {};
@@ -154,8 +127,8 @@ async function isChatSubscriptionActive(rawChatId, ctx = null) {
     }
 }
 
-async function getOwnerSubByChat(rawChatId) {
-    const active = await isChatSubscriptionActive(rawChatId);
+async function getOwnerSubByChat(chatId) {
+    const active = await isChatSubscriptionActive(chatId);
     if (!active) {
         return {
             hasSub: false,
@@ -173,61 +146,39 @@ const bot = new Telegraf(BOT_TOKEN);
 let chatSettingsCache = {};
 let botId = null;
 
-// NEW: Role Cache to prevent API Rate Limits and false deletions
-const roleCache = new Map();
-
+// Dynamically fetch and bind Bot Profile
 bot.telegram.getMe().then(info => {
     botId = info.id;
     BOT_USERNAME = info.username;
-    console.log(`[Infinity Guard] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
+    console.log(`[VS Protection] Telegraf Online: @${BOT_USERNAME} (ID: ${botId})`);
 }).catch(err => {
-    console.error("[Infinity Guard] BOT TOKEN ERROR:", err.message);
+    console.error("[VS Protection] BOT TOKEN ERROR: Please verify your token with @BotFather:", err.message);
 });
 
-async function getChatSettings(rawChatId) {
-    const chatId = normalizeChatId(rawChatId);
+async function getChatSettings(chatId) {
     if (chatSettingsCache[chatId]) return chatSettingsCache[chatId];
-
     try {
-        let snap = await db.ref(`groups/${chatId}/settings`).once('value');
-        let settings = snap.val();
-
-        if (!settings) {
-            let legacySnap = await db.ref(`groups/${rawChatId}/settings`).once('value');
-            settings = legacySnap.val();
-            if (settings) {
-                await db.ref(`groups/${chatId}/settings`).set(settings);
-            }
-        }
-
-        const defaultSettings = {
+        const snap = await db.ref(`groups/${chatId}/settings`).once('value');
+        const settings = snap.val() || {
             welcome: { enabled: true, photoUrl: "", text: "👋 Welcome {mention} to {chat}! Please adhere to our guidelines.", buttons: [], autoDeleteSeconds: 0 },
             goodbye: { enabled: true, text: "👋 Goodbye {mention}! We hope to see you again soon in {chat}.", autoDeleteSeconds: 10 },
             banSystem: { enabled: true, silent: false, msg: "⛔ {name} has been permanently removed from {chat}." },
-            
-            emojiSpam: { enabled: false, maxCount: 2, action: 'delete', silent: false, msg: "⚠️ {mention}, excessive emojis are prohibited ({count}/{limit})! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
-            antiLink: { enabled: false, action: 'delete', silent: false, whitelist: [], msg: "⚠️ {mention}, external links are restricted in this community! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
-            antiForward: { enabled: false, action: 'delete', silent: false, msg: "⚠️ {mention}, forwarded posts are not allowed in {chat}! Strikes: ({warns}/{warn_limit})", autoDeleteSeconds: 5 },
-            antiButton: { enabled: false, action: 'delete', silent: false, msg: "⚠️ {mention}, inline button spam is strictly prohibited in {chat}!", autoDeleteSeconds: 5 },
-            
-            badWords: { enabled: false, words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, inappropriate language is prohibited! Strike: ({warns}/{warn_limit})", autoDeleteSeconds: 6 },
-            
-            scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: {mention} is a CONFIRMED SCAMMER flagged by community administrators! Do not transact with this user.*" },
+            antiLink: { enabled: false, silent: false, msg: "⚠️ {mention}, external links are restricted in this community!" },
+            antiForward: { enabled: false, silent: false, msg: "⚠️ {mention}, forwarded messages are not permitted!" },
+            antiButton: { enabled: false, silent: false, msg: "⚠️ {mention}, messages containing interactive buttons are blocked!" },
+            emojiSpam: { enabled: false, mode: 'only_emoji', onlyEmoji: true, maxCount: 2, silent: false, msg: "⚠️ {mention}, sending standalone emoji messages without text is prohibited in {chat}!", autoDeleteSeconds: 5 },
+            badWords: { enabled: false, rules: [], words: [], action: 'delete', silent: false, customMsg: "⚠️ {mention}, prohibited text '{word}' detected in {chat}!", autoDeleteSeconds: 6 },
+            scammerAlert: { enabled: true, msg: "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*" },
             nameTracker: { enabled: true },
             leaveTracker: { enabled: true },
             commands: { bio: { enabled: true, role: 'all' } },
-            customCommands: {},
             autoReplies: {},
-            
             warnLimit: 3,
-            warnAction: 'ban',
             chatLocked: false,
             lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*"
         };
-
-        const merged = Object.assign({}, defaultSettings, settings || {});
-        chatSettingsCache[chatId] = merged;
-        return merged;
+        chatSettingsCache[chatId] = settings;
+        return settings;
     } catch (e) {
         return {};
     }
@@ -235,10 +186,7 @@ async function getChatSettings(rawChatId) {
 
 db.ref('groups').on('child_changed', (snap) => {
     const val = snap.val();
-    const normalizedKey = normalizeChatId(snap.key);
-    if (val && val.settings) {
-        chatSettingsCache[normalizedKey] = val.settings;
-    }
+    if (val && val.settings) chatSettingsCache[snap.key] = val.settings;
 });
 
 function buildInlineButtons(buttonsArray) {
@@ -252,178 +200,48 @@ function buildInlineButtons(buttonsArray) {
     return inlineRows.length > 0 ? Markup.inlineKeyboard(inlineRows) : null;
 }
 
-function countEmojis(message) {
-    let count = 0;
-    const text = message.text || message.caption || "";
-
+function countEmojis(str) {
+    if (!str) return 0;
     const emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F926}-\u{1F939}\u{1F1E6}-\u{1F1FF}]/gu;
-    const matches = text.match(emojiRegex);
-    if (matches) count += matches.length;
-
-    const entities = message.entities || message.caption_entities || [];
-    for (const ent of entities) {
-        if (ent.type === 'custom_emoji') count += 1;
-    }
-
-    return count;
+    const matches = str.match(emojiRegex);
+    return matches ? matches.length : 0;
 }
 
-function extractAllUrls(message) {
-    const urls = [];
-    const text = message.text || message.caption || "";
-    const entities = message.entities || message.caption_entities || [];
-
-    for (const ent of entities) {
-        if (ent.type === 'url') {
-            urls.push(text.substring(ent.offset, ent.offset + ent.length));
-        } else if (ent.type === 'text_link' && ent.url) {
-            urls.push(ent.url);
+function isOnlyEmoji(str, entities) {
+    if (!str || !str.trim()) return false;
+    // Strip emojis, variation selectors, zero-width joiners, skin tones, keycaps, flags, and whitespace
+    const emojiRegex = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F926}-\u{1F939}\u{1F1E6}-\u{1F1FF}\u{200D}\u{FE0F}\u{FE0E}\u{20E3}\s]/gu;
+    let stripped = str.replace(emojiRegex, '');
+    if (entities && Array.isArray(entities)) {
+        for (const ent of entities) {
+            if (ent.type === 'custom_emoji') {
+                const sub = str.substring(ent.offset, ent.offset + ent.length);
+                stripped = stripped.replace(sub, '');
+            }
         }
     }
-
-    const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
-    let match;
-    while ((match = linkRegex.exec(text)) !== null) {
-        urls.push(match[0]);
-    }
-
-    return urls;
+    const hasEmoji = /[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F926}-\u{1F939}\u{1F1E6}-\u{1F1FF}]/u.test(str) ||
+                     (entities && entities.some(e => e.type === 'custom_emoji'));
+    return Boolean(hasEmoji && stripped.trim().length === 0);
 }
 
-function isLinkWhitelisted(urlStr, whitelistArray) {
-    if (!Array.isArray(whitelistArray) || whitelistArray.length === 0) return false;
-    const cleanUrl = urlStr.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '');
-    return whitelistArray.some(domain => {
-        const cleanDomain = domain.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').trim();
-        return cleanDomain && cleanUrl.includes(cleanDomain);
-    });
-}
-
-function formatTemplateMessage(template, ctx, extra = {}) {
-    if (!template) return "";
-    const fromUser = ctx.from || {};
-    const fullName = `${fromUser.first_name || ''} ${fromUser.last_name || ''}`.trim() || fromUser.first_name || 'Member';
-    const userMention = `[${fullName}](tg://user?id=${fromUser.id || 0})`;
-    const usernameTag = fromUser.username ? `@${fromUser.username}` : fullName;
-    const chatTitle = ctx.chat?.title || "Community";
-    const userId = fromUser.id || "0";
-
-    return template
-        .replace(/{mention}/g, userMention)
-        .replace(/{user}/g, userMention)
-        .replace(/{name}/g, fullName)
-        .replace(/{username}/g, usernameTag)
-        .replace(/{id}/g, userId)
-        .replace(/{chat}/g, chatTitle)
-        .replace(/{warns}/g, extra.warns ?? '1')
-        .replace(/{warn_limit}/g, extra.warn_limit ?? '3')
-        .replace(/{count}/g, extra.count ?? '0')
-        .replace(/{limit}/g, extra.limit ?? '0');
-}
-
-async function handleStrikePunishment(ctx, chatId, userId, settings, violationLabel) {
-    const warnLimit = parseInt(settings.warnLimit || 3);
-    const warnAction = settings.warnAction || 'ban';
-    const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
-    const snap = await warnRef.once('value');
-    const currentWarns = (snap.val() || 0) + 1;
-
-    const fromUser = ctx.from || {};
-    const fullName = `${fromUser.first_name || ''} ${fromUser.last_name || ''}`.trim() || fromUser.first_name || 'Member';
-    const userMention = `[${fullName}](tg://user?id=${userId})`;
-
-    if (currentWarns >= warnLimit) {
-        await warnRef.remove();
-        if (warnAction === 'mute') {
-            await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
-            return ctx.replyWithMarkdown(`🔇 ${userMention} reached max infractions (\`${currentWarns}/${warnLimit}\`) for **${violationLabel}** and has been **muted**.`);
-        } else if (warnAction === 'kick') {
-            await ctx.banChatMember(userId).catch(() => {});
-            await ctx.unbanChatMember(userId).catch(() => {});
-            return ctx.replyWithMarkdown(`👢 ${userMention} reached max infractions (\`${currentWarns}/${warnLimit}\`) and has been **kicked**.`);
-        } else {
-            await ctx.banChatMember(userId).catch(() => {});
-            return ctx.replyWithMarkdown(`⛔ ${userMention} reached max infractions (\`${currentWarns}/${warnLimit}\`) for **${violationLabel}** and has been **permanently banned**.`);
-        }
-    } else {
-        await warnRef.set(currentWarns);
-        return currentWarns;
-    }
-}
-
-// SMART ADMIN CACHE ENGINE: Prevents Rate Limits and accidental admin message deletions
-async function getUserRole(ctx, chatId, userId) {
-    if (!userId) return 'member';
-    if (userId === 1087968824) return 'admin'; // Anonymous Admin Bot
-    if (ctx.senderChat && ctx.senderChat.id === ctx.chat.id) return 'owner'; // Sent as group
-    if (ctx.senderChat) return 'admin'; // Linked channel
-
-    const cacheKey = `${chatId}_${userId}`;
-    const cached = roleCache.get(cacheKey);
-    const now = Date.now();
-
-    if (cached && cached.expire > now) {
-        return cached.role;
-    }
-
-    try {
-        const member = await ctx.getChatMember(userId);
-        let role = 'member';
-        if (member.status === 'creator') role = 'owner';
-        else if (member.status === 'administrator') role = 'admin';
-
-        roleCache.set(cacheKey, { role, expire: now + 300000 }); // Cache for 5 mins
-        return role;
-    } catch (e) {
-        // If Telegram API fails due to rate limits, fallback to stale cache to prevent deleting admin msgs
-        if (cached) return cached.role;
-        return 'member';
-    }
-}
-
-// =============================================================================
-// TELEGRAM PRIVATE /START COMMAND
-// =============================================================================
-bot.start(async (ctx) => {
-    if (ctx.chat.type !== 'private') return;
-
-    try {
-        const portalUrlSnap = await db.ref('system/portal_url').once('value');
-        const portalUrl = portalUrlSnap.val() || "https://infinityguard.cloud";
-
-        const startMessage = 
-            `🛡 *Welcome to Infinity Guard Enterprise Security Cloud!*\n\n` +
-            `Infinity Guard is an autonomous, high-speed Telegram cyber-defense system engineered to protect high-traffic Groups & Broadcast Channels with granular policies and raid immunity.\n\n` +
-            `✨ *Core Defensive Capabilities:*\n` +
-            `• 🤖 *Anti-Button Bot Filter* (Blocks promotional userbots)\n` +
-            `• 🔄 *Anti-Forward Shield* (Purges external forwards)\n` +
-            `• 🔗 *External Link Whitelist* (Permits only verified URLs)\n` +
-            `• 😀 *Emoji Spam Purge* with custom infractions & mute\n` +
-            `• 🚨 *Scammer Blacklist* with automated warning banners\n` +
-            `• 📝 *Profile Alteration Audit* & Deep Dossier (\`/bio\`)\n` +
-            `• 📢 *Live Broadcast Studio* with photos & inline buttons\n\n` +
-            `💎 *Official Subscription Tiers:*\n` +
-            `• 🟢 *Starter (1 Chat):* ৳50 (~$0.39 USDT) / Month\n` +
-            `• 🔵 *Growth (5 Chats):* ৳200 (~$1.57 USDT) / Month\n` +
-            `• 🟣 *Pro Hub (15 Chats):* ৳450 (~$3.54 USDT) / Month\n` +
-            `• 👑 *Infinity Enterprise (Unlimited):* ৳750 (~$5.90 USDT) / Month\n\n` +
-            `👇 *Connect your communities and manage security via Cloud Console:*`;
-
-        const keyboard = Markup.inlineKeyboard([
-            [Markup.button.url("🌐 Access Infinity Guard Cloud", portalUrl)],
-            [Markup.button.url("💬 Contact Admin @Blackmoney54", "https://t.me/Blackmoney54")]
-        ]);
-
-        return ctx.replyWithMarkdown(startMessage, keyboard);
-    } catch (e) {
-        return ctx.reply("Welcome to Infinity Guard!");
-    }
+bot.start((ctx) => {
+    return ctx.replyWithMarkdown(
+        `👋 *Hello, ${ctx.from.first_name || 'Member'}!*\n\n` +
+        `I am *@${BOT_USERNAME}*, your enterprise Telegram community protection bot.\n\n` +
+        `🚀 *How to connect your group or channel:*\n` +
+        `1️⃣ Add me to your **Telegram Group** as an **Administrator**.\n` +
+        `2️⃣ Go to your Web Dashboard and click **Create Connect Code**.\n` +
+        `3️⃣ Send this command inside your group:\n` +
+        `   `/connect <YOUR_CODE>`\n\n` +
+        `🌐 *Dashboard:* Log in with Google to configure Ban Text rules, Emoji filters, and Security.`
+    );
 });
 
-// Welcome New Members
+// 1. Welcome New Members
 bot.on('new_chat_members', async (ctx) => {
     try {
-        const chatId = normalizeChatId(ctx.chat.id);
+        const chatId = ctx.chat.id;
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) return;
 
@@ -442,7 +260,6 @@ bot.on('new_chat_members', async (ctx) => {
                 .replace(/{user}/g, userMention)
                 .replace(/{name}/g, fullName)
                 .replace(/{username}/g, usernameTag)
-                .replace(/{id}/g, member.id)
                 .replace(/{chat}/g, ctx.chat.title || "Community");
 
             const keyboard = buildInlineButtons(settings.welcome.buttons);
@@ -470,10 +287,10 @@ bot.on('new_chat_members', async (ctx) => {
     } catch (err) {}
 });
 
-// Member Left Tracker
+// 2. Member Left Tracker
 bot.on('left_chat_member', async (ctx) => {
     try {
-        const chatId = normalizeChatId(ctx.chat.id);
+        const chatId = ctx.chat.id;
         const user = ctx.message.left_chat_member;
         if (!user || user.is_bot) return;
 
@@ -501,7 +318,6 @@ bot.on('left_chat_member', async (ctx) => {
                 .replace(/{user}/g, userMention)
                 .replace(/{name}/g, fullName)
                 .replace(/{username}/g, usernameTag)
-                .replace(/{id}/g, user.id)
                 .replace(/{chat}/g, ctx.chat.title || "Community");
 
             const sentGoodbye = await ctx.replyWithMarkdown(goodbyeMsg).catch(() => {});
@@ -513,114 +329,208 @@ bot.on('left_chat_member', async (ctx) => {
     } catch (e) {}
 });
 
-// Core Moderation, Slash Commands & Engine
+async function getUserRole(ctx, userId) {
+    try {
+        const member = await ctx.getChatMember(userId);
+        if (member.status === 'creator') return 'owner';
+        if (member.status === 'administrator') return 'admin';
+        return 'member';
+    } catch (e) {
+        return 'member';
+    }
+}
+
+// 3. Core Moderation Engine
 bot.on('message', async (ctx, next) => {
     try {
         if (!ctx.chat || ctx.chat.type === 'private') return next();
 
-        const chatId = normalizeChatId(ctx.chat.id);
+        const chatId = ctx.chat.id;
         const text = ctx.message.text || ctx.message.caption || "";
 
+        // Instant Health Check in Group: /ping
         if (text === '/ping') {
-            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Active & Guarding Community*`);
+            return ctx.replyWithMarkdown(`🏓 *Pong!*\n🤖 Bot: @${BOT_USERNAME}\n⚡ Status: *Operational & Guarding Community*`);
+        }
+
+        // Connect Community via Code: /connect <code>
+        if (text.startsWith('/connect') || text.startsWith('/pair') || text.startsWith('/bind') || (text.startsWith('/start') && text.includes('connect_'))) {
+            const parts = text.trim().split(/\s+/);
+            let inputCode = "";
+            if (parts[0].startsWith('/start') && parts[1]?.startsWith('connect_')) {
+                inputCode = parts[1].replace('connect_', '').trim().toUpperCase();
+            } else {
+                inputCode = (parts[1] || "").trim().toUpperCase();
+            }
+
+            if (!inputCode) {
+                return ctx.replyWithMarkdown("⚠️ *Please provide your connect code!*\n\nExample:\n`/connect VS-XXXXXX`\n\n_Generate your connect code from your Web Dashboard._");
+            }
+
+            // Verify sender is admin or creator
+            try {
+                const admins = await ctx.getChatAdministrators();
+                const senderAdmin = admins.find(a => a.user.id === ctx.from.id && ['creator', 'administrator'].includes(a.status));
+                if (!senderAdmin) {
+                    return ctx.reply("⚠️ Only group Administrators or Creators can link this community to a dashboard account.");
+                }
+            } catch (e) {
+                return ctx.reply("⚠️ Please ensure @" + BOT_USERNAME + " is promoted to Administrator before connecting.");
+            }
+
+            const codeSnap = await db.ref(`connect_codes/${inputCode}`).once('value');
+            const codeData = codeSnap.val();
+
+            if (!codeData) {
+                return ctx.reply("❌ Invalid connect code. Please verify the code generated from your Web Dashboard.");
+            }
+
+            // Enforce single-use: 1 code can NEVER be used for multiple groups!
+            if (codeData.used) {
+                return ctx.replyWithMarkdown(
+                    `❌ *This connect code has ALREADY been used for another group!*\n\n` +
+                    `Connected Group ID: (${codeData.usedInChatId || 'Unknown'})\n\n` +
+                    `_Each connect code is strictly single-use and connects only 1 group. Please generate a new code from your dashboard._`
+                );
+            }
+
+            if (codeData.expiresAt && Date.now() > codeData.expiresAt) {
+                return ctx.reply("❌ This connect code has expired. Please generate a new code from your Web Dashboard.");
+            }
+
+            const ownerUid = codeData.userId;
+            const subSnap = await db.ref(`subscriptions/by_uid/${ownerUid}`).once('value');
+            const sub = subSnap.val();
+
+            if (!sub) {
+                return ctx.reply("⚠️ The account linked to this connect code does not have an active subscription license. Please claim a license from the dashboard first.");
+            }
+
+            const now = Date.now();
+            const graceEndsAt = sub.graceEndsAt || (sub.expiresAt + 7 * 86400000);
+            if (now > graceEndsAt) {
+                return ctx.reply("⚠️ The subscription license linked to this account has expired. Please renew on the dashboard.");
+            }
+
+            // Enforce license community limit quota
+            const allGroupsSnap = await db.ref('groups').once('value');
+            const allGroups = allGroupsSnap.val() || {};
+            const userGroups = Object.keys(allGroups).filter(gid => allGroups[gid].owner_user_id === ownerUid && gid !== chatId.toString());
+            const maxAllowed = sub.maxCommunities || 1;
+
+            if (userGroups.length >= maxAllowed) {
+                return ctx.replyWithMarkdown(
+                    `⚠️ *Community Limit Reached!*\n\n` +
+                    `Your plan (*${sub.planName || 'Active License'}*) allows a maximum of *${maxAllowed}* communities.\n` +
+                    `You already have *${userGroups.length}* connected.\n\n` +
+                    `_Please upgrade your license or disconnect an unused group from your dashboard._`
+                );
+            }
+
+            // Mark code as used (consumed)
+            await db.ref(`connect_codes/${inputCode}`).update({
+                used: true,
+                usedInChatId: chatId.toString(),
+                usedAt: now
+            });
+
+            // Save group details
+            const groupData = {
+                id: chatId.toString(),
+                title: ctx.chat.title || "Telegram Group",
+                type: ctx.chat.type,
+                owner_user_id: ownerUid,
+                owner_email: codeData.userEmail || "",
+                merged_owner: ctx.from.id.toString(),
+                connected_at: now,
+                isBotConnected: true,
+                role: "Owner"
+            };
+
+            await db.ref(`groups/${chatId}`).update(groupData);
+            subscriptionCache[chatId] = { isActive: true, cachedAt: now };
+            if (chatSettingsCache[chatId]) chatSettingsCache[chatId] = null;
+
+            return ctx.replyWithMarkdown(
+                `🛡️ *[COMMUNITY CONNECTED SUCCESSFULLY]*\n\n` +
+                `🎉 *Congratulations!* This community has been securely connected to your account.\n\n` +
+                `👤 *Linked Owner:* \`${codeData.userEmail || 'Dashboard User'}\`\n` +
+                `🆔 *Community ID:* \`${chatId}\`\n` +
+                `📋 *Plan:* \`${sub.planName || 'Active License'}\` (${userGroups.length + 1}/${maxAllowed} used)\n` +
+                `⚡ *Protection Status:* *Active & Guarding*\n\n` +
+                `⚙️ *You can now configure Ban Text rules, Emoji filters, Anti-link shields, and Announcements directly from your dashboard!*\n\n` +
+                `_Powered by VS Protection Cloud_ 🔒`
+            );
         }
 
         const isSubActive = await isChatSubscriptionActive(chatId, ctx);
         if (!isSubActive) {
-            if (text.startsWith('/bio') || text.startsWith('/warn') || text.startsWith('/rules') || text.startsWith('/scam')) {
-                return ctx.reply("⚠️ Infinity Guard Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
+            // Helpful prompt if unlicensed
+            if (text.startsWith('/bio') || text.startsWith('/scam')) {
+                return ctx.reply("⚠️ VS Protection Bot is inactive in this community because there is no active subscription license. Please claim a license from the dashboard.");
             }
             return next();
         }
 
         const userId = ctx.from?.id;
         const settings = await getChatSettings(chatId);
-        
-        // Smart Admin Checking
-        const userRole = await getUserRole(ctx, chatId, userId);
+        const userRole = await getUserRole(ctx, userId);
         const isAdmin = ['owner', 'admin'].includes(userRole);
 
         const fullName = `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim() || (ctx.from ? ctx.from.first_name : 'Member');
         const userMention = `[${fullName}](tg://user?id=${userId})`;
-        const currentUsername = ctx.from?.username ? `@${ctx.from.username}` : '';
-        const usernameTag = currentUsername || fullName;
+        const usernameTag = ctx.from?.username ? `@${ctx.from.username}` : fullName;
 
-        // Profile Alteration Tracker
-        if (settings.nameTracker?.enabled !== false && ctx.from && userId) {
+        // Name Change Tracker
+        if (settings.nameTracker?.enabled !== false && ctx.from) {
             const userHistoryRef = db.ref(`groups/${chatId}/name_history/${userId}`);
             const snap = await userHistoryRef.once('value');
-            const stored = snap.val();
+            const storedName = snap.val();
 
-            if (stored && stored.currentName) {
-                const oldName = stored.currentName;
-                const oldUsername = stored.currentUsername || '';
-
-                const nameChanged = (oldName !== fullName);
-                const usernameChanged = (oldUsername !== currentUsername);
-
-                if (nameChanged || usernameChanged) {
-                    let alertText = `🚨 *[SECURITY ALERT: PROFILE ALTERATION DETECTED]*\n👤 *Member:* ${userMention}\n`;
-                    if (nameChanged) {
-                        alertText += `🔄 *Previous Name:* \`${oldName}\` ➔ ✨ *New Name:* \`${fullName}\`\n`;
-                    }
-                    if (usernameChanged) {
-                        alertText += `🔗 *Previous Username:* \`${oldUsername || 'None'}\` ➔ ✨ *New Username:* \`${currentUsername || 'None'}\`\n`;
-                    }
-                    alertText += `🕒 *Detected:* Just now`;
-
-                    ctx.replyWithMarkdown(alertText, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
-
-                    await userHistoryRef.update({
-                        currentName: fullName,
-                        currentUsername: currentUsername,
-                        previousName: oldName,
-                        previousUsername: oldUsername,
-                        lastChangedAt: Date.now()
-                    });
-                }
-            } else {
-                await userHistoryRef.set({
-                    currentName: fullName,
-                    currentUsername: currentUsername,
-                    initialSeenAt: Date.now()
-                });
+            if (storedName && storedName !== fullName) {
+                ctx.replyWithMarkdown(
+                    `📝 *[SECURITY: NAME CHANGE DETECTED]*\n` +
+                    `Member: [${fullName}](tg://user?id=${userId})\n` +
+                    `🔄 *Previous Name:* \`${storedName}\`\n` +
+                    `✨ *Updated Name:* \`${fullName}\``
+                ).catch(() => {});
             }
+            await userHistoryRef.set(fullName);
         }
 
-        // Scammer Live Warning Automation
+        // Scammer Alert
         const scammerSnap = await db.ref(`groups/${chatId}/scammers/${userId}`).once('value');
         if (scammerSnap.val()) {
-            const defaultScamNotice = "🚨 *SECURITY ALERT: {mention} is a CONFIRMED SCAMMER flagged by community administrators! Do not transact with this user.*";
-            const scamNoticeTemplate = settings.scammerAlert?.msg || defaultScamNotice;
-            const formattedScamNotice = formatTemplateMessage(scamNoticeTemplate, ctx);
-
-            ctx.replyWithMarkdown(formattedScamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
+            const scamNotice = settings.scammerAlert?.msg || "🚨 *SECURITY ALERT: This user has been flagged as a FRAUDSTER/SCAMMER by administrators!*";
+            ctx.replyWithMarkdown(scamNotice, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
         }
 
         // Auto-Reply Engine
-        if (text && settings.autoReplies && !text.startsWith('/')) {
+        if (text && settings.autoReplies && typeof settings.autoReplies === 'object') {
             const cleanText = text.trim().toLowerCase();
-            const repliesObj = settings.autoReplies;
-            const replyKeys = Object.keys(repliesObj);
+            const replyKeys = Object.keys(settings.autoReplies);
 
             for (const key of replyKeys) {
-                const rule = repliesObj[key];
+                const rule = settings.autoReplies[key];
                 if (!rule || !rule.trigger || !rule.response) continue;
 
                 const triggerWord = rule.trigger.trim().toLowerCase();
-                const regex = new RegExp(`(^|\\s|[^a-zA-Z0-9])${triggerWord}($|\\s|[^a-zA-Z0-9])`, 'i');
-                const isMatch = regex.test(cleanText) || cleanText === triggerWord;
-
-                if (isMatch) {
+                if (cleanText === triggerWord || cleanText.includes(triggerWord)) {
                     const target = rule.target || 'everyone';
                     let allowed = false;
 
                     if (target === 'everyone') allowed = true;
-                    else if (target === 'admin_owner' && isAdmin) allowed = true;
+                    else if (target === 'admin_owner' && (userRole === 'admin' || userRole === 'owner')) allowed = true;
                     else if (target === 'owner_only' && userRole === 'owner') allowed = true;
 
                     if (allowed) {
-                        const formattedReply = formatTemplateMessage(rule.response, ctx);
+                        const formattedReply = rule.response
+                            .replace(/{mention}/g, userMention)
+                            .replace(/{user}/g, userMention)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{username}/g, usernameTag)
+                            .replace(/{chat}/g, ctx.chat.title || "Community");
+
                         const keyboard = buildInlineButtons(rule.buttons);
                         const extra = { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' };
                         if (keyboard) extra.reply_markup = keyboard.reply_markup;
@@ -628,317 +538,142 @@ bot.on('message', async (ctx, next) => {
                         ctx.reply(formattedReply, extra).catch(async () => {
                             await ctx.reply(formattedReply, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
                         });
-                        break; // Stop after first match
+                        break;
                     }
                 }
             }
         }
 
-        // Slash Commands
+        // Commands
         if (text.startsWith('/')) {
             const parts = text.trim().split(/\s+/);
-            const cmd = parts[0].toLowerCase().replace(`@${BOT_USERNAME.toLowerCase()}`, '');
-            const targetRepliedUser = ctx.message.reply_to_message?.from;
+            const cmd = parts[0].toLowerCase().replace(`@${bot.botInfo?.username?.toLowerCase()}`, '');
 
-            // /bio
+            if (cmd === '/ban' && isAdmin) {
+                let targetUser = ctx.message.reply_to_message?.from;
+                if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/ban` to execute removal.");
+
+                await ctx.banChatMember(targetUser.id).catch(() => {});
+                const tName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
+                const tMention = `[${tName}](tg://user?id=${targetUser.id})`;
+                const tUsername = targetUser.username ? `@${targetUser.username}` : tName;
+
+                if (!settings.banSystem?.silent && settings.banSystem?.msg) {
+                    const banNotice = settings.banSystem.msg
+                        .replace(/{mention}/g, tMention)
+                        .replace(/{user}/g, tMention)
+                        .replace(/{name}/g, tName)
+                        .replace(/{username}/g, tUsername)
+                        .replace(/{chat}/g, ctx.chat.title)
+                        .replace(/{admin}/g, fullName);
+
+                    return ctx.replyWithMarkdown(banNotice);
+                }
+                return;
+            }
+
             if (cmd === '/bio') {
                 const bioRoleAllowed = settings.commands?.bio?.role || 'all';
                 if (bioRoleAllowed === 'owner' && userRole !== 'owner') return;
                 if (bioRoleAllowed === 'admin' && !isAdmin) return;
 
-                const targetUser = targetRepliedUser || ctx.from;
+                let targetUser = ctx.from;
+                if (ctx.message.reply_to_message && ctx.message.reply_to_message.from) {
+                    targetUser = ctx.message.reply_to_message.from;
+                }
+
                 const targetId = targetUser.id;
                 const targetFullName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || targetUser.first_name;
-                const targetRole = await getUserRole(ctx, chatId, targetId);
+                const targetRole = await getUserRole(ctx, targetId);
 
                 const warnSnap = await db.ref(`groups/${chatId}/warns/${targetId}`).once('value');
                 const warnsCount = warnSnap.val() || 0;
                 const isScammer = (await db.ref(`groups/${chatId}/scammers/${targetId}`).once('value')).val();
 
-                const histSnap = await db.ref(`groups/${chatId}/name_history/${targetId}`).once('value');
-                const histData = histSnap.val() || {};
-
-                let alterationSection = "✅ *No alteration recorded.*";
-                if (histData.lastChangedAt && histData.previousName) {
-                    const changeDate = new Date(histData.lastChangedAt).toLocaleString();
-                    alterationSection = 
-                        `⚠️ *Alteration Recorded on:* \`${changeDate}\`\n` +
-                        `🔄 *Previous Name:* \`${histData.previousName}\`\n` +
-                        `🔗 *Previous Username:* \`${histData.previousUsername || 'None'}\``;
-                }
-
                 const bioMessage = 
-                    `👤 *User Security Dossier — Infinity Guard*\n` +
-                    `━━━━━━━━━━━━━━━━━━━━\n` +
-                    `🏷 *Name:* [${targetFullName}](tg://user?id=${targetId})\n` +
+                    `📋 *User Community Bio & Security Dossier*\n\n` +
+                    `👤 *Name:* [${targetFullName}](tg://user?id=${targetId})\n` +
                     `🆔 *User ID:* \`${targetId}\`\n` +
                     `🔗 *Username:* ${targetUser.username ? `@${targetUser.username}` : '_None_'}\n` +
-                    `🎖 *Group Role:* \`${targetRole.toUpperCase()}\`\n` +
-                    `⚠️ *Infractions / Warns:* \`${warnsCount}/${settings.warnLimit || 3}\`\n` +
-                    `🛡 *Trust Score:* ${isScammer ? '🚨 *BLACKLISTED SCAMMER*' : '✅ *Verified Regular User*'}\n` +
-                    `━━━━━━━━━━━━━━━━━━━━\n` +
-                    `📝 *Profile History Audit:*\n${alterationSection}\n` +
-                    `━━━━━━━━━━━━━━━━━━━━`;
+                    `🎖 *Assigned Role:* \`${targetRole.toUpperCase()}\`\n` +
+                    `⚠️ *Active Infractions:* \`${warnsCount}/${settings.warnLimit || 3}\`\n` +
+                    `🛡 *Trust Evaluation:* ${isScammer ? '🚨 *CONFIRMED SCAMMER*' : '✅ *Verified Safe*'}`;
 
                 return ctx.replyWithMarkdown(bioMessage, { reply_to_message_id: ctx.message.message_id });
             }
 
-            // /mute & /unmute
-            if (cmd === '/mute' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/mute <duration>`. Example: `/mute 10m` or `/mute 1h`");
-                if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot mute the guardian bot.");
+            if (cmd === '/scam' && isAdmin) {
+                let targetUser = ctx.message.reply_to_message?.from;
+                if (!targetUser) return ctx.reply("⚠️ Reply to a message with `/scam` to flag this account.");
 
-                const durationArg = parts[1] || null;
-                const durationObj = parseDuration(durationArg);
-
-                try {
-                    if (durationObj && durationObj.seconds > 30) {
-                        const untilDate = Math.floor(Date.now() / 1000) + durationObj.seconds;
-                        await ctx.restrictChatMember(targetRepliedUser.id, {
-                            permissions: { can_send_messages: false },
-                            until_date: untilDate
-                        });
-                        return ctx.replyWithMarkdown(`🔇 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been muted for **${durationObj.text}**.`);
-                    } else {
-                        await ctx.restrictChatMember(targetRepliedUser.id, {
-                            permissions: { can_send_messages: false }
-                        });
-                        return ctx.replyWithMarkdown(`🔇 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been muted permanently.`);
-                    }
-                } catch (e) {
-                    return ctx.reply(`❌ Failed to mute: ${e.message}`);
-                }
-            }
-
-            if (cmd === '/unmute' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/unmute`.");
-                await ctx.restrictChatMember(targetRepliedUser.id, {
-                    permissions: {
-                        can_send_messages: true,
-                        can_send_media_messages: true,
-                        can_send_other_messages: true,
-                        can_add_web_page_previews: true
-                    }
-                }).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
-                return ctx.replyWithMarkdown(`🔊 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been unmuted.`);
-            }
-
-            // /ban & /unban
-            if (cmd === '/ban' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/ban`.");
-                await ctx.banChatMember(targetRepliedUser.id).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
-                return ctx.replyWithMarkdown(`⛔ [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been permanently banned.`);
-            }
-
-            if (cmd === '/unban' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unban`.");
-                await ctx.unbanChatMember(targetRepliedUser.id).catch(e => ctx.reply(`❌ Failed: ${e.message}`));
-                return ctx.replyWithMarkdown(`✅ Ban lifted for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
-            }
-
-            // /kick
-            if (cmd === '/kick' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/kick`.");
-                await ctx.banChatMember(targetRepliedUser.id).catch(() => {});
-                await ctx.unbanChatMember(targetRepliedUser.id).catch(() => {});
-                return ctx.replyWithMarkdown(`👢 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been kicked.`);
-            }
-
-            // /warn, /unwarn, /warns
-            if (cmd === '/warn' && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/warn`.");
-                if (targetRepliedUser.id === botId) return ctx.reply("❌ Cannot warn the protection bot.");
-
-                const res = await handleStrikePunishment(ctx, chatId, targetRepliedUser.id, settings, 'Manual Strike');
-                if (typeof res === 'number') {
-                    return ctx.replyWithMarkdown(`⚠️ Strike issued to [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id})!\nInfractions: \`${res}/${settings.warnLimit || 3}\``);
-                }
-                return;
-            }
-
-            if ((cmd === '/unwarn' || cmd === '/resetwarns') && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a user's message with `/unwarn`.");
-                await db.ref(`groups/${chatId}/warns/${targetRepliedUser.id}`).remove();
-                return ctx.replyWithMarkdown(`✅ Infraction strikes cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
-            }
-
-            if (cmd === '/warns') {
-                const target = targetRepliedUser || ctx.from;
-                const warnSnap = await db.ref(`groups/${chatId}/warns/${target.id}`).once('value');
-                const count = warnSnap.val() || 0;
-                return ctx.replyWithMarkdown(`⚠️ [${target.first_name}](tg://user?id=${target.id}) has \`${count}/${settings.warnLimit || 3}\` warnings.`);
-            }
-
-            // /scam or /scammer
-            if ((cmd === '/scam' || cmd === '/scammer') && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply to a message with `/scam` or `/scammer`.");
-                
-                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).set({
-                    name: `${targetRepliedUser.first_name || ''} ${targetRepliedUser.last_name || ''}`.trim(),
-                    username: targetRepliedUser.username || '',
+                await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).set({
+                    name: `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim(),
+                    username: targetUser.username || '',
                     flaggedAt: Date.now(),
                     flaggedBy: ctx.from.id
                 });
-                return ctx.replyWithMarkdown(`🚨 [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}) has been added to the **Scammer Blacklist**!\n*All future messages will trigger security warnings.*`);
+
+                return ctx.replyWithMarkdown(`🚨 [${targetUser.first_name}](tg://user?id=${targetUser.id}) has been added to the **Scammer Blacklist**!`);
             }
 
-            // /unscam or /unscammer
-            if ((cmd === '/unscam' || cmd === '/unscammer') && isAdmin) {
-                if (!targetRepliedUser) return ctx.reply("⚠️ Reply with `/unscam` or `/unscammer`.");
-                await db.ref(`groups/${chatId}/scammers/${targetRepliedUser.id}`).remove();
-                return ctx.replyWithMarkdown(`✅ Scam tag cleared for [${targetRepliedUser.first_name}](tg://user?id=${targetRepliedUser.id}).`);
-            }
+            if (cmd === '/unscam' && isAdmin) {
+                let targetUser = ctx.message.reply_to_message?.from;
+                if (!targetUser) return ctx.reply("⚠️ Reply with `/unscam` to clear flags.");
 
-            // /pin, /lock, /unlock
-            if (cmd === '/pin' && isAdmin) {
-                if (!ctx.message.reply_to_message) return ctx.reply("⚠️ Reply to a message with `/pin`.");
-                await ctx.pinChatMessage(ctx.message.reply_to_message.message_id).catch(() => {});
-                return ctx.reply("📌 Message pinned successfully.");
-            }
-
-            if (cmd === '/lock' && isAdmin) {
-                settings.chatLocked = true;
-                await db.ref(`groups/${chatId}/settings/chatLocked`).set(true);
-                return ctx.replyWithMarkdown("🔒 *Chat has been locked. Regular members cannot send messages.*");
-            }
-
-            if (cmd === '/unlock' && isAdmin) {
-                settings.chatLocked = false;
-                await db.ref(`groups/${chatId}/settings/chatLocked`).set(false);
-                return ctx.replyWithMarkdown("🔓 *Chat unlocked. Everyone may now participate.*");
-            }
-
-            // Dynamic Custom Commands
-            if (settings.customCommands && typeof settings.customCommands === 'object') {
-                const cleanCmd = cmd.replace('/', '');
-                const customCmdRule = settings.customCommands[cleanCmd];
-
-                if (customCmdRule && customCmdRule.response) {
-                    const roleReq = customCmdRule.role || 'everyone';
-                    let canUse = false;
-
-                    if (roleReq === 'everyone') canUse = true;
-                    else if (roleReq === 'admin' && isAdmin) canUse = true;
-                    else if (roleReq === 'owner' && userRole === 'owner') canUse = true;
-
-                    if (canUse) {
-                        const targetUser = targetRepliedUser || ctx.from;
-                        const resp = customCmdRule.response
-                            .replace(/{mention}/g, `[${targetUser.first_name}](tg://user?id=${targetUser.id})`)
-                            .replace(/{user}/g, `[${targetUser.first_name}](tg://user?id=${targetUser.id})`)
-                            .replace(/{name}/g, targetUser.first_name)
-                            .replace(/{username}/g, targetUser.username ? `@${targetUser.username}` : targetUser.first_name)
-                            .replace(/{id}/g, targetUser.id)
-                            .replace(/{chat}/g, ctx.chat.title || "Community");
-
-                        const keyboard = buildInlineButtons(customCmdRule.buttons);
-                        const extra = { reply_to_message_id: ctx.message.message_id, parse_mode: 'Markdown' };
-                        if (keyboard) extra.reply_markup = keyboard.reply_markup;
-
-                        return ctx.reply(resp, extra).catch(async () => {
-                            await ctx.reply(resp, { reply_to_message_id: ctx.message.message_id }).catch(() => {});
-                        });
-                    }
-                }
+                await db.ref(`groups/${chatId}/scammers/${targetUser.id}`).remove();
+                return ctx.replyWithMarkdown(`✅ Scam designation cleared for [${targetUser.first_name}](tg://user?id=${targetUser.id}).`);
             }
         }
 
-        // =========================================================================
-        // IMPORTANT: Admins completely bypass all automated filters below
-        // This is strictly enforced due to the reliable Cache Engine above!
-        // =========================================================================
         if (isAdmin) return next();
 
-        // 1. Chat Lock Enforcement
+        // 1. Chat Lock
         if (settings.chatLocked) {
             await ctx.deleteMessage().catch(() => {});
             return;
         }
 
-        // 2. Anti-Button Enforcement (Block userbots with inline buttons)
+        // 2. Anti-Button Messages Block
         if (settings.antiButton?.enabled) {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
                 await ctx.deleteMessage().catch(() => {});
-                const action = settings.antiButton.action || 'delete';
-                let currentWarns = 1;
-
-                if (action === 'warn') {
-                    const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Inline Button Spam');
-                    if (typeof res === 'number') currentWarns = res;
-                } else if (action === 'mute') {
-                    await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
-                } else if (action === 'ban') {
-                    await ctx.banChatMember(userId).catch(() => {});
-                }
-
                 if (!settings.antiButton.silent && settings.antiButton.msg) {
-                    const response = formatTemplateMessage(settings.antiButton.msg, ctx, { warns: currentWarns, warn_limit: settings.warnLimit || 3 });
-                    const sentMsg = await ctx.replyWithMarkdown(response).catch(() => {});
-                    const delSec = parseInt(settings.antiButton.autoDeleteSeconds || 5);
-                    if (delSec > 0 && sentMsg && sentMsg.message_id) {
-                        setTimeout(() => ctx.deleteMessage(sentMsg.message_id).catch(() => {}), delSec * 1000);
-                    }
+                    const response = settings.antiButton.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
             }
         }
 
-        // 3. Anti-Forward Enforcement
-        if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin || ctx.message.forward_from || ctx.message.forward_from_chat)) {
-            await ctx.deleteMessage().catch(() => {});
-            const action = settings.antiForward.action || 'delete';
-            let currentWarns = 1;
-
-            if (action === 'warn') {
-                const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Forwarded Message');
-                if (typeof res === 'number') currentWarns = res;
-            } else if (action === 'mute') {
-                await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
-            } else if (action === 'ban') {
-                await ctx.banChatMember(userId).catch(() => {});
-            }
-
-            if (!settings.antiForward.silent && settings.antiForward.msg) {
-                const response = formatTemplateMessage(settings.antiForward.msg, ctx, { warns: currentWarns, warn_limit: settings.warnLimit || 3 });
-                const sentMsg = await ctx.replyWithMarkdown(response).catch(() => {});
-                const delSec = parseInt(settings.antiForward.autoDeleteSeconds || 5);
-                if (delSec > 0 && sentMsg && sentMsg.message_id) {
-                    setTimeout(() => ctx.deleteMessage(sentMsg.message_id).catch(() => {}), delSec * 1000);
-                }
-            }
-            return;
-        }
-
-        // 4. Emoji Spam Enforcement
+        // 3. Emoji Spam Guard
         if (settings.emojiSpam?.enabled) {
-            const emojiCount = countEmojis(ctx.message);
-            const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
+            const emojiCount = countEmojis(text);
+            const mode = settings.emojiSpam.mode || (settings.emojiSpam.onlyEmoji !== false ? 'only_emoji' : 'excessive_emoji');
+            let shouldTrigger = false;
 
-            if (emojiCount > maxAllowed) {
+            if (mode === 'only_emoji') {
+                // User requirement: Only trigger if message contains strictly emojis (allowed when accompanied by text)
+                shouldTrigger = isOnlyEmoji(text, ctx.message?.entities);
+            } else {
+                const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 2);
+                shouldTrigger = emojiCount > maxAllowed;
+            }
+
+            if (shouldTrigger) {
                 await ctx.deleteMessage().catch(() => {});
-                const action = settings.emojiSpam.action || 'delete';
-                let currentWarns = 1;
-
-                if (action === 'warn') {
-                    const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Emoji Spam');
-                    if (typeof res === 'number') currentWarns = res;
-                } else if (action === 'mute') {
-                    await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
-                } else if (action === 'ban') {
-                    await ctx.banChatMember(userId).catch(() => {});
-                }
-
                 if (!settings.emojiSpam.silent && settings.emojiSpam.msg) {
-                    const response = formatTemplateMessage(settings.emojiSpam.msg, ctx, {
-                        warns: currentWarns,
-                        warn_limit: settings.warnLimit || 3,
-                        count: emojiCount,
-                        limit: maxAllowed
+                    const response = settings.emojiSpam.msg
+                        .replace(/{mention}/g, userMention)
+                        .replace(/{name}/g, fullName)
+                        .replace(/{username}/g, usernameTag)
+                        .replace(/{chat}/g, ctx.chat.title || "Community")
+                        .replace(/{count}/g, emojiCount)
+                        .replace(/{limit}/g, settings.emojiSpam.maxCount || 0);
+                    const sentWarn = await ctx.replyWithMarkdown(response).catch(async () => {
+                        return await ctx.reply(response).catch(() => {});
                     });
-
-                    const sentWarn = await ctx.replyWithMarkdown(response).catch(() => {});
-                    const delSec = parseInt(settings.emojiSpam.autoDeleteSeconds || 5);
+                    const delSec = parseInt(settings.emojiSpam.autoDeleteSeconds ?? 5);
                     if (delSec > 0 && sentWarn && sentWarn.message_id) {
                         setTimeout(() => ctx.deleteMessage(sentWarn.message_id).catch(() => {}), delSec * 1000);
                     }
@@ -947,93 +682,164 @@ bot.on('message', async (ctx, next) => {
             }
         }
 
-        // 5. Anti-Link Enforcement WITH WHITELIST
-        if (settings.antiLink?.enabled) {
-            const detectedUrls = extractAllUrls(ctx.message);
-            if (detectedUrls.length > 0) {
-                const whitelist = settings.antiLink.whitelist || [];
-                const allSafe = detectedUrls.every(u => isLinkWhitelisted(u, whitelist));
-
-                if (!allSafe) {
-                    await ctx.deleteMessage().catch(() => {});
-                    const action = settings.antiLink.action || 'delete';
-                    let currentWarns = 1;
-
-                    if (action === 'warn') {
-                        const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Unauthorized Link');
-                        if (typeof res === 'number') currentWarns = res;
-                    } else if (action === 'mute') {
-                        await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
-                    } else if (action === 'ban') {
-                        await ctx.banChatMember(userId).catch(() => {});
-                    }
-
-                    if (!settings.antiLink.silent && settings.antiLink.msg) {
-                        const response = formatTemplateMessage(settings.antiLink.msg, ctx, {
-                            warns: currentWarns,
-                            warn_limit: settings.warnLimit || 3
-                        });
-                        const sentMsg = await ctx.replyWithMarkdown(response).catch(() => {});
-                        const delSec = parseInt(settings.antiLink.autoDeleteSeconds || 5);
-                        if (delSec > 0 && sentMsg && sentMsg.message_id) {
-                            setTimeout(() => ctx.deleteMessage(sentMsg.message_id).catch(() => {}), delSec * 1000);
-                        }
-                    }
-                    return;
-                }
+        // 4. Anti-Forward Check
+        if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
+            await ctx.deleteMessage().catch(() => {});
+            if (!settings.antiForward.silent && settings.antiForward.msg) {
+                const response = settings.antiForward.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
             }
+            return;
         }
 
-        // 6. Bad Words Enforcement
-        if (settings.badWords?.enabled && Array.isArray(settings.badWords.words) && settings.badWords.words.length > 0) {
-            const lowerText = text.toLowerCase();
-            const foundBadWord = settings.badWords.words.some(word => 
-                word.trim() && lowerText.includes(word.trim().toLowerCase())
-            );
-
-            if (foundBadWord) {
+        // 5. Anti-Link Check
+        if (settings.antiLink?.enabled) {
+            const linkRegex = /(https?:\/\/[^\s]+)|(t\.me\/[^\s]+)|(telegram\.me\/[^\s]+)/gi;
+            if (linkRegex.test(text)) {
                 await ctx.deleteMessage().catch(() => {});
-                const action = settings.badWords.action || 'delete';
-                let currentWarns = 1;
-
-                if (action === 'warn') {
-                    const res = await handleStrikePunishment(ctx, chatId, userId, settings, 'Prohibited Language');
-                    if (typeof res === 'number') currentWarns = res;
-                } else if (action === 'mute') {
-                    await ctx.restrictChatMember(userId, { permissions: { can_send_messages: false } }).catch(() => {});
-                } else if (action === 'ban') {
-                    await ctx.banChatMember(userId).catch(() => {});
-                }
-
-                if (!settings.badWords.silent) {
-                    const template = settings.badWords.customMsg || "⚠️ {mention}, prohibited words used! Strike: ({warns}/{warn_limit})";
-                    const response = formatTemplateMessage(template, ctx, {
-                        warns: currentWarns,
-                        warn_limit: settings.warnLimit || 3
-                    });
-
-                    const sentWarn = await ctx.replyWithMarkdown(response).catch(() => {});
-                    const deleteSec = parseInt(settings.badWords.autoDeleteSeconds || 6);
-                    if (deleteSec > 0 && sentWarn && sentWarn.message_id) {
-                        setTimeout(() => ctx.deleteMessage(sentWarn.message_id).catch(() => {}), deleteSec * 1000);
-                    }
+                if (!settings.antiLink.silent && settings.antiLink.msg) {
+                    const response = settings.antiLink.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
+                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
                 }
                 return;
             }
         }
-    } catch (e) {
-        console.error("Message handler error:", e.message);
-    }
+
+        // 6. Ban Text & Content Rules Filter
+        if (settings.badWords?.enabled) {
+            const rules = Array.isArray(settings.badWords.rules) ? settings.badWords.rules : [];
+            const legacyWords = Array.isArray(settings.badWords.words) ? settings.badWords.words : [];
+
+            let matchedRule = null;
+            let matchedWord = "";
+            const cleanText = (text || "").toLowerCase();
+
+            // 1. Check custom configured rules (supporting single word or multiple comma-separated words)
+            for (const rule of rules) {
+                if (!rule) continue;
+                const wordsList = Array.isArray(rule.words)
+                    ? rule.words
+                    : (typeof rule.words === 'string' ? rule.words.split(',') : (typeof rule.text === 'string' ? rule.text.split(',') : []));
+
+                for (let w of wordsList) {
+                    w = (w || "").trim().toLowerCase();
+                    if (!w) continue;
+                    if (cleanText.includes(w)) {
+                        matchedRule = rule;
+                        matchedWord = w;
+                        break;
+                    }
+                }
+                if (matchedRule) break;
+            }
+
+            // 2. Check legacy words list if no rule matched
+            if (!matchedRule && legacyWords.length > 0) {
+                for (let w of legacyWords) {
+                    w = (w || "").trim().toLowerCase();
+                    if (!w) continue;
+                    if (cleanText.includes(w)) {
+                        matchedRule = {
+                            words: [w],
+                            deleteMessage: true,
+                            deleteMode: 'single',
+                            note: settings.badWords.customMsg || "⚠️ {mention}, prohibited text '{word}' detected in {chat}!",
+                            autoDeleteSeconds: settings.badWords.autoDeleteSeconds ?? 6,
+                            action: settings.badWords.action || 'delete'
+                        };
+                        matchedWord = w;
+                        break;
+                    }
+                }
+            }
+
+            if (matchedRule) {
+                // Delete user message or keep it: "message delete kore ba na kore user ja be oitai dekhabe"
+                const shouldDelete = matchedRule.deleteMessage !== false && matchedRule.deleteMode !== 'none';
+
+                if (shouldDelete) {
+                    await ctx.deleteMessage().catch(() => {});
+                    // If multiple recent messages deletion requested
+                    if (matchedRule.deleteMode === 'recent') {
+                        const currentMsgId = ctx.message.message_id;
+                        for (let i = 1; i <= 4; i++) {
+                            ctx.deleteMessage(currentMsgId - i).catch(() => {});
+                        }
+                    }
+                }
+
+                // Send the custom note/reply to user
+                const noteTemplate = matchedRule.note || matchedRule.customMsg || settings.badWords.customMsg || "⚠️ {mention}, prohibited text '{word}' detected in {chat}!";
+                const formattedNotice = noteTemplate
+                    .replace(/{mention}/g, userMention)
+                    .replace(/{name}/g, fullName)
+                    .replace(/{username}/g, usernameTag)
+                    .replace(/{chat}/g, ctx.chat.title || "Community")
+                    .replace(/{word}/g, matchedWord);
+
+                let replyExtra = { parse_mode: 'Markdown' };
+                if (!shouldDelete && ctx.message?.message_id) {
+                    replyExtra.reply_to_message_id = ctx.message.message_id;
+                }
+
+                let warningMsgSent = await ctx.replyWithMarkdown(formattedNotice, replyExtra).catch(async () => {
+                    return await ctx.reply(formattedNotice, replyExtra).catch(() => {});
+                });
+
+                // Auto delete the bot note after configured seconds
+                const deleteSec = parseInt(matchedRule.autoDeleteSeconds ?? settings.badWords.autoDeleteSeconds ?? 6);
+                if (deleteSec > 0 && warningMsgSent && warningMsgSent.message_id) {
+                    setTimeout(() => {
+                        ctx.deleteMessage(warningMsgSent.message_id).catch(() => {});
+                    }, deleteSec * 1000);
+                }
+
+                // Infraction action: warn / ban
+                const action = matchedRule.action || settings.badWords.action || 'delete';
+                const warnLimit = settings.warnLimit || 3;
+
+                if (action === 'warn') {
+                    const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
+                    const snap = await warnRef.once('value');
+                    const warns = (snap.val() || 0) + 1;
+                    await warnRef.set(warns);
+
+                    if (warns >= warnLimit) {
+                        await ctx.banChatMember(userId).catch(() => {});
+                        await warnRef.remove();
+                        if (!settings.banSystem?.silent) {
+                            const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
+                                .replace(/{mention}/g, usernameTag)
+                                .replace(/{name}/g, fullName)
+                                .replace(/{chat}/g, ctx.chat.title || "Community");
+                            ctx.replyWithMarkdown(banMsg).catch(() => {});
+                        }
+                    }
+                } else if (action === 'ban') {
+                    await ctx.banChatMember(userId).catch(() => {});
+                    if (!settings.banSystem?.silent) {
+                        const banMsg = (settings.banSystem?.msg || "⛔ {name} has been permanently removed.")
+                            .replace(/{mention}/g, usernameTag)
+                            .replace(/{name}/g, fullName)
+                            .replace(/{chat}/g, ctx.chat.title || "Community");
+                        ctx.replyWithMarkdown(banMsg).catch(() => {});
+                    }
+                }
+
+                return;
+            }
+        }
+    } catch (e) {}
     return next();
 });
 
 // =============================================================================
-// GRAMJS MTPROTO & COMMUNITY MANAGEMENT
+// GRAMJS MTPROTO (STRICT OWNER & PROMOTABLE ADMIN FILTER)
 // =============================================================================
 const tempAuthClients = {};
 
 async function extractCommunities(client) {
-    const dialogs = await client.getDialogs({ limit: 500 });
+    const dialogs = await client.getDialogs({ limit: 100 });
     const groups = [];
     const channels = [];
 
@@ -1049,8 +855,8 @@ async function extractCommunities(client) {
         if (e.className === 'ChatForbidden' || e.className === 'ChannelForbidden') continue;
 
         const isCreator = Boolean(e.creator);
-        let hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo || e.adminRights.deleteMessages));
-        let isBasicAdmin = Boolean(e.admin);
+        const hasAdminRights = Boolean(e.adminRights && (e.adminRights.addAdmins || e.adminRights.inviteUsers || e.adminRights.changeInfo));
+        const isBasicAdmin = Boolean(e.admin);
 
         if (!isCreator && !hasAdminRights && !isBasicAdmin) {
             continue;
@@ -1067,9 +873,9 @@ async function extractCommunities(client) {
         } catch (err) {}
 
         const isBroadcastChannel = d.isChannel && !e.megagroup;
-        let chatIdStr = d.isChannel ? `-100${Math.abs(e.id)}` : `-${Math.abs(e.id)}`;
+        const chatIdStr = d.id.toString();
 
-        let isBotConnected = Boolean(connectedMap[chatIdStr] || connectedMap[chatIdStr.replace('-100', '')]);
+        let isBotConnected = Boolean(connectedMap[chatIdStr] || connectedMap[`-100${e.id}`]);
         if (!isBotConnected && botId) {
             try {
                 const botMember = await bot.telegram.getChatMember(chatIdStr, botId);
@@ -1183,259 +989,9 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
     }
 });
 
-app.post('/api/tg/get-group-settings', async (req, res) => {
-    const { chatId } = req.body;
-    if (!chatId) return res.status(400).json({ error: "chatId missing" });
-    try {
-        const settings = await getChatSettings(chatId);
-        res.json({ success: true, settings });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// =============================================================================
-// 1-CLICK POLICY CLONE ENGINE
-// =============================================================================
-app.post('/api/tg/clone-settings', async (req, res) => {
-    const { sourceChatId: rawSource, targetChatIds, sections } = req.body;
-    const sourceChatId = normalizeChatId(rawSource);
-    
-    try {
-        if (!sourceChatId || !targetChatIds || !Array.isArray(targetChatIds) || targetChatIds.length === 0) {
-            throw new Error("Missing source or target communities.");
-        }
-
-        const sourceSnap = await db.ref(`groups/${sourceChatId}/settings`).once('value');
-        const sourceSettings = sourceSnap.val();
-
-        if (!sourceSettings) throw new Error("No settings found in the source community to clone.");
-
-        let successCount = 0;
-
-        for (let target of targetChatIds) {
-            const targetChatId = normalizeChatId(target);
-            const targetRef = db.ref(`groups/${targetChatId}/settings`);
-
-            const updates = {};
-            if (sections.welcome && sourceSettings.welcome) updates['welcome'] = sourceSettings.welcome;
-            if (sections.emojiSpam && sourceSettings.emojiSpam) updates['emojiSpam'] = sourceSettings.emojiSpam;
-            if (sections.antiLink && sourceSettings.antiLink) updates['antiLink'] = sourceSettings.antiLink;
-            if (sections.antiForward && sourceSettings.antiForward) updates['antiForward'] = sourceSettings.antiForward;
-            if (sections.antiButton && sourceSettings.antiButton) updates['antiButton'] = sourceSettings.antiButton;
-            if (sections.badWords && sourceSettings.badWords) updates['badWords'] = sourceSettings.badWords;
-            if (sections.autoReplies && sourceSettings.autoReplies) updates['autoReplies'] = sourceSettings.autoReplies;
-            if (sections.commands) {
-                if (sourceSettings.commands) updates['commands'] = sourceSettings.commands;
-                if (sourceSettings.customCommands) updates['customCommands'] = sourceSettings.customCommands;
-            }
-
-            if (Object.keys(updates).length > 0) {
-                await targetRef.update(updates);
-                chatSettingsCache[targetChatId] = await getChatSettings(targetChatId); // Re-cache
-                successCount++;
-            }
-        }
-
-        res.json({ success: true, count: successCount });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Warnings & Strikes Management Endpoints
-app.post('/api/tg/get-warnings', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
-    try {
-        const warnSnap = await db.ref(`groups/${chatId}/warns`).once('value');
-        const warnsData = warnSnap.val() || {};
-        const nameSnap = await db.ref(`groups/${chatId}/name_history`).once('value');
-        const nameData = nameSnap.val() || {};
-
-        const list = Object.keys(warnsData).map(uid => ({
-            id: uid,
-            name: nameData[uid]?.currentName || nameData[uid]?.name || `User (${uid})`,
-            username: nameData[uid]?.currentUsername || nameData[uid]?.username || '',
-            count: warnsData[uid]
-        }));
-
-        res.json({ success: true, warnings: list });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.post('/api/tg/update-warning', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
-    const { userId, delta } = req.body;
-    try {
-        const warnRef = db.ref(`groups/${chatId}/warns/${userId}`);
-        const snap = await warnRef.once('value');
-        let current = (snap.val() || 0) + parseInt(delta || 1);
-
-        if (current <= 0) {
-            await warnRef.remove();
-        } else {
-            await warnRef.set(current);
-        }
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.post('/api/tg/reset-warning', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
-    const { userId } = req.body;
-    try {
-        await db.ref(`groups/${chatId}/warns/${userId}`).remove();
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.post('/api/tg/ban-member', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
-    const { userId } = req.body;
-    try {
-        await bot.telegram.banChatMember(chatId, userId);
-        await db.ref(`groups/${chatId}/warns/${userId}`).remove();
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// =============================================================================
-// QUOTA ENFORCE & DISCONNECT ENDPOINTS
-// =============================================================================
-app.post('/api/tg/disconnect-group', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
-    try {
-        await db.ref(`connected_bots/${chatId}`).remove();
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.post('/api/tg/enforce-quota', async (req, res) => {
-    const { keepChatIds } = req.body;
-    try {
-        const normalizedKeep = (keepChatIds || []).map(id => normalizeChatId(id));
-        const connectedSnap = await db.ref('connected_bots').once('value');
-        const connectedMap = connectedSnap.val() || {};
-
-        const keys = Object.keys(connectedMap);
-        for (const k of keys) {
-            const normKey = normalizeChatId(k);
-            if (!normalizedKeep.includes(normKey)) {
-                await db.ref(`connected_bots/${k}`).remove();
-            }
-        }
-        res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// =============================================================================
-// SECRET 15-CLICKS TELEGRAM MTPROTO OWNERSHIP TRANSFER
-// =============================================================================
-app.post('/api/tg/transfer-ownership', async (req, res) => {
-    const { session, chatId: rawChatId, targetUsername, password } = req.body;
-    const chatId = normalizeChatId(rawChatId);
-
-    try {
-        if (!session || !chatId || !targetUsername) {
-            throw new Error("Missing parameters for ownership transfer.");
-        }
-
-        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
-        await client.connect();
-
-        const dialogs = await client.getDialogs({ limit: 500 });
-        const cleanId = chatId.replace('-100', '').replace('-', '');
-
-        let targetDialog = dialogs.find(d => 
-            (d.isChannel || d.entity?.className === 'Channel') &&
-            (d.id.toString() === chatId || String(d.entity?.id) === cleanId)
-        );
-
-        if (!targetDialog || !targetDialog.entity) {
-            throw new Error("Target channel or supergroup entity not found in your Telegram account.");
-        }
-
-        const targetEntity = targetDialog.entity;
-        if (targetEntity.className !== 'Channel') {
-            throw new Error("Ownership transfer is supported on Supergroups and Channels only.");
-        }
-
-        const cleanUsername = targetUsername.replace('@', '').trim();
-        const targetUserEntity = await client.getEntity(cleanUsername).catch(() => null);
-
-        if (!targetUserEntity) {
-            throw new Error(`Target user '@${cleanUsername}' could not be resolved. Please make sure the user has a public username and is already a member of this community.`);
-        }
-
-        const targetInputUser = new Api.InputUser({
-            userId: targetUserEntity.id,
-            accessHash: targetUserEntity.accessHash
-        });
-
-        const targetInputChannel = new Api.InputChannel({
-            channelId: targetEntity.id,
-            accessHash: targetEntity.accessHash
-        });
-
-        // First promote user with full rights
-        const adminRights = new Api.ChatAdminRights({
-            changeInfo: true,
-            postMessages: true,
-            editMessages: true,
-            deleteMessages: true,
-            banUsers: true,
-            inviteUsers: true,
-            pinMessages: true,
-            addAdmins: true,
-            anonymous: false,
-            manageCall: true,
-            other: true
-        });
-
-        await client.invoke(new Api.channels.EditAdmin({
-            channel: targetInputChannel,
-            userId: targetInputUser,
-            adminRights: adminRights,
-            rank: 'New Owner'
-        })).catch(() => {});
-
-        // Try Transfer Creator Rights
-        let passwordCheck = new Api.InputCheckPasswordEmpty();
-        if (password) {
-            const pwd = await client.invoke(new Api.account.GetPassword());
-            passwordCheck = await computeCheck(pwd, password);
-        }
-
-        await client.invoke(new Api.channels.EditCreator({
-            channel: targetInputChannel,
-            userId: targetInputUser,
-            password: passwordCheck
-        }));
-
-        res.json({ success: true, message: "Community creator rights transferred successfully." });
-    } catch (e) {
-        console.error("Transfer Ownership Error:", e);
-        res.status(500).json({ error: e.message || "Failed to transfer ownership. Make sure target user is in the group and 2FA password is provided if enabled." });
-    }
-});
-
-// BOT AUTO-ADD & PROMOTE WITH STRICT QUOTA ENFORCEMENT
+// BOT AUTO-ADD & PROMOTE (WITH DUAL USER/TELEGRAM BIND)
 app.post('/api/tg/connect-group', async (req, res) => {
-    const { session, chatId: rawChatId, userId } = req.body;
-    const chatId = normalizeChatId(rawChatId);
-
+    const { session, chatId, userId } = req.body;
     try {
         const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
@@ -1445,9 +1001,11 @@ app.post('/api/tg/connect-group', async (req, res) => {
             const me = await client.getMe();
             if (me && me.id) {
                 myTgId = me.id.toString();
+                await db.ref(`groups/${chatId}/merged_owner`).set(myTgId);
             }
         } catch (e) {}
 
+        // Check plan by UID or Telegram ID
         let sub = null;
         if (userId) {
             const sUid = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
@@ -1463,49 +1021,19 @@ app.post('/api/tg/connect-group', async (req, res) => {
             return res.status(403).json({
                 success: false,
                 error: "NO_ACTIVE_LICENSE",
-                message: "You need an active subscription license to add Infinity Guard Bot."
+                message: "You need an active subscription license to add VS Protection Bot."
             });
         }
 
-        // STRICT COMMUNITY QUOTA VERIFICATION
-        const maxCommunities = sub.maxCommunities || 1;
-        if (maxCommunities < 9999) {
-            const connectedSnap = await db.ref('connected_bots').once('value');
-            const connectedMap = connectedSnap.val() || {};
-            let userConnectedCount = 0;
-
-            const existingKeys = Object.keys(connectedMap);
-            for (const cKey of existingKeys) {
-                if (cKey === chatId) continue; // Already counting this chat if re-connecting
-                const ownerSnap = await db.ref(`groups/${cKey}/merged_owner`).once('value');
-                if (ownerSnap.val() === myTgId) {
-                    userConnectedCount++;
-                }
-            }
-
-            if (userConnectedCount >= maxCommunities) {
-                return res.status(403).json({
-                    success: false,
-                    error: "QUOTA_EXCEEDED",
-                    message: `Community Limit Reached! Your plan allows up to ${maxCommunities} active communities. Upgrade your plan with @Blackmoney54 to connect more!`
-                });
-            }
-        }
-
-        if (myTgId) {
-            await db.ref(`groups/${chatId}/merged_owner`).set(myTgId);
-        }
-
-        const dialogs = await client.getDialogs({ limit: 500 });
-        const cleanId = chatId.replace('-100', '').replace('-', '');
-
+        const dialogs = await client.getDialogs({ limit: 100 });
+        const cleanId = chatId.toString().replace('-100', '').replace('-', '');
         let targetDialog = dialogs.find(d => 
             (d.isChannel || d.entity?.className === 'Channel') &&
-            (d.id.toString() === chatId || String(d.entity?.id) === cleanId)
+            (d.id.toString() === chatId.toString() || String(d.entity?.id) === cleanId)
         );
 
         if (!targetDialog) {
-            targetDialog = dialogs.find(d => d.id.toString() === chatId || String(d.entity?.id) === cleanId);
+            targetDialog = dialogs.find(d => d.id.toString() === chatId.toString() || String(d.entity?.id) === cleanId);
         }
 
         if (!targetDialog || !targetDialog.entity) throw new Error("Community dialog entity not found.");
@@ -1532,7 +1060,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             } catch (migErr) {}
 
             if (!targetInputChannel) {
-                const freshDialogs = await client.getDialogs({ limit: 50 });
+                const freshDialogs = await client.getDialogs({ limit: 30 });
                 const fresh = freshDialogs.find(d => d.isChannel && d.title === targetEntity.title);
                 if (fresh && fresh.entity) targetInputChannel = new Api.InputChannel({ channelId: fresh.entity.id, accessHash: fresh.entity.accessHash });
             }
@@ -1553,7 +1081,7 @@ app.post('/api/tg/connect-group', async (req, res) => {
             channel: targetInputChannel,
             userId: botInputUser,
             adminRights: adminRights,
-            rank: 'Infinity Guard'
+            rank: 'VS Guardian'
         }));
 
         await db.ref(`connected_bots/${chatId}`).set({ connected: true, chatId: chatId, updatedAt: Date.now() });
@@ -1565,11 +1093,9 @@ app.post('/api/tg/connect-group', async (req, res) => {
     }
 });
 
-// Broadcast Announcement
+// Broadcast
 app.post('/api/tg/broadcast', async (req, res) => {
-    const { chatId: rawChatId, text, photoUrl, buttons } = req.body;
-    const chatId = normalizeChatId(rawChatId);
-
+    const { chatId, text, photoUrl, buttons } = req.body;
     try {
         const check = await getOwnerSubByChat(chatId);
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
@@ -1591,11 +1117,183 @@ app.post('/api/tg/broadcast', async (req, res) => {
     }
 });
 
-// Section Save Handler
-app.post('/api/tg/save-section', async (req, res) => {
-    const { chatId: rawChatId, sectionKey, data } = req.body;
-    const chatId = normalizeChatId(rawChatId);
+// CREATE SINGLE-USE GROUP CONNECT CODE
+app.post('/api/tg/create-connect-code', async (req, res) => {
+    const { userId, userEmail } = req.body;
+    try {
+        if (!userId) return res.status(400).json({ error: "User ID is required." });
 
+        // Check user subscription
+        const subSnap = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
+        const sub = subSnap.val();
+        if (!sub) {
+            return res.status(403).json({
+                error: "NO_ACTIVE_LICENSE",
+                message: "You need an active subscription license to connect groups. Please claim a license key first."
+            });
+        }
+
+        const now = Date.now();
+        const graceEndsAt = sub.graceEndsAt || (sub.expiresAt + 7 * 86400000);
+        if (now > graceEndsAt) {
+            return res.status(403).json({
+                error: "SUBSCRIPTION_EXPIRED",
+                message: "Your subscription license has expired. Please renew your license to connect groups."
+            });
+        }
+
+        // Count existing connected groups
+        const allGroupsSnap = await db.ref('groups').once('value');
+        const allGroups = allGroupsSnap.val() || {};
+        const userGroups = Object.keys(allGroups).filter(gid => allGroups[gid].owner_user_id === userId);
+        const maxCommunities = sub.maxCommunities || 1;
+
+        if (userGroups.length >= maxCommunities) {
+            return res.status(403).json({
+                error: "LIMIT_REACHED",
+                message: `You have reached your community limit (${maxCommunities} group${maxCommunities > 1 ? 's' : ''}) for plan ${sub.planName}. Please upgrade your license or disconnect a group.`
+            });
+        }
+
+        // Check if there is already an active, unused code generated in the last 24h
+        const codesSnap = await db.ref('connect_codes').once('value');
+        const allCodes = codesSnap.val() || {};
+        const existingUnused = Object.values(allCodes).find(c => c.userId === userId && !c.used && c.expiresAt > now);
+
+        if (existingUnused) {
+            return res.json({
+                success: true,
+                code: existingUnused.code,
+                expiresAt: existingUnused.expiresAt,
+                maxCommunities,
+                connectedCount: userGroups.length,
+                isExisting: true
+            });
+        }
+
+        // Generate unique code: VS-XXXXXX
+        const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const code = `VS-${randomPart}`;
+        const expiresAt = now + (24 * 60 * 60 * 1000);
+
+        const codeData = {
+            code,
+            userId,
+            userEmail: userEmail || "",
+            createdAt: now,
+            expiresAt,
+            used: false,
+            usedInChatId: null,
+            usedAt: null
+        };
+
+        await db.ref(`connect_codes/${code}`).set(codeData);
+
+        res.json({
+            success: true,
+            code,
+            expiresAt,
+            maxCommunities,
+            connectedCount: userGroups.length,
+            isExisting: false
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET USER'S CONNECTED COMMUNITIES (BY USER ID)
+app.post('/api/tg/user-communities', async (req, res) => {
+    const { userId } = req.body;
+    try {
+        if (!userId) return res.status(400).json({ error: "User ID required." });
+
+        const allGroupsSnap = await db.ref('groups').once('value');
+        const allGroups = allGroupsSnap.val() || {};
+
+        const userGroups = [];
+        const userChannels = [];
+
+        for (const gid of Object.keys(allGroups)) {
+            const g = allGroups[gid];
+            if (g.owner_user_id === userId) {
+                const item = {
+                    id: gid,
+                    title: g.title || "Community",
+                    type: g.type || "supergroup",
+                    isChannel: g.type === 'channel',
+                    isBotConnected: true,
+                    role: g.role || "Owner",
+                    connected_at: g.connected_at || Date.now()
+                };
+                if (item.isChannel) {
+                    userChannels.push(item);
+                } else {
+                    userGroups.push(item);
+                }
+            }
+        }
+
+        const subSnap = await db.ref(`subscriptions/by_uid/${userId}`).once('value');
+        const sub = subSnap.val();
+
+        res.json({
+            success: true,
+            groups: userGroups,
+            channels: userChannels,
+            subscription: sub || null,
+            maxCommunities: sub?.maxCommunities || 0,
+            connectedCount: userGroups.length + userChannels.length
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DISCONNECT COMMUNITY
+app.post('/api/tg/disconnect-group', async (req, res) => {
+    const { userId, chatId } = req.body;
+    try {
+        if (!userId || !chatId) return res.status(400).json({ error: "Missing parameters." });
+
+        const snap = await db.ref(`groups/${chatId}`).once('value');
+        const group = snap.val();
+        if (!group) return res.status(404).json({ error: "Group not found." });
+
+        if (group.owner_user_id !== userId) {
+            return res.status(403).json({ error: "You are not the registered owner of this group." });
+        }
+
+        await db.ref(`groups/${chatId}/owner_user_id`).remove();
+        subscriptionCache[chatId] = null;
+        chatSettingsCache[chatId] = null;
+
+        bot.telegram.sendMessage(chatId, "⚠️ *This community has been disconnected from the web dashboard by its owner.*", { parse_mode: 'Markdown' }).catch(() => {});
+
+        res.json({ success: true, message: "Community disconnected successfully." });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get Group Settings
+app.post('/api/tg/get-settings', async (req, res) => {
+    const { chatId } = req.body;
+    try {
+        if (!chatId) return res.status(400).json({ error: "Missing chatId" });
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
+
+        const settings = await getChatSettings(chatId);
+        res.json({ success: true, settings });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Section Save
+app.post('/api/tg/save-section', async (req, res) => {
+    const { chatId, sectionKey, data } = req.body;
     try {
         if (!chatId || !sectionKey) throw new Error("Missing parameters");
         
@@ -1603,47 +1301,52 @@ app.post('/api/tg/save-section', async (req, res) => {
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
         await db.ref(`groups/${chatId}/settings/${sectionKey}`).set(data);
-
-        if (!chatSettingsCache[chatId]) {
-            chatSettingsCache[chatId] = await getChatSettings(chatId);
-        }
-        chatSettingsCache[chatId][sectionKey] = data;
-
+        if (chatSettingsCache[chatId]) chatSettingsCache[chatId][sectionKey] = data;
         res.json({ success: true, message: "Section policy saved successfully!" });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
 
-// Left Members & Scammers
-app.post('/api/tg/get-left-members', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
+// Test Welcome
+app.post('/api/tg/test-welcome', async (req, res) => {
+    const { chatId, photoUrl, text, buttons, autoDeleteSeconds } = req.body;
     try {
-        const snap = await db.ref(`groups/${chatId}/left_members`).once('value');
-        const data = snap.val() || {};
-        const list = Object.keys(data).map(uid => ({ id: uid, ...data[uid] })).sort((a,b) => b.timestamp - a.timestamp);
-        res.json({ success: true, leftMembers: list });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
+        const check = await getOwnerSubByChat(chatId);
+        if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
 
-app.post('/api/tg/get-scammers', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
-    try {
-        const snap = await db.ref(`groups/${chatId}/scammers`).once('value');
-        const data = snap.val() || {};
-        const list = Object.keys(data).map(uid => ({ id: uid, ...data[uid] }));
-        res.json({ success: true, scammers: list });
+        const testUser = `[Admin (Test)](tg://user?id=${botId || 0})`;
+        const chatInfo = await bot.telegram.getChat(chatId).catch(() => ({ title: "Community" }));
+        const formatted = (text || "Welcome {mention} to {chat}!")
+            .replace(/{mention}/g, testUser).replace(/{user}/g, testUser).replace(/{name}/g, "Admin User").replace(/{username}/g, "@AdminUser").replace(/{chat}/g, chatInfo.title);
+
+        const keyboard = buildInlineButtons(buttons);
+        const extra = { parse_mode: 'Markdown' };
+        if (keyboard) extra.reply_markup = keyboard.reply_markup;
+
+        let sentMsg;
+        const validPhoto = (photoUrl || "").trim();
+        if (validPhoto && (validPhoto.startsWith('http://') || validPhoto.startsWith('https://'))) {
+            sentMsg = await bot.telegram.sendPhoto(chatId, validPhoto, { caption: `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, ...extra }).catch(async () => {
+                return await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, extra);
+            });
+        } else {
+            sentMsg = await bot.telegram.sendMessage(chatId, `🧪 *[TEST WELCOME MESSAGE]*\n\n${formatted}`, extra);
+        }
+
+        const sec = parseInt(autoDeleteSeconds || 0);
+        if (sec > 0 && sentMsg && sentMsg.message_id) {
+            setTimeout(() => { bot.telegram.deleteMessage(chatId, sentMsg.message_id).catch(() => {}); }, sec * 1000);
+        }
+        res.json({ success: true, message: `Test welcome delivered! ${sec > 0 ? `(Auto-deletes in ${sec}s)` : ''}` });
     } catch (e) {
-        res.status(500).json({ error: e.message });
+        res.status(500).json({ error: e.message || "Failed to send test message." });
     }
 });
 
 // Announce Lock
 app.post('/api/tg/announce-lock', async (req, res) => {
-    const chatId = normalizeChatId(req.body.chatId);
-    const { locked, message } = req.body;
+    const { chatId, locked, message } = req.body;
     try {
         const check = await getOwnerSubByChat(chatId);
         if (!check.hasSub) return res.status(403).json({ success: false, error: check.reason, message: check.message });
@@ -1657,33 +1360,38 @@ app.post('/api/tg/announce-lock', async (req, res) => {
     }
 });
 
+// Left Members & Scammers
+app.post('/api/tg/get-left-members', async (req, res) => {
+    const { chatId } = req.body;
+    try {
+        const snap = await db.ref(`groups/${chatId}/left_members`).once('value');
+        const data = snap.val() || {};
+        const list = Object.keys(data).map(uid => ({ id: uid, ...data[uid] })).sort((a,b) => b.timestamp - a.timestamp);
+        res.json({ success: true, leftMembers: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/tg/get-scammers', async (req, res) => {
+    const { chatId } = req.body;
+    try {
+        const snap = await db.ref(`groups/${chatId}/scammers`).once('value');
+        const data = snap.val() || {};
+        const list = Object.keys(data).map(uid => ({ id: uid, ...data[uid] }));
+        res.json({ success: true, scammers: list });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Helper: License Key Generator
 function generateLicenseKey() {
     const p1 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p2 = crypto.randomBytes(2).toString('hex').toUpperCase();
     const p3 = crypto.randomBytes(2).toString('hex').toUpperCase();
-    return `IG-${p1}-${p2}-${p3}`;
+    return `VS-${p1}-${p2}-${p3}`;
 }
-
-// Admin Portal URL API
-app.post('/api/admin/set-portal-url', async (req, res) => {
-    const { portalUrl } = req.body;
-    try {
-        await db.ref('system/portal_url').set(portalUrl);
-        res.json({ success: true, message: "Portal URL updated successfully!" });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-app.get('/api/admin/get-portal-url', async (req, res) => {
-    try {
-        const snap = await db.ref('system/portal_url').once('value');
-        res.json({ success: true, portalUrl: snap.val() || "" });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
-});
 
 // Admin APIs
 app.post('/api/admin/generate-license', async (req, res) => {
@@ -1790,7 +1498,7 @@ app.get('/api/admin/users-list', async (req, res) => {
     }
 });
 
-// CLAIM LICENSE
+// CLAIM LICENSE (BINDS TO USER ACCOUNT UID & EMAIL)
 app.post('/api/license/claim', async (req, res) => {
     const { licenseKey, userId, userEmail, session, ownerTelegramId: providedTgId } = req.body;
     try {
@@ -1857,7 +1565,7 @@ app.post('/api/license/claim', async (req, res) => {
     }
 });
 
-// GET SUBSCRIPTION STATUS & LIFECYCLE
+// GET SUBSCRIPTION STATUS
 app.post('/api/license/status', async (req, res) => {
     const { userId, ownerTelegramId } = req.body;
     try {
@@ -1942,10 +1650,10 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Infinity Guard] Server listening on port ${PORT}`);
+    console.log(`[VS Protection] Server listening on port ${PORT}`);
     bot.launch()
-        .then(() => console.log(`[Infinity Guard] Telegram Bot Engine Active with Token: ${BOT_TOKEN.slice(0, 10)}...`))
-        .catch(e => console.error("[Infinity Guard] Engine Warning:", e.message));
+        .then(() => console.log(`[VS Protection] Telegram Bot Engine Active with Token: ${BOT_TOKEN.slice(0, 10)}...`))
+        .catch(e => console.error("[VS Protection] Engine Warning:", e.message));
 });
 
 process.once('SIGINT', () => { try { bot.stop('SIGINT'); } catch (e) {} });
