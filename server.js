@@ -876,40 +876,51 @@ bot.on('message', async (ctx, next) => {
             const hasReplyMarkup = ctx.message.reply_markup && ctx.message.reply_markup.inline_keyboard && ctx.message.reply_markup.inline_keyboard.length > 0;
             if (hasReplyMarkup || ctx.from.is_bot) {
                 await ctx.deleteMessage().catch(() => {});
-                if (!settings.antiButton.silent && settings.antiButton.msg) {
-                    const response = settings.antiButton.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                    ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
+                const isReplyEnabled = settings.antiButton.sendReply !== false && !settings.antiButton.silent;
+                if (isReplyEnabled && settings.antiButton.msg) {
+                    const response = settings.antiButton.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title || "Community");
+                    const delSec = parseInt(settings.antiButton.autoDeleteSeconds ?? 5);
+                    ctx.replyWithMarkdown(response).then(m => {
+                        if (delSec > 0 && m && m.message_id) {
+                            setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), delSec * 1000);
+                        }
+                    }).catch(async () => {
+                        await ctx.reply(response).catch(() => {});
+                    });
                 }
                 return;
             }
         }
 
-        // 3. Emoji Spam Guard
+        // 3. Emoji Spam Guard (Count limit & Standalone emoji check)
         if (settings.emojiSpam?.enabled) {
-            // Strictly detect pure emoji messages:
-            // "r emoji ban jeta oita holo shudu emoji dile hobe message er sate dile na"
-            // If message contains any normal text along with emojis, do NOT trigger!
+            // "shudu emoji text er sate oi gulo na"
+            // Strictly checks pure emoji messages (messages without accompanying text)
             const isPureEmoji = isOnlyEmoji(text, ctx.message?.entities);
-            let shouldTrigger = isPureEmoji;
+            let shouldTrigger = false;
+            let emojiCount = 0;
 
-            if (!shouldTrigger && settings.emojiSpam.mode === 'excessive_emoji') {
-                const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 10);
-                const emojiCount = countEmojis(text);
-                // Excessive emoji should require a high count AND very little accompanying text
-                shouldTrigger = emojiCount > maxAllowed && (text.length - emojiCount < 10);
+            if (isPureEmoji) {
+                emojiCount = countEmojis(text);
+                const maxAllowed = parseInt(settings.emojiSpam.maxCount ?? 0);
+                // If maxAllowed is 0, any pure emoji (count > 0) is blocked (0 dile ektaw dite parbe na!)
+                // If maxAllowed is e.g. 2, pure emoji message with >2 emojis is blocked!
+                if (emojiCount > maxAllowed) {
+                    shouldTrigger = true;
+                }
             }
 
             if (shouldTrigger) {
                 await ctx.deleteMessage().catch(() => {});
-                if (!settings.emojiSpam.silent && settings.emojiSpam.msg) {
-                    const emojiCount = countEmojis(text);
+                const isReplyEnabled = settings.emojiSpam.sendReply !== false && !settings.emojiSpam.silent;
+                if (isReplyEnabled && settings.emojiSpam.msg) {
                     const response = settings.emojiSpam.msg
                         .replace(/{mention}/g, userMention)
                         .replace(/{name}/g, fullName)
                         .replace(/{username}/g, usernameTag)
                         .replace(/{chat}/g, ctx.chat.title || "Community")
                         .replace(/{count}/g, emojiCount)
-                        .replace(/{limit}/g, settings.emojiSpam.maxCount || 0);
+                        .replace(/{limit}/g, settings.emojiSpam.maxCount ?? 0);
                     const sentWarn = await ctx.replyWithMarkdown(response).catch(async () => {
                         return await ctx.reply(response).catch(() => {});
                     });
@@ -925,9 +936,17 @@ bot.on('message', async (ctx, next) => {
         // 4. Anti-Forward Check
         if (settings.antiForward?.enabled && (ctx.message.forward_date || ctx.message.forward_origin)) {
             await ctx.deleteMessage().catch(() => {});
-            if (!settings.antiForward.silent && settings.antiForward.msg) {
-                const response = settings.antiForward.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title);
-                ctx.replyWithMarkdown(response).then(m => setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), 5000));
+            const isReplyEnabled = settings.antiForward.sendReply !== false && !settings.antiForward.silent;
+            if (isReplyEnabled && settings.antiForward.msg) {
+                const response = settings.antiForward.msg.replace(/{mention}/g, userMention).replace(/{chat}/g, ctx.chat.title || "Community");
+                const delSec = parseInt(settings.antiForward.autoDeleteSeconds ?? 5);
+                ctx.replyWithMarkdown(response).then(m => {
+                    if (delSec > 0 && m && m.message_id) {
+                        setTimeout(() => ctx.deleteMessage(m.message_id).catch(() => {}), delSec * 1000);
+                    }
+                }).catch(async () => {
+                    await ctx.reply(response).catch(() => {});
+                });
             }
             return;
         }
@@ -957,7 +976,8 @@ bot.on('message', async (ctx, next) => {
 
                 if (hasUnauthorizedLink) {
                     await ctx.deleteMessage().catch(() => {});
-                    if (!settings.antiLink.silent && settings.antiLink.msg) {
+                    const isReplyEnabled = settings.antiLink.sendReply !== false && !settings.antiLink.silent;
+                    if (isReplyEnabled && settings.antiLink.msg) {
                         const response = settings.antiLink.msg
                             .replace(/{mention}/g, userMention)
                             .replace(/{name}/g, fullName)
@@ -1050,14 +1070,17 @@ bot.on('message', async (ctx, next) => {
                     .replace(/{chat}/g, ctx.chat.title || "Community")
                     .replace(/{word}/g, matchedWord);
 
-                let replyExtra = { parse_mode: 'Markdown' };
-                if (!shouldDelete && ctx.message?.message_id) {
-                    replyExtra.reply_to_message_id = ctx.message.message_id;
+                let warningMsgSent = null;
+                const isReplyEnabled = matchedRule.sendReply !== false && !matchedRule.silent;
+                if (isReplyEnabled && formattedNotice) {
+                    let replyExtra = { parse_mode: 'Markdown' };
+                    if (!shouldDelete && ctx.message?.message_id) {
+                        replyExtra.reply_to_message_id = ctx.message.message_id;
+                    }
+                    warningMsgSent = await ctx.replyWithMarkdown(formattedNotice, replyExtra).catch(async () => {
+                        return await ctx.reply(formattedNotice, replyExtra).catch(() => {});
+                    });
                 }
-
-                let warningMsgSent = await ctx.replyWithMarkdown(formattedNotice, replyExtra).catch(async () => {
-                    return await ctx.reply(formattedNotice, replyExtra).catch(() => {});
-                });
 
                 // Auto delete the bot note after configured seconds
                 const deleteSec = parseInt(matchedRule.autoDeleteSeconds ?? settings.badWords.autoDeleteSeconds ?? 6);
