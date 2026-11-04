@@ -28,8 +28,8 @@ if (!firebase.apps.length) {
 const db = firebase.database();
 
 // NEW UPDATED BOT TOKEN
-const BOT_TOKEN = process.env.BOT_TOKEN || "8590481969:AAFy2RiubtlGSLOHIwR_I8f5XJVtjL5V0u4";
-let BOT_USERNAME = "Vareonprotection_bot";
+const BOT_TOKEN = process.env.BOT_TOKEN || "9180319761:AAFXmcsrSsDUbahabHLXG7JNADw8PcW0_6Y";
+let BOT_USERNAME = "InfinityGuardofc_Bot";
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
 const PORT = process.env.PORT || 3000;
@@ -42,6 +42,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
+app.get('/api/tg/bot-info', (req, res) => res.json({ username: BOT_USERNAME, botId: botId || null }));
 
 // Separate Admin Route (/admin -> admin.html)
 app.get('/admin', (req, res) => {

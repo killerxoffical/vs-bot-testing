@@ -266,13 +266,13 @@
 
                     <div class="text-[11px] text-slate-600 space-y-1.5 bg-white/90 p-3 rounded-xl border border-indigo-100">
                         <p class="font-bold text-slate-800">Quick 2-Step Instructions:</p>
-                        <p>1. Add <a id="linkBotMention" href="https://t.me/Vareonprotection_bot" target="_blank" class="text-brand-600 font-bold underline">@Vareonprotection_bot</a> to your Telegram Group as <b>Administrator</b>.</p>
+                        <p>1. Add <a id="linkBotMention" href="https://t.me/InfinityGuardofc_Bot" target="_blank" class="text-brand-600 font-bold underline">@InfinityGuardofc_Bot</a> to your Telegram Group as <b>Administrator</b>.</p>
                         <p>2. Send this command inside your group: <code id="cmdConnectCodeText" class="bg-indigo-50 text-brand-700 font-mono font-bold px-1.5 py-0.5 rounded">/connect VS-CONN-XXXXXX</code></p>
                         <p class="text-[10px] text-slate-400 pt-0.5">⚠️ Once sent, the code is consumed and your group will automatically link and show in your communities list!</p>
                     </div>
 
                     <div class="flex justify-center pt-1">
-                        <a id="btnDeepLinkBot" href="https://t.me/Vareonprotection_bot" target="_blank" class="w-full sm:w-auto px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
+                        <a id="btnDeepLinkBot" href="https://t.me/InfinityGuardofc_Bot" target="_blank" class="w-full sm:w-auto px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm">
                             <i data-lucide="send" class="w-3.5 h-3.5"></i>
                             <span>Open Telegram & Add Bot to Group</span>
                         </a>
@@ -1628,13 +1628,13 @@
 
             document.getElementById('displayConnectCode').innerText = code;
             document.getElementById('cmdConnectCodeText').innerText = `/connect ${code}`;
-            const deepLink = `https://t.me/Vareonprotection_bot?startgroup=connect_${code}`;
+            const deepLink = `https://t.me/InfinityGuardofc_Bot?startgroup=connect_${code}`;
             document.getElementById('btnDeepLinkBot').href = deepLink;
 
             if (!isExisting) {
                 Swal.fire({
                     title: 'Connect Code Created!',
-                    html: `<p class="text-xs text-slate-500 mb-2">Code: <b class="text-base text-brand-600 font-mono">${code}</b></p><p class="text-xs text-slate-600">Add @Vareonprotection_bot to your Telegram group as Admin, then send <b>/connect ${code}</b> inside the group.</p>`,
+                    html: `<p class="text-xs text-slate-500 mb-2">Code: <b class="text-base text-brand-600 font-mono">${code}</b></p><p class="text-xs text-slate-600">Add @InfinityGuardofc_Bot to your Telegram group as Admin, then send <b>/connect ${code}</b> inside the group.</p>`,
                     icon: 'success'
                 });
             }
@@ -1715,7 +1715,7 @@
                         <div class="col-span-full text-center py-12 px-4 bg-white rounded-2xl border border-dashed border-slate-200">
                             <i data-lucide="shield-alert" class="w-10 h-10 mx-auto mb-2 text-slate-300"></i>
                             <h4 class="text-sm font-bold text-slate-700 mb-1">No Communities Connected Yet</h4>
-                            <p class="text-xs text-slate-400 max-w-sm mx-auto mb-4">Click "Create Connect Code" above, add @Vareonprotection_bot to your Telegram group as Admin, and send the /connect command.</p>
+                            <p class="text-xs text-slate-400 max-w-sm mx-auto mb-4">Click "Create Connect Code" above, add @InfinityGuardofc_Bot to your Telegram group as Admin, and send the /connect command.</p>
                             <button type="button" onclick="generateConnectCode()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
                                 Create Connect Code Now
                             </button>
@@ -1837,7 +1837,7 @@
             }
 
             Swal.fire({
-                title: 'Deploying @Vareonprotection_bot...',
+                title: 'Deploying @InfinityGuardofc_Bot...',
                 text: 'Adding bot and granting full Administrator rights...',
                 allowOutsideClick: false,
                 didOpen: () => Swal.showLoading()
