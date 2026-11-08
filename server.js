@@ -43,6 +43,17 @@ app.use(express.static(__dirname));
 
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
+app.get('/health', (req, res) => {
+    res.json({
+        status: "ok",
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+        botRunning: isBotRunning,
+        botUsername: BOT_USERNAME || "InfinityGuardofc_Bot",
+        lastActivity: new Date(lastUpdateTimestamp).toLocaleTimeString()
+    });
+});
+
 // REAL-TIME GROUP PHOTO PROXY & CACHE
 const chatPhotoCache = {};
 app.get('/api/tg/chat-photo/:chatId', async (req, res) => {
@@ -2167,8 +2178,9 @@ app.post('/api/tg/verify-code', async (req, res) => {
 app.post('/api/tg/fetch-communities', async (req, res) => {
     const { session } = req.body;
     if (!session) return res.status(400).json({ error: "Session missing" });
+    let client = null;
     try {
-        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
+        client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
 
         let myTelegramId = null;
@@ -2181,14 +2193,19 @@ app.post('/api/tg/fetch-communities', async (req, res) => {
         res.json({ success: true, telegramId: myTelegramId, groups, channels });
     } catch (e) {
         res.status(500).json({ error: e.message });
+    } finally {
+        if (client) {
+            try { await client.disconnect(); } catch (e) {}
+        }
     }
 });
 
 // BOT AUTO-ADD & PROMOTE (WITH DUAL USER/TELEGRAM BIND)
 app.post('/api/tg/connect-group', async (req, res) => {
     const { session, chatId, userId } = req.body;
+    let client = null;
     try {
-        const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
+        client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 5 });
         await client.connect();
 
         let myTgId = null;
@@ -2285,6 +2302,10 @@ app.post('/api/tg/connect-group', async (req, res) => {
     } catch (e) {
         console.error("Connect Group Error:", e);
         res.status(500).json({ error: e.message || "Failed to add bot as admin" });
+    } finally {
+        if (client) {
+            try { await client.disconnect(); } catch (e) {}
+        }
     }
 });
 
@@ -2714,12 +2735,18 @@ app.post('/api/license/claim', async (req, res) => {
 
         let ownerTelegramId = providedTgId;
         if ((!ownerTelegramId || ownerTelegramId === 'null') && session) {
+            let client = null;
             try {
-                const client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 3 });
+                client = new TelegramClient(new StringSession(session), API_ID, API_HASH, { connectionRetries: 3 });
                 await client.connect();
                 const me = await client.getMe();
                 if (me && me.id) ownerTelegramId = me.id.toString();
-            } catch (e) {}
+            } catch (e) {
+            } finally {
+                if (client) {
+                    try { await client.disconnect(); } catch (e) {}
+                }
+            }
         }
 
         const now = Date.now();
@@ -2925,23 +2952,127 @@ app.get('*', (req, res) => {
     res.status(404).send("<h2>index.html not found.</h2>");
 });
 
+// =============================================================================
+// RENDER 24/7 KEEP-ALIVE ENGINE (PREVENTS 15-MIN INACTIVITY SLEEP)
+// =============================================================================
+function startKeepAliveEngine() {
+    const rawUrl = process.env.RENDER_EXTERNAL_URL || process.env.APP_URL || "https://dcbot-w5ky.onrender.com";
+    if (!rawUrl) return;
+
+    const pingUrl = rawUrl.replace(/\/$/, '') + '/health';
+    console.log(`[Keep-Alive Engine] Active! Target: ${pingUrl} (Pinging every 8 minutes to prevent Render sleep)`);
+
+    // Initial ping after 30 seconds
+    setTimeout(() => {
+        pingEndpoint(pingUrl);
+    }, 30 * 1000);
+
+    // Recurring ping every 8 minutes (Render sleeps at 15m)
+    setInterval(() => {
+        pingEndpoint(pingUrl);
+    }, 8 * 60 * 1000);
+}
+
+function pingEndpoint(url) {
+    try {
+        const https = require('https');
+        const http = require('http');
+        const client = url.startsWith('https') ? https : http;
+        const req = client.get(url, (res) => {
+            console.log(`[Keep-Alive] Ping OK! Status: ${res.statusCode} at ${new Date().toLocaleTimeString()}`);
+        });
+        req.on('error', (err) => {
+            console.warn(`[Keep-Alive] Ping notice: ${err.message}`);
+        });
+        req.setTimeout(10000, () => {
+            req.destroy();
+        });
+    } catch (e) {
+        console.warn(`[Keep-Alive] Ping error: ${e.message}`);
+    }
+}
+
+// =============================================================================
+// RESILIENT BOT LAUNCHER WITH RETRY & WATCHDOG
+// =============================================================================
+async function launchBotWithRetry(retries = 15, delay = 4000) {
+    if (isBotLaunching) return;
+    if (isBotRunning) {
+        try {
+            await bot.telegram.getMe();
+            return;
+        } catch (e) {
+            console.warn("[VS Protection] Bot connection check failed, re-launching...");
+            isBotRunning = false;
+        }
+    }
+
+    isBotLaunching = true;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            console.log(`[VS Protection] Launching Telegram Bot Engine (Attempt ${attempt}/${retries})...`);
+
+            // Clear any conflicting webhook or pending webhook locks
+            await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
+
+            await bot.launch({
+                allowed_updates: [
+                    'message',
+                    'edited_message',
+                    'channel_post',
+                    'edited_channel_post',
+                    'chat_member',
+                    'my_chat_member',
+                    'chat_join_request',
+                    'callback_query'
+                ]
+            });
+
+            isBotRunning = true;
+            isBotLaunching = false;
+            lastUpdateTimestamp = Date.now();
+            console.log(`[VS Protection] Telegram Bot Engine Active & Guarding (@${BOT_USERNAME || 'InfinityGuardofc_Bot'})`);
+            return;
+        } catch (err) {
+            console.error(`[VS Protection] Bot Launch Error (Attempt ${attempt}/${retries}):`, err.message);
+            isBotRunning = false;
+
+            if (attempt < retries) {
+                // If 409 Conflict, previous container on Render is still shutting down, wait 8 seconds
+                const isConflict = err.message && (err.message.includes('409') || err.message.includes('Conflict'));
+                const waitTime = isConflict ? 8000 : delay;
+                console.log(`[VS Protection] Retrying in ${waitTime / 1000}s...`);
+                await new Promise(r => setTimeout(r, waitTime));
+            }
+        }
+    }
+
+    isBotLaunching = false;
+    console.error("[VS Protection] Failed to launch bot after retries. Watchdog will keep trying in background.");
+}
+
+// Background Watchdog: checks every 60s, auto-recovers if polling died
+setInterval(async () => {
+    if (!isBotRunning && !isBotLaunching) {
+        console.warn("[VS Protection Watchdog] Bot is inactive! Auto-recovering...");
+        await launchBotWithRetry(5, 5000);
+    }
+}, 60 * 1000);
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`[VS Protection] Server listening on port ${PORT}`);
-    bot.launch({
-        allowed_updates: [
-            'message',
-            'edited_message',
-            'channel_post',
-            'edited_channel_post',
-            'chat_member',
-            'my_chat_member',
-            'chat_join_request',
-            'callback_query'
-        ]
-    })
-        .then(() => console.log(`[VS Protection] Telegram Bot Engine Active with Token: ${BOT_TOKEN.slice(0, 10)}...`))
-        .catch(e => console.error("[VS Protection] Engine Warning:", e.message));
+    startKeepAliveEngine();
+    launchBotWithRetry(15, 4000);
 });
 
-process.once('SIGINT', () => { try { bot.stop('SIGINT'); } catch (e) {} });
-process.once('SIGTERM', () => { try { bot.stop('SIGTERM'); } catch (e) {} });
+// Graceful Shutdown: Releases Telegram polling lock immediately so new container can launch without 409 Conflict
+const gracefulShutdown = (signal) => {
+    console.log(`[VS Protection] Received ${signal}. Shutting down cleanly...`);
+    isBotRunning = false;
+    try { bot.stop(signal); } catch (e) {}
+    process.exit(0);
+};
+
+process.once('SIGINT', () => gracefulShutdown('SIGINT'));
+process.once('SIGTERM', () => gracefulShutdown('SIGTERM'));
