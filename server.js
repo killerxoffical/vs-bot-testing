@@ -27,12 +27,23 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
+// Process Crash Guards (Prevent unhandled promise rejections from killing server)
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[VS Protection Unhandled Rejection]:', reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('[VS Protection Uncaught Exception]:', err);
+});
+
 // NEW UPDATED BOT TOKEN
 const BOT_TOKEN = process.env.BOT_TOKEN || "9180319761:AAFXmcsrSsDUbahabHLXG7JNADw8PcW0_6Y";
 let BOT_USERNAME = "InfinityGuardofc_Bot";
+let isBotRunning = false;
+let isBotLaunching = false;
+let lastUpdateTimestamp = Date.now();
 const API_ID = parseInt(process.env.API_ID || "39447470");
 const API_HASH = process.env.API_HASH || "eb7cac1c8ad9935d4b208dc0da076d8c";
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || "3000", 10);
 
 const app = express();
 app.use(cors());
@@ -178,6 +189,9 @@ async function getOwnerSubByChat(chatId) {
 // TELEGRAF BOT ENGINE
 // =============================================================================
 const bot = new Telegraf(BOT_TOKEN);
+bot.catch((err, ctx) => {
+    console.error('[VS Protection Bot Catch]:', err && err.message ? err.message : err);
+});
 let chatSettingsCache = {};
 let botId = null;
 
@@ -3063,7 +3077,9 @@ setInterval(async () => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`[VS Protection] Server listening on port ${PORT}`);
     startKeepAliveEngine();
-    launchBotWithRetry(15, 4000);
+    launchBotWithRetry(15, 4000).catch(err => {
+        console.error('[VS Protection] Initial bot launch notice:', err.message);
+    });
 });
 
 // Graceful Shutdown: Releases Telegram polling lock immediately so new container can launch without 409 Conflict
