@@ -51,6 +51,7 @@ app.use(express.json());
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
+app.use('/CH', express.static(path.join(__dirname, 'CH')));
 
 app.get('/ping', (req, res) => res.status(200).send("OK - VS Protection Engine Active"));
 
@@ -204,6 +205,331 @@ bot.telegram.getMe().then(info => {
     console.error("[VS Protection] BOT TOKEN ERROR: Please verify your token with @BotFather:", err.message);
 });
 
+// =============================================================================
+// ANTI-BOT IMAGE CAPTCHA ENGINE (PROTECTS GROUPS AGAINST FAKE MEMBERS & BOTS)
+// =============================================================================
+const CAPTCHA_DIR = path.join(__dirname, 'CH');
+let captchaPool = [];
+
+function loadCaptchaPool() {
+    try {
+        if (fs.existsSync(CAPTCHA_DIR)) {
+            const files = fs.readdirSync(CAPTCHA_DIR);
+            captchaPool = files.filter(f => /\.(png|jpe?g|webp)$/i.test(f)).map(f => {
+                const parsed = path.parse(f);
+                const code = parsed.name.trim();
+                return {
+                    code: code,
+                    codeUpper: code.toUpperCase(),
+                    fileName: f,
+                    filePath: path.join(CAPTCHA_DIR, f)
+                };
+            });
+        }
+    } catch (e) {
+        console.error("[Captcha Engine] Error reading CH directory:", e.message);
+    }
+    console.log(`[Captcha Engine] Loaded ${captchaPool.length} challenge images from CH/`);
+}
+loadCaptchaPool();
+
+function getRandomCaptcha(excludeCode = null) {
+    if (!captchaPool || captchaPool.length === 0) {
+        loadCaptchaPool();
+    }
+    if (captchaPool.length === 0) {
+        const fallbacks = ['1738', '2VYK', 'AUGU', 'WDNL', 'NAQ6', 'TTC2J'];
+        const fb = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+        return { code: fb, codeUpper: fb.toUpperCase(), fileName: null, filePath: null };
+    }
+    let pool = captchaPool;
+    if (excludeCode && captchaPool.length > 1) {
+        pool = captchaPool.filter(c => c.codeUpper !== excludeCode.toUpperCase());
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Map: key: `${chatId}_${userId}` -> Challenge State
+const pendingCaptchas = new Map();
+// Map: key: userId -> `${chatId}_${userId}` for PM verification
+const userPmPendingMap = new Map();
+
+// API endpoint to inspect available Captcha challenges
+app.get('/api/tg/captcha-challenges', (req, res) => {
+    res.json({
+        success: true,
+        count: captchaPool.length,
+        challenges: captchaPool.map(c => ({ code: c.code, file: c.fileName, url: `/CH/${c.fileName}` }))
+    });
+});
+
+async function dispatchCaptchaChallenge(ctx, chatId, member, settings) {
+    if (!member || member.is_bot) return;
+
+    const pendingKey = `${chatId}_${member.id}`;
+    if (pendingCaptchas.has(pendingKey)) {
+        const old = pendingCaptchas.get(pendingKey);
+        clearTimeout(old.timer);
+        pendingCaptchas.delete(pendingKey);
+    }
+
+    const captchaConfig = settings.captcha || {};
+    const timeoutSec = parseInt(captchaConfig.timeoutSeconds || 120, 10);
+    const maxAttempts = parseInt(captchaConfig.maxAttempts || 3, 10);
+    const failAction = captchaConfig.failAction || 'kick';
+
+    // Restrict member from sending media, links, forwards, stickers until verified
+    try {
+        await bot.telegram.restrictChatMember(chatId, member.id, {
+            permissions: {
+                can_send_messages: true,
+                can_send_media_messages: false,
+                can_send_other_messages: false,
+                can_add_web_page_previews: false
+            }
+        });
+    } catch (rErr) {}
+
+    const challenge = getRandomCaptcha();
+    const fullName = `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.first_name || 'Member';
+    const userMention = `[${fullName}](tg://user?id=${member.id})`;
+    const chatTitle = ctx.chat?.title || "Community";
+
+    const defaultMsg = "🛡️ *Human Verification Required!*\n" +
+        "👤 Member: {mention}\n\n" +
+        "গ্রুপে যুক্ত হতে ছবিতে থাকা ক্যাপচা কোডটি নিচে লিখে পাঠান।\n" +
+        "✍️ Type the code shown in the image to verify.\n" +
+        "⏱️ সময়: {time} সেকেন্ড (Attempts: 1/{maxAttempts})";
+
+    const caption = (captchaConfig.msg || defaultMsg)
+        .replace(/{mention}/g, userMention)
+        .replace(/{name}/g, fullName)
+        .replace(/{user}/g, userMention)
+        .replace(/{chat}/g, chatTitle)
+        .replace(/{time}/g, timeoutSec)
+        .replace(/{maxAttempts}/g, maxAttempts);
+
+    const inlineKeyboard = Markup.inlineKeyboard([
+        [
+            Markup.button.url('🤖 Verify in PM (ইনবক্সে ভেরিফাই)', `https://t.me/${BOT_USERNAME}?start=captcha_${chatId}`),
+            Markup.button.callback('🔄 Change Code (নতুন কোড)', `cb_captcha_refresh_${chatId}_${member.id}`)
+        ]
+    ]);
+
+    let sentPhoto = null;
+    try {
+        if (challenge.filePath && fs.existsSync(challenge.filePath)) {
+            sentPhoto = await bot.telegram.sendPhoto(chatId, { source: challenge.filePath }, {
+                caption: caption,
+                parse_mode: 'Markdown',
+                ...inlineKeyboard
+            });
+        } else {
+            sentPhoto = await bot.telegram.sendMessage(chatId, `🧩 *Captcha Challenge for ${userMention}:*\nCode: \`${challenge.code}\`\n\n${caption}`, {
+                parse_mode: 'Markdown',
+                ...inlineKeyboard
+            });
+        }
+    } catch (sendErr) {
+        console.error("[Captcha] Error sending challenge photo:", sendErr.message);
+        try {
+            sentPhoto = await bot.telegram.sendMessage(chatId, caption, { parse_mode: 'Markdown', ...inlineKeyboard });
+        } catch (e) {}
+    }
+
+    const pendingData = {
+        chatId: chatId,
+        userId: member.id,
+        member: member,
+        fullName: fullName,
+        userMention: userMention,
+        chatTitle: chatTitle,
+        code: challenge.code,
+        codeUpper: challenge.codeUpper,
+        filePath: challenge.filePath,
+        attempts: 1,
+        maxAttempts: maxAttempts,
+        failAction: failAction,
+        captchaMsgId: sentPhoto ? sentPhoto.message_id : null,
+        timeoutSec: timeoutSec,
+        createdAt: Date.now(),
+        timer: setTimeout(() => handleCaptchaTimeout(pendingKey), timeoutSec * 1000)
+    };
+
+    pendingCaptchas.set(pendingKey, pendingData);
+}
+
+async function handleCaptchaResponse(ctx, pendingKey) {
+    const pending = pendingCaptchas.get(pendingKey);
+    if (!pending) return;
+
+    // Immediately delete the user's message so the group stays clean and spam-free
+    try { await ctx.deleteMessage(); } catch (e) {}
+
+    const text = (ctx.message?.text || "").trim();
+    if (!text) return;
+
+    // Check if the user typed the correct code (case-insensitive)
+    if (text.toUpperCase() === pending.codeUpper) {
+        // SUCCESS VERIFICATION
+        clearTimeout(pending.timer);
+        pendingCaptchas.delete(pendingKey);
+        userPmPendingMap.delete(pending.userId);
+
+        // Delete group captcha challenge message
+        if (pending.captchaMsgId) {
+            try { await bot.telegram.deleteMessage(pending.chatId, pending.captchaMsgId); } catch (e) {}
+        }
+        if (pending.pmMsgId && pending.pmChatId) {
+            try { await bot.telegram.deleteMessage(pending.pmChatId, pending.pmMsgId); } catch (e) {}
+        }
+
+        // Unrestrict user with full chatting permissions
+        try {
+            await bot.telegram.restrictChatMember(pending.chatId, pending.userId, {
+                permissions: {
+                    can_send_messages: true,
+                    can_send_media_messages: true,
+                    can_send_other_messages: true,
+                    can_add_web_page_previews: true,
+                    can_send_polls: true,
+                    can_invite_users: true
+                }
+            });
+        } catch (uErr) {}
+
+        // Send temporary success announcement
+        const settings = await getChatSettings(pending.chatId);
+        const successTemplate = settings.captcha?.successMsg || "✅ *Verification Successful!* 🎉\nWelcome {mention} to *{chat}*! You can now chat freely.";
+        const successMsg = successTemplate
+            .replace(/{mention}/g, pending.userMention)
+            .replace(/{name}/g, pending.fullName)
+            .replace(/{chat}/g, pending.chatTitle);
+
+        try {
+            const sentSuccess = await bot.telegram.sendMessage(pending.chatId, successMsg, { parse_mode: 'Markdown' });
+            if (sentSuccess?.message_id) {
+                scheduleAutoDelete(pending.chatId, sentSuccess.message_id, 6);
+            }
+        } catch (e) {}
+
+        // Send welcome greeting if configured
+        await sendWelcomeGreeting(ctx, pending.chatId, pending.member);
+        return;
+    }
+
+    // WRONG CODE ENTERED
+    pending.attempts++;
+
+    // Delete old captcha photo message
+    if (pending.captchaMsgId) {
+        try { await bot.telegram.deleteMessage(pending.chatId, pending.captchaMsgId); } catch (e) {}
+    }
+
+    if (pending.attempts > pending.maxAttempts) {
+        // EXCEEDED MAXIMUM ATTEMPTS -> FAIL ACTION
+        clearTimeout(pending.timer);
+        pendingCaptchas.delete(pendingKey);
+        userPmPendingMap.delete(pending.userId);
+
+        try {
+            if (pending.failAction === 'mute') {
+                await bot.telegram.restrictChatMember(pending.chatId, pending.userId, {
+                    permissions: { can_send_messages: false }
+                });
+            } else {
+                await bot.telegram.banChatMember(pending.chatId, pending.userId);
+                await bot.telegram.unbanChatMember(pending.chatId, pending.userId); // Kick
+            }
+        } catch (fErr) {}
+
+        const failNotice = `❌ ${pending.userMention} failed Captcha verification (${pending.maxAttempts}/${pending.maxAttempts} incorrect attempts) and was ${pending.failAction === 'mute' ? 'muted' : 'removed'} from *${pending.chatTitle}*.`;
+        try {
+            const sentNotice = await bot.telegram.sendMessage(pending.chatId, failNotice, { parse_mode: 'Markdown' });
+            if (sentNotice?.message_id) {
+                scheduleAutoDelete(pending.chatId, sentNotice.message_id, 8);
+            }
+        } catch (e) {}
+        return;
+    }
+
+    // ATTEMPT FAILED BUT ATTEMPTS REMAIN -> PICK NEW IMAGE & NEW CODE!
+    const newChallenge = getRandomCaptcha(pending.code);
+    pending.code = newChallenge.code;
+    pending.codeUpper = newChallenge.codeUpper;
+    pending.filePath = newChallenge.filePath;
+
+    const remainingSec = Math.max(10, Math.round((pending.createdAt + (pending.timeoutSec * 1000) - Date.now()) / 1000));
+
+    const retryCaption = `❌ *ভুল ক্যাপচা কোড! (Incorrect Code)*\n` +
+        `👤 Member: ${pending.userMention}\n` +
+        `⚠️ Attempt: ${pending.attempts} / ${pending.maxAttempts}\n\n` +
+        `উপরে নতুন ক্যাপচা ইমেজ চ্যালেঞ্জ দেওয়া হয়েছে। ছবিতে থাকা সঠিক কোডটি নিচে লিখে পাঠান:\n` +
+        `⏱️ বাকি সময়: ${remainingSec} সেকেন্ড`;
+
+    const inlineKeyboard = Markup.inlineKeyboard([
+        [
+            Markup.button.url('🤖 Verify in PM (ইনবক্সে ভেরিফাই)', `https://t.me/${BOT_USERNAME}?start=captcha_${pending.chatId}`),
+            Markup.button.callback('🔄 Change Code (নতুন কোড)', `cb_captcha_refresh_${pending.chatId}_${pending.userId}`)
+        ]
+    ]);
+
+    try {
+        let sentNew = null;
+        if (pending.filePath && fs.existsSync(pending.filePath)) {
+            sentNew = await bot.telegram.sendPhoto(pending.chatId, { source: pending.filePath }, {
+                caption: retryCaption,
+                parse_mode: 'Markdown',
+                ...inlineKeyboard
+            });
+        } else {
+            sentNew = await bot.telegram.sendMessage(pending.chatId, `🧩 *New Captcha:* \`${pending.code}\`\n\n${retryCaption}`, {
+                parse_mode: 'Markdown',
+                ...inlineKeyboard
+            });
+        }
+        if (sentNew?.message_id) {
+            pending.captchaMsgId = sentNew.message_id;
+        }
+    } catch (e) {
+        console.error("[Captcha] Error resending new challenge photo:", e.message);
+    }
+}
+
+async function handleCaptchaTimeout(pendingKey) {
+    const pending = pendingCaptchas.get(pendingKey);
+    if (!pending) return;
+
+    pendingCaptchas.delete(pendingKey);
+    userPmPendingMap.delete(pending.userId);
+
+    if (pending.captchaMsgId) {
+        try { await bot.telegram.deleteMessage(pending.chatId, pending.captchaMsgId); } catch (e) {}
+    }
+    if (pending.pmMsgId && pending.pmChatId) {
+        try { await bot.telegram.deleteMessage(pending.pmChatId, pending.pmMsgId); } catch (e) {}
+    }
+
+    try {
+        if (pending.failAction === 'mute') {
+            await bot.telegram.restrictChatMember(pending.chatId, pending.userId, {
+                permissions: { can_send_messages: false }
+            });
+        } else {
+            await bot.telegram.banChatMember(pending.chatId, pending.userId);
+            await bot.telegram.unbanChatMember(pending.chatId, pending.userId);
+        }
+    } catch (e) {}
+
+    const timeoutNotice = `⏱️ ${pending.userMention} failed to verify within time limit and was ${pending.failAction === 'mute' ? 'muted' : 'removed'} to protect *${pending.chatTitle}*.`;
+    try {
+        const sentNotice = await bot.telegram.sendMessage(pending.chatId, timeoutNotice, { parse_mode: 'Markdown' });
+        if (sentNotice?.message_id) {
+            scheduleAutoDelete(pending.chatId, sentNotice.message_id, 8);
+        }
+    } catch (e) {}
+}
+
 function checkFakeAdmin(firstName, lastName, username, keywords) {
     const fullName = `${firstName || ''} ${lastName || ''}`.toLowerCase();
     const cleanUser = (username || '').toLowerCase().replace(/^@/, '');
@@ -259,7 +585,14 @@ async function getChatSettings(chatId) {
             autoReplies: {},
             warnLimit: 3,
             chatLocked: false,
-            lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*"
+            lockMsg: "🔒 *This conversation has been temporarily muted by community administrators.*",
+            captcha: {
+                enabled: false,
+                timeoutSeconds: 120,
+                maxAttempts: 3,
+                failAction: 'kick',
+                msg: "🛡️ *Human Verification Required!* \n👤 Member: {mention}\n\nগ্রুপে যুক্ত হতে ছবিতে থাকা ক্যাপচা কোডটি নিচে লিখে পাঠান।\n✍️ Type the code shown in the image to verify.\n⏱️ সময়: {time} সেকেন্ড (Attempts: 1/{maxAttempts})"
+            }
         };
         chatSettingsCache[chatId] = settings;
         return settings;
@@ -442,8 +775,14 @@ async function sendWelcomeGreeting(ctx, chatId, member) {
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
+        const settings = await getChatSettings(chatId);
         for (const member of ctx.message.new_chat_members) {
-            await sendWelcomeGreeting(ctx, chatId, member);
+            if (member.is_bot) continue;
+            if (settings.captcha && settings.captcha.enabled) {
+                await dispatchCaptchaChallenge(ctx, chatId, member, settings);
+            } else {
+                await sendWelcomeGreeting(ctx, chatId, member);
+            }
         }
     } catch (err) {}
 });
@@ -458,7 +797,15 @@ bot.on('chat_member', async (ctx) => {
 
         // User joined group or was accepted from join request
         if (['left', 'kicked'].includes(oldStatus) && newStatus === 'member') {
-            await sendWelcomeGreeting(ctx, ctx.chat.id, update.new_chat_member.user);
+            const member = update.new_chat_member.user;
+            if (member && !member.is_bot) {
+                const settings = await getChatSettings(ctx.chat.id);
+                if (settings.captcha && settings.captcha.enabled) {
+                    await dispatchCaptchaChallenge(ctx, ctx.chat.id, member, settings);
+                } else {
+                    await sendWelcomeGreeting(ctx, ctx.chat.id, member);
+                }
+            }
         }
         
         // Track departed member if left
@@ -693,11 +1040,75 @@ async function sendAdminIncidentReport(chatId, incident) {
     }
 }
 
-// 2.9.1 Interactive Moderation Callback Query Handler (Admin Actions from PM)
+// 2.9.1 Interactive Moderation Callback Query Handler (Admin Actions from PM & Captcha)
 bot.on('callback_query', async (ctx) => {
     try {
         const data = ctx.callbackQuery?.data;
-        if (!data || !data.startsWith('act:')) {
+        if (!data) return ctx.answerCbQuery().catch(() => {});
+
+        // CAPTCHA REFRESH CALLBACK HANDLER
+        if (data.startsWith('cb_captcha_refresh_')) {
+            const parts = data.split('_');
+            const targetChatId = parts[3];
+            const targetUserId = parts[4];
+
+            if (String(ctx.from.id) !== String(targetUserId)) {
+                return ctx.answerCbQuery("⚠️ Only the new member can refresh their Captcha challenge!", { show_alert: true });
+            }
+
+            const pendingKey = `${targetChatId}_${targetUserId}`;
+            const pending = pendingCaptchas.get(pendingKey);
+            if (!pending) {
+                return ctx.answerCbQuery("⚠️ Captcha challenge has expired or already solved!");
+            }
+
+            const newChallenge = getRandomCaptcha(pending.code);
+            pending.code = newChallenge.code;
+            pending.codeUpper = newChallenge.codeUpper;
+            pending.filePath = newChallenge.filePath;
+
+            try {
+                if (pending.captchaMsgId) {
+                    await bot.telegram.deleteMessage(pending.chatId, pending.captchaMsgId).catch(() => {});
+                }
+
+                const remainingSec = Math.max(10, Math.round((pending.createdAt + (pending.timeoutSec * 1000) - Date.now()) / 1000));
+                const refreshCaption = `🔄 *নতুন ক্যাপচা কোড (Refreshed Challenge)*\n` +
+                    `👤 Member: ${pending.userMention}\n` +
+                    `⚠️ Attempt: ${pending.attempts} / ${pending.maxAttempts}\n\n` +
+                    `গ্রুপে যুক্ত হতে উপরের ছবিতে থাকা নতুন কোডটি নিচে লিখে পাঠান:\n` +
+                    `⏱️ বাকি সময়: ${remainingSec} সেকেন্ড`;
+
+                const inlineKeyboard = Markup.inlineKeyboard([
+                    [
+                        Markup.button.url('🤖 Verify in PM (ইনবক্সে ভেরিফাই)', `https://t.me/${BOT_USERNAME}?start=captcha_${pending.chatId}`),
+                        Markup.button.callback('🔄 Change Code (নতুন কোড)', `cb_captcha_refresh_${pending.chatId}_${pending.userId}`)
+                    ]
+                ]);
+
+                let sentRefresh = null;
+                if (pending.filePath && fs.existsSync(pending.filePath)) {
+                    sentRefresh = await bot.telegram.sendPhoto(pending.chatId, { source: pending.filePath }, {
+                        caption: refreshCaption,
+                        parse_mode: 'Markdown',
+                        ...inlineKeyboard
+                    });
+                } else {
+                    sentRefresh = await bot.telegram.sendMessage(pending.chatId, `🧩 *New Code:* \`${pending.code}\`\n\n${refreshCaption}`, {
+                        parse_mode: 'Markdown',
+                        ...inlineKeyboard
+                    });
+                }
+                if (sentRefresh?.message_id) {
+                    pending.captchaMsgId = sentRefresh.message_id;
+                }
+                return ctx.answerCbQuery("✅ New Captcha loaded!");
+            } catch (e) {
+                return ctx.answerCbQuery("⚠️ Failed to refresh: " + e.message);
+            }
+        }
+
+        if (!data.startsWith('act:')) {
             return ctx.answerCbQuery().catch(() => {});
         }
 
@@ -821,11 +1232,133 @@ bot.on('message', async (ctx, next) => {
     try {
                 if (!ctx.chat) return next();
 
-        // 3.0 Private Chat Handler (Admin Claim Code Link & PM Alerts)
+        // 3.0 Private Chat Handler (Admin Claim Code Link & PM Alerts & PM Captcha)
         if (ctx.chat.type === 'private') {
             const text = (ctx.message.text || ctx.message.caption || "").trim();
             const senderId = ctx.from.id;
             const senderName = `${ctx.from.first_name || ''} ${ctx.from.last_name || ''}`.trim() || ctx.from.first_name || 'Admin';
+
+            // 3.0.0 PM CAPTCHA CHALLENGE DISPATCH: /start captcha_<chatId>
+            if (text.startsWith('/start captcha_')) {
+                const targetChatId = text.replace('/start captcha_', '').trim();
+                const pendingKey = `${targetChatId}_${senderId}`;
+                const pending = pendingCaptchas.get(pendingKey);
+                if (!pending) {
+                    return ctx.replyWithMarkdown("ℹ️ *No pending Captcha challenge found!*\n\nEither you are already verified, or your verification time limit has expired.");
+                }
+                userPmPendingMap.set(senderId, pendingKey);
+                pending.pmChatId = ctx.chat.id;
+
+                const pmCaption = `🛡️ *Infinity Guard — Member Verification*\n` +
+                    `👥 Group: *${pending.chatTitle}*\n\n` +
+                    `গ্রুপে যুক্ত হতে উপরের ছবিতে থাকা সঠিক কোডটি এই চ্যাটে লিখে সেন্ড করুন।\n` +
+                    `✍️ Please reply with the code shown in the image above.\n` +
+                    `⏱️ Time Limit: 2 minutes\n` +
+                    `⚠️ Attempt: ${pending.attempts} / ${pending.maxAttempts}`;
+
+                try {
+                    let sentPm = null;
+                    if (pending.filePath && fs.existsSync(pending.filePath)) {
+                        sentPm = await ctx.replyWithPhoto({ source: pending.filePath }, {
+                            caption: pmCaption,
+                            parse_mode: 'Markdown'
+                        });
+                    } else {
+                        sentPm = await ctx.replyWithMarkdown(`🧩 Code: \`${pending.code}\`\n\n${pmCaption}`);
+                    }
+                    if (sentPm?.message_id) {
+                        pending.pmMsgId = sentPm.message_id;
+                    }
+                } catch (e) {
+                    console.error("[Captcha PM] Error sending photo:", e.message);
+                }
+                return;
+            }
+
+            // 3.0.0.1 PM CAPTCHA RESPONSE CHECKER
+            if (userPmPendingMap.has(senderId)) {
+                const pendingKey = userPmPendingMap.get(senderId);
+                const pending = pendingCaptchas.get(pendingKey);
+                if (pending) {
+                    const inputCode = (text || "").trim();
+                    if (inputCode.toUpperCase() === pending.codeUpper) {
+                        // SUCCESS IN PM!
+                        clearTimeout(pending.timer);
+                        pendingCaptchas.delete(pendingKey);
+                        userPmPendingMap.delete(senderId);
+
+                        try {
+                            await bot.telegram.restrictChatMember(pending.chatId, pending.userId, {
+                                permissions: {
+                                    can_send_messages: true,
+                                    can_send_media_messages: true,
+                                    can_send_other_messages: true,
+                                    can_add_web_page_previews: true,
+                                    can_send_polls: true,
+                                    can_invite_users: true
+                                }
+                            });
+                        } catch (e) {}
+
+                        if (pending.captchaMsgId) {
+                            try { await bot.telegram.deleteMessage(pending.chatId, pending.captchaMsgId); } catch (e) {}
+                        }
+
+                        await ctx.replyWithMarkdown(`🎉 *Verification Successful!*\n\nYou now have full permissions in *${pending.chatTitle}*. Return to the group and enjoy your stay!`);
+
+                        try {
+                            const sentSuccess = await bot.telegram.sendMessage(pending.chatId, `✅ ${pending.userMention} verified successfully via Private Bot! Welcome to *${pending.chatTitle}*!`, { parse_mode: 'Markdown' });
+                            if (sentSuccess?.message_id) {
+                                scheduleAutoDelete(pending.chatId, sentSuccess.message_id, 6);
+                            }
+                        } catch (e) {}
+
+                        await sendWelcomeGreeting(ctx, pending.chatId, pending.member);
+                        return;
+                    } else {
+                        // INCORRECT IN PM
+                        pending.attempts++;
+                        if (pending.attempts > pending.maxAttempts) {
+                            clearTimeout(pending.timer);
+                            pendingCaptchas.delete(pendingKey);
+                            userPmPendingMap.delete(senderId);
+
+                            try {
+                                if (pending.failAction === 'mute') {
+                                    await bot.telegram.restrictChatMember(pending.chatId, pending.userId, { permissions: { can_send_messages: false } });
+                                } else {
+                                    await bot.telegram.banChatMember(pending.chatId, pending.userId);
+                                    await bot.telegram.unbanChatMember(pending.chatId, pending.userId);
+                                }
+                            } catch (e) {}
+
+                            if (pending.captchaMsgId) {
+                                try { await bot.telegram.deleteMessage(pending.chatId, pending.captchaMsgId); } catch (e) {}
+                            }
+
+                            await ctx.replyWithMarkdown(`❌ *Verification Failed!*\nYou exceeded the maximum allowed attempts and were ${pending.failAction === 'mute' ? 'muted' : 'removed'} from *${pending.chatTitle}*.`);
+                            return;
+                        }
+
+                        // Generate new image & code in PM
+                        const newChallenge = getRandomCaptcha(pending.code);
+                        pending.code = newChallenge.code;
+                        pending.codeUpper = newChallenge.codeUpper;
+                        pending.filePath = newChallenge.filePath;
+
+                        const pmRetryCaption = `❌ *ভুল কোড! (Incorrect Code)*\n\nউপরে নতুন ক্যাপচা ইমেজ দেওয়া হয়েছে। ছবিতে থাকা সঠিক কোডটি রিপ্লাই করুন:\n⚠️ Attempt: ${pending.attempts} / ${pending.maxAttempts}`;
+
+                        try {
+                            if (pending.filePath && fs.existsSync(pending.filePath)) {
+                                await ctx.replyWithPhoto({ source: pending.filePath }, { caption: pmRetryCaption, parse_mode: 'Markdown' });
+                            } else {
+                                await ctx.replyWithMarkdown(`🧩 Code: \`${pending.code}\`\n\n${pmRetryCaption}`);
+                            }
+                        } catch (e) {}
+                        return;
+                    }
+                }
+            }
 
             // Check for connect / claim code: /connect <code> or /claim <code> or /start connect_<code> or standalone VS-XXXXXX
             const codeMatch = text.match(/\b(VS-[A-Z0-9]{4,12})\b/i);
@@ -951,6 +1484,13 @@ bot.on('message', async (ctx, next) => {
 
         const chatId = ctx.chat.id;
         const text = ctx.message.text || ctx.message.caption || "";
+
+        // 3.0.1 CAPTCHA VERIFICATION INTERCEPTOR (Priority: High)
+        // If the sender is currently pending Captcha verification in this group:
+        const pendingKey = `${chatId}_${ctx.from?.id}`;
+        if (pendingCaptchas.has(pendingKey)) {
+            return handleCaptchaResponse(ctx, pendingKey);
+        }
 
         // Instant Health Check in Group: /ping
         if (text === '/ping') {
@@ -1317,6 +1857,56 @@ bot.on('message', async (ctx, next) => {
                     });
                 }
                 return;
+            }
+
+            // /captcha Command (Admin only: Captcha Protection Policy)
+            if (cmd === '/captcha' && isAdmin) {
+                const subCmd = (parts[1] || '').toLowerCase();
+                const settings = await getChatSettings(chatId);
+                if (!settings.captcha) settings.captcha = { enabled: false, timeoutSeconds: 120, maxAttempts: 3, failAction: 'kick' };
+
+                if (subCmd === 'on' || subCmd === 'enable') {
+                    settings.captcha.enabled = true;
+                    await db.ref(`groups/${chatId}/settings/captcha`).set(settings.captcha);
+                    chatSettingsCache[chatId] = settings;
+                    return ctx.replyWithMarkdown("🛡️ *Anti-Bot Captcha Verification is now ACTIVE!*\n\nNew members joining the community must solve an image Captcha challenge to chat.", { reply_to_message_id: ctx.message.message_id });
+                }
+                if (subCmd === 'off' || subCmd === 'disable') {
+                    settings.captcha.enabled = false;
+                    await db.ref(`groups/${chatId}/settings/captcha`).set(settings.captcha);
+                    chatSettingsCache[chatId] = settings;
+                    return ctx.replyWithMarkdown("🔓 *Anti-Bot Captcha Verification has been DISABLED.*", { reply_to_message_id: ctx.message.message_id });
+                }
+                if (subCmd === 'timeout' && parts[2]) {
+                    const sec = parseInt(parts[2], 10);
+                    if (sec >= 30 && sec <= 600) {
+                        settings.captcha.timeoutSeconds = sec;
+                        await db.ref(`groups/${chatId}/settings/captcha`).set(settings.captcha);
+                        chatSettingsCache[chatId] = settings;
+                        return ctx.replyWithMarkdown(`⏱️ *Captcha timeout set to ${sec} seconds.*`, { reply_to_message_id: ctx.message.message_id });
+                    }
+                }
+                if (subCmd === 'kick' || subCmd === 'mute') {
+                    settings.captcha.failAction = subCmd;
+                    await db.ref(`groups/${chatId}/settings/captcha`).set(settings.captcha);
+                    chatSettingsCache[chatId] = settings;
+                    return ctx.replyWithMarkdown(`⚙️ *Action on failure set to: ${subCmd.toUpperCase()}*`, { reply_to_message_id: ctx.message.message_id });
+                }
+
+                const status = settings.captcha.enabled ? "✅ *ACTIVE (ON)*" : "❌ *DISABLED (OFF)*";
+                return ctx.replyWithMarkdown(
+                    `🛡️ *[ANTI-BOT CAPTCHA SYSTEM]*\n\n` +
+                    `• Status: ${status}\n` +
+                    `• Timeout: *${settings.captcha.timeoutSeconds || 120}s*\n` +
+                    `• Max Attempts: *${settings.captcha.maxAttempts || 3}*\n` +
+                    `• Action on Failure: *${(settings.captcha.failAction || 'kick').toUpperCase()}*\n\n` +
+                    `*Commands:*\n` +
+                    `• \`/captcha on\` - Enable Captcha for new members\n` +
+                    `• \`/captcha off\` - Disable Captcha\n` +
+                    `• \`/captcha timeout <seconds>\` - Set timeout (30-600s)\n` +
+                    `• \`/captcha kick\` or \`/captcha mute\` - Action on fail\n` +
+                    `• \`/captcha status\` - View status`
+                , { reply_to_message_id: ctx.message.message_id });
             }
 
             // /warn Command (Admin only: Issue infraction warning)

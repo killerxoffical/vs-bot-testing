@@ -834,6 +834,84 @@
                             </div>
                         </div>
 
+                        <!-- 8. Anti-Bot Member Captcha Verification Card -->
+                        <div class="light-card p-6 md:p-7 rounded-2xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+                                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                            <span>Anti-Bot Member Captcha (ফেক মেম্বার ও বট প্রতিরোধে ক্যাপচা)</span>
+                                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">CH Images Active</span>
+                                        </h4>
+                                        <p class="text-xs text-slate-500">গ্রুপে নতুন মেম্বার জয়েন করলে ইমেজ ক্যাপচা চ্যালেঞ্জ পাঠাবে। ক্যাপচা সমাধান না করা পর্যন্ত ইউজার গ্রুপে মেসেজ পাঠাতে পারবে না।</p>
+                                    </div>
+                                </div>
+                                <input type="checkbox" id="toggleCaptcha" onchange="updateCaptchaPreview()" class="w-5 h-5 accent-brand-600 cursor-pointer">
+                            </div>
+
+                            <!-- Settings Row: Timeout, Max Attempts, Failure Action -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Captcha Expiration Timer:</label>
+                                    <select id="captchaTimeout" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="60">60 Seconds (1 মিনিট)</option>
+                                        <option value="120" selected>120 Seconds (2 মিনিট - Recommended)</option>
+                                        <option value="180">180 Seconds (3 মিনিট)</option>
+                                        <option value="300">300 Seconds (5 মিনিট)</option>
+                                    </select>
+                                    <p class="text-[10px] text-slate-400 mt-1">সময় পার হলে ইউজার স্বয়ংক্রিয়ভাবে রিমুভ হবে</p>
+                                </div>
+
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Maximum Allowed Attempts:</label>
+                                    <select id="captchaMaxAttempts" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="2">2 Attempts (২ বার)</option>
+                                        <option value="3" selected>3 Attempts (৩ বার - Recommended)</option>
+                                        <option value="5">5 Attempts (৫ বার)</option>
+                                    </select>
+                                    <p class="text-[10px] text-slate-400 mt-1">ভুল হলে প্রতিবার নতুন ইমেজ ও কোড আসবে</p>
+                                </div>
+
+                                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Action on Failure / Timeout:</label>
+                                    <select id="captchaFailAction" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none">
+                                        <option value="kick" selected>Kick from Group (রিমুভ - Recommended)</option>
+                                        <option value="mute">Mute Messages (মিউট করে রাখা)</option>
+                                    </select>
+                                    <p class="text-[10px] text-slate-400 mt-1">ব্যর্থ বা টাইমআউট হলে কী ব্যবস্থা নেবে</p>
+                                </div>
+                            </div>
+
+                            <!-- Textarea & Tag Pills -->
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-600 uppercase block mb-1">Captcha Challenge Message Template:</label>
+                                <div class="flex items-center flex-wrap gap-1.5 mb-1.5 p-1.5 bg-slate-50 rounded-lg border border-slate-200/60">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Insert Tags:</span>
+                                    <button type="button" onclick="insertTag('captchaMsg', '{mention}', updateCaptchaPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {mention}</button>
+                                    <button type="button" onclick="insertTag('captchaMsg', '{name}', updateCaptchaPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {name}</button>
+                                    <button type="button" onclick="insertTag('captchaMsg', '{chat}', updateCaptchaPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {chat}</button>
+                                    <button type="button" onclick="insertTag('captchaMsg', '{time}', updateCaptchaPreview)" class="tag-pill px-2 py-0.5 bg-white hover:bg-sky-50 hover:text-sky-700 border border-slate-200 text-slate-700 rounded-md text-[11px] font-mono font-bold transition shadow-2xs">+ {time}</button>
+                                </div>
+                                <textarea id="captchaMsg" oninput="updateCaptchaPreview()" rows="3" placeholder="🛡️ *Human Verification Required!* &#10;👤 Member: {mention}&#10;&#10;গ্রুপে যুক্ত হতে ছবিতে থাকা ক্যাপচা কোডটি নিচে লিখে পাঠান।&#10;✍️ Type the code shown in the image to verify.&#10;⏱️ সময়: {time} সেকেন্ড।" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 outline-none focus:border-brand-500 leading-relaxed"></textarea>
+                            </div>
+
+                            <!-- Live Telegram Message Review -->
+                            <div>
+                                <label class="text-[11px] font-bold text-slate-500 uppercase block mb-1">Live Telegram Challenge Review:</label>
+                                <div id="captchaPreviewContainer"></div>
+                            </div>
+
+                            <div class="flex justify-end">
+                                <button type="button" onclick="saveCaptchaSection()" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                    <span>Save Captcha Policy</span>
+                                </button>
+                            </div>
+                        </div>
+
                     </div><!-- Broadcast Studio Tab -->
                     <div id="tabContent-broadcast" class="hidden space-y-6 max-w-5xl">
                         <div class="light-card p-6 md:p-8 rounded-2xl space-y-5">
@@ -2518,6 +2596,34 @@ function saveEmojiSection() {
             saveSection('nameTracker', { enabled }, 'Name Change Tracker Policy');
         }
 
+        function saveCaptchaSection() {
+            const enabled = document.getElementById('toggleCaptcha')?.checked ?? false;
+            const timeoutSeconds = parseInt(document.getElementById('captchaTimeout')?.value || 120);
+            const maxAttempts = parseInt(document.getElementById('captchaMaxAttempts')?.value || 3);
+            const failAction = document.getElementById('captchaFailAction')?.value || 'kick';
+            const msg = document.getElementById('captchaMsg')?.value || "🛡️ *Human Verification Required!* \n👤 Member: {mention}\n\nগ্রুপে যুক্ত হতে ছবিতে থাকা ক্যাপচা কোডটি নিচে লিখে পাঠান।\n✍️ Type the code shown in the image to verify.\n⏱️ সময়: {time} সেকেন্ড।";
+
+            saveSection('captcha', {
+                enabled,
+                timeoutSeconds,
+                maxAttempts,
+                failAction,
+                msg
+            }, 'Anti-Bot Captcha Verification Policy');
+        }
+
+        function updateCaptchaPreview() {
+            const text = document.getElementById('captchaMsg')?.value || "🛡️ *Human Verification Required!* \n👤 Member: {mention}\n\nগ্রুপে যুক্ত হতে ছবিতে থাকা ক্যাপচা কোডটি নিচে লিখে পাঠান।\n✍️ Type the code shown in the image to verify.\n⏱️ সময়: 120 সেকেন্ড (Attempts: 1/3)";
+            renderLiveTelegramPreview('captchaPreviewContainer', { 
+                text, 
+                photoUrl: '/CH/1738.png', 
+                buttons: [
+                    [{ text: "🤖 Verify in PM (ইনবক্সে ভেরিফাই)", url: "https://t.me/InfinityGuardofc_Bot" }],
+                    [{ text: "🔄 Change Code (নতুন কোড)", url: "#" }]
+                ] 
+            });
+        }
+
         function updateBanSystemPreview() {
             const text = document.getElementById('banSystemMsg')?.value || "⛔ {mention} has been permanently removed from {chat}.";
             renderLiveTelegramPreview('banSystemPreviewContainer', { text });
@@ -3700,6 +3806,22 @@ function saveEmojiSection() {
             if (document.getElementById('toggleNameTracker')) {
                 document.getElementById('toggleNameTracker').checked = settings.nameTracker?.enabled !== false;
             }
+
+            // Captcha Anti-Bot Verification
+            if (settings.captcha) {
+                if (document.getElementById('toggleCaptcha')) document.getElementById('toggleCaptcha').checked = Boolean(settings.captcha.enabled);
+                if (document.getElementById('captchaTimeout')) document.getElementById('captchaTimeout').value = settings.captcha.timeoutSeconds ?? 120;
+                if (document.getElementById('captchaMaxAttempts')) document.getElementById('captchaMaxAttempts').value = settings.captcha.maxAttempts ?? 3;
+                if (document.getElementById('captchaFailAction')) document.getElementById('captchaFailAction').value = settings.captcha.failAction || 'kick';
+                if (document.getElementById('captchaMsg')) document.getElementById('captchaMsg').value = settings.captcha.msg || "🛡️ *Human Verification Required!* \n👤 Member: {mention}\n\nগ্রুপে যুক্ত হতে ছবিতে থাকা ক্যাপচা কোডটি নিচে লিখে পাঠান।\n✍️ Type the code shown in the image to verify.\n⏱️ সময়: {time} সেকেন্ড।";
+            } else {
+                if (document.getElementById('toggleCaptcha')) document.getElementById('toggleCaptcha').checked = false;
+                if (document.getElementById('captchaTimeout')) document.getElementById('captchaTimeout').value = 120;
+                if (document.getElementById('captchaMaxAttempts')) document.getElementById('captchaMaxAttempts').value = 3;
+                if (document.getElementById('captchaFailAction')) document.getElementById('captchaFailAction').value = 'kick';
+                if (document.getElementById('captchaMsg')) document.getElementById('captchaMsg').value = "🛡️ *Human Verification Required!* \n👤 Member: {mention}\n\nগ্রুপে যুক্ত হতে ছবিতে থাকা ক্যাপচা কোডটি নিচে লিখে পাঠান।\n✍️ Type the code shown in the image to verify.\n⏱️ সময়: {time} সেকেন্ড।";
+            }
+            updateCaptchaPreview();
             if (settings.banSystem) {
                 if (document.getElementById('toggleBanSystem')) document.getElementById('toggleBanSystem').checked = Boolean(settings.banSystem.enabled);
                 if (document.getElementById('banSystemMsg')) document.getElementById('banSystemMsg').value = settings.banSystem.msg || "";
