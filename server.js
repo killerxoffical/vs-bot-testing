@@ -192,6 +192,12 @@ async function getOwnerSubByChat(chatId) {
 const bot = new Telegraf(BOT_TOKEN);
 bot.catch((err, ctx) => {
     console.error('[VS Protection Bot Catch]:', err && err.message ? err.message : err);
+    if (err && err.message && (err.message.includes('409') || err.message.includes('Conflict'))) {
+        console.warn('[VS Protection] 409 Conflict detected in polling. Reconnecting in 8s...');
+        isBotRunning = false;
+        isBotLaunching = false;
+        setTimeout(startBotEngine, 8000);
+    }
 });
 let chatSettingsCache = {};
 let botId = null;
@@ -3652,78 +3658,96 @@ function pingEndpoint(url) {
 }
 
 // =============================================================================
-// RESILIENT BOT LAUNCHER WITH RETRY & WATCHDOG
+// RESILIENT NON-BLOCKING TELEGRAF BOT RUNNER WITH RECOVERY & WATCHDOG
 // =============================================================================
-async function launchBotWithRetry(retries = 15, delay = 4000) {
+async function startBotEngine() {
     if (isBotLaunching) return;
     if (isBotRunning) {
         try {
             await bot.telegram.getMe();
             return;
         } catch (e) {
-            console.warn("[VS Protection] Bot connection check failed, re-launching...");
+            console.warn("[VS Protection] Bot connection check failed, re-launching...", e.message);
             isBotRunning = false;
         }
     }
 
     isBotLaunching = true;
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            console.log(`[VS Protection] Launching Telegram Bot Engine (Attempt ${attempt}/${retries})...`);
+    try {
+        console.log(`[VS Protection] Starting Telegram Bot Engine (@${BOT_USERNAME || 'InfinityGuardofc_Bot'})...`);
 
-            // Clear any conflicting webhook or pending webhook locks
-            await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
+        // Clear any conflicting webhook or pending locks
+        await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
 
-            await bot.launch({
-                allowed_updates: [
-                    'message',
-                    'edited_message',
-                    'channel_post',
-                    'edited_channel_post',
-                    'chat_member',
-                    'my_chat_member',
-                    'chat_join_request',
-                    'callback_query'
-                ]
-            });
+        // Stop any existing polling cleanly
+        try { bot.stop('RESTART'); } catch (e) {}
 
-            isBotRunning = true;
-            isBotLaunching = false;
-            lastUpdateTimestamp = Date.now();
-            console.log(`[VS Protection] Telegram Bot Engine Active & Guarding (@${BOT_USERNAME || 'InfinityGuardofc_Bot'})`);
-            return;
-        } catch (err) {
-            console.error(`[VS Protection] Bot Launch Error (Attempt ${attempt}/${retries}):`, err.message);
+        // Launch polling (NON-BLOCKING)
+        bot.launch({
+            allowed_updates: [
+                'message',
+                'edited_message',
+                'channel_post',
+                'edited_channel_post',
+                'chat_member',
+                'my_chat_member',
+                'chat_join_request',
+                'callback_query'
+            ]
+        }).then(() => {
+            console.warn('[VS Protection] Telegraf polling stopped cleanly.');
             isBotRunning = false;
+            isBotLaunching = false;
+            setTimeout(startBotEngine, 5000);
+        }).catch(err => {
+            console.error('[VS Protection] Bot polling error:', err.message);
+            isBotRunning = false;
+            isBotLaunching = false;
+            // If 409 Conflict (e.g. Render zero-downtime deploy container overlap), wait 8s and reconnect
+            const waitTime = err.message && (err.message.includes('409') || err.message.includes('Conflict')) ? 8000 : 5000;
+            console.log(`[VS Protection] Reconnecting polling in ${waitTime / 1000}s...`);
+            setTimeout(startBotEngine, waitTime);
+        });
 
-            if (attempt < retries) {
-                // If 409 Conflict, previous container on Render is still shutting down, wait 8 seconds
-                const isConflict = err.message && (err.message.includes('409') || err.message.includes('Conflict'));
-                const waitTime = isConflict ? 8000 : delay;
-                console.log(`[VS Protection] Retrying in ${waitTime / 1000}s...`);
-                await new Promise(r => setTimeout(r, waitTime));
-            }
-        }
+        isBotRunning = true;
+        isBotLaunching = false;
+        lastUpdateTimestamp = Date.now();
+        console.log(`[VS Protection] Telegram Bot Engine Active & Guarding (@${BOT_USERNAME || 'InfinityGuardofc_Bot'})`);
+    } catch (err) {
+        console.error('[VS Protection] Bot startup error:', err.message);
+        isBotRunning = false;
+        isBotLaunching = false;
+        setTimeout(startBotEngine, 6000);
     }
-
-    isBotLaunching = false;
-    console.error("[VS Protection] Failed to launch bot after retries. Watchdog will keep trying in background.");
 }
 
-// Background Watchdog: checks every 60s, auto-recovers if polling died
+// Background Watchdog: checks every 25s, auto-recovers if polling died
 setInterval(async () => {
     if (!isBotRunning && !isBotLaunching) {
-        console.warn("[VS Protection Watchdog] Bot is inactive! Auto-recovering...");
-        await launchBotWithRetry(5, 5000);
+        console.warn("[VS Protection Watchdog] Bot is inactive! Auto-recovering now...");
+        await startBotEngine();
+        return;
     }
-}, 60 * 1000);
+
+    if (isBotRunning) {
+        try {
+            await bot.telegram.getMe();
+            lastUpdateTimestamp = Date.now();
+        } catch (e) {
+            console.warn("[VS Protection Watchdog] getMe check failed:", e.message);
+            isBotRunning = false;
+            isBotLaunching = false;
+            await startBotEngine();
+        }
+    }
+}, 25 * 1000);
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`[VS Protection] Server listening on port ${PORT}`);
     startKeepAliveEngine();
-    launchBotWithRetry(15, 4000).catch(err => {
-        console.error('[VS Protection] Initial bot launch notice:', err.message);
+    startBotEngine().catch(err => {
+        console.error('[VS Protection] Initial bot start error:', err.message);
     });
 });
 
