@@ -301,13 +301,16 @@ async function dispatchCaptchaChallenge(ctx, chatId, member, settings) {
         "✍️ Type the code shown in the image to verify.\n" +
         "⏱️ সময়: {time} সেকেন্ড (Attempts: 1/{maxAttempts})";
 
-    const caption = (captchaConfig.msg || defaultMsg)
+    let caption = (captchaConfig.msg || defaultMsg)
         .replace(/{mention}/g, userMention)
         .replace(/{name}/g, fullName)
         .replace(/{user}/g, userMention)
         .replace(/{chat}/g, chatTitle)
         .replace(/{time}/g, timeoutSec)
         .replace(/{maxAttempts}/g, maxAttempts);
+
+    // Normalize **bold** to *bold* for Telegram Markdown v1
+    caption = caption.replace(/\*\*(.*?)\*\*/g, '*$1*');
 
     const inlineKeyboard = Markup.inlineKeyboard([
         [
@@ -698,6 +701,46 @@ bot.start((ctx) => {
     );
 });
 
+// Deduplication tracker to prevent duplicate join triggers
+const recentJoinHandled = new Map();
+function isDuplicateJoin(chatId, userId) {
+    const key = `${chatId}_${userId}`;
+    const now = Date.now();
+    if (recentJoinHandled.has(key) && (now - recentJoinHandled.get(key) < 15000)) {
+        return true;
+    }
+    recentJoinHandled.set(key, now);
+    if (recentJoinHandled.size > 500) {
+        for (const [k, t] of recentJoinHandled.entries()) {
+            if (now - t > 60000) recentJoinHandled.delete(k);
+        }
+    }
+    return false;
+}
+
+// Centralized New Member Dispatcher (Supports both Supergroups & Standard Groups)
+async function handleNewMemberJoin(ctx, chatId, member) {
+    if (!member || member.is_bot) return;
+    if (isDuplicateJoin(chatId, member.id)) {
+        console.log(`[Join] Ignored duplicate event for ${member.first_name} (${member.id}) in ${chatId}`);
+        return;
+    }
+
+    console.log(`[Join Event] New member: ${member.first_name} (${member.id}) joined Chat: ${chatId}`);
+
+    const settings = await getChatSettings(chatId);
+
+    // If Captcha Protection is enabled, dispatch image challenge
+    if (settings.captcha && settings.captcha.enabled) {
+        console.log(`[Captcha] Dispatching challenge to ${member.first_name} (${member.id}) in ${chatId}`);
+        await dispatchCaptchaChallenge(ctx, chatId, member, settings);
+    } else {
+        // Otherwise send welcome greeting directly
+        console.log(`[Welcome] Sending welcome greeting to ${member.first_name} (${member.id}) in ${chatId}`);
+        await sendWelcomeGreeting(ctx, chatId, member);
+    }
+}
+
 // Robust Welcome Greeting Dispatcher
 async function sendWelcomeGreeting(ctx, chatId, member) {
     if (!member || member.is_bot) return;
@@ -716,12 +759,15 @@ async function sendWelcomeGreeting(ctx, chatId, member) {
         const chatTitle = ctx.chat?.title || "Community";
 
         const template = (settings.welcome && settings.welcome.text) ? settings.welcome.text : "👋 Welcome {mention} to {chat}! Please adhere to our guidelines.";
-        const msg = template
+        let msg = template
             .replace(/{mention}/g, userMention)
             .replace(/{user}/g, userMention)
             .replace(/{name}/g, fullName)
             .replace(/{username}/g, usernameTag)
             .replace(/{chat}/g, chatTitle);
+
+        // Normalize **bold** to *bold* for Telegram Markdown v1
+        msg = msg.replace(/\*\*(.*?)\*\*/g, '*$1*');
 
         const keyboard = buildInlineButtons(settings.welcome?.buttons);
         const extra = { parse_mode: 'Markdown' };
@@ -734,23 +780,29 @@ async function sendWelcomeGreeting(ctx, chatId, member) {
             try {
                 sentWelcome = await bot.telegram.sendPhoto(chatId, photoUrl, { caption: msg, ...extra });
             } catch (pErr) {
+                console.warn("[Welcome] Photo send with Markdown failed, retrying plain text:", pErr.message);
+                const plainMsg = template
+                    .replace(/{mention}/g, fullName)
+                    .replace(/{user}/g, fullName)
+                    .replace(/{name}/g, fullName)
+                    .replace(/{username}/g, usernameTag)
+                    .replace(/{chat}/g, chatTitle)
+                    .replace(/[*_`\[\]]/g, '');
                 try {
-                    sentWelcome = await bot.telegram.sendMessage(chatId, msg, extra);
-                } catch (mErr) {
-                    const plainMsg = template
-                        .replace(/{mention}/g, fullName)
-                        .replace(/{user}/g, fullName)
-                        .replace(/{name}/g, fullName)
-                        .replace(/{username}/g, usernameTag)
-                        .replace(/{chat}/g, chatTitle)
-                        .replace(/[*_`\[\]]/g, '');
-                    sentWelcome = await bot.telegram.sendMessage(chatId, plainMsg, keyboard ? { reply_markup: keyboard.reply_markup } : {}).catch(() => null);
+                    sentWelcome = await bot.telegram.sendPhoto(chatId, photoUrl, { caption: plainMsg, ...(keyboard ? { reply_markup: keyboard.reply_markup } : {}) });
+                } catch (pErr2) {
+                    try {
+                        sentWelcome = await bot.telegram.sendMessage(chatId, msg, extra);
+                    } catch (mErr) {
+                        sentWelcome = await bot.telegram.sendMessage(chatId, plainMsg, keyboard ? { reply_markup: keyboard.reply_markup } : {}).catch(() => null);
+                    }
                 }
             }
         } else {
             try {
                 sentWelcome = await bot.telegram.sendMessage(chatId, msg, extra);
             } catch (mErr) {
+                console.warn("[Welcome] Text send with Markdown failed, retrying plain text:", mErr.message);
                 const plainMsg = template
                     .replace(/{mention}/g, fullName)
                     .replace(/{user}/g, fullName)
@@ -775,42 +827,37 @@ async function sendWelcomeGreeting(ctx, chatId, member) {
 bot.on('new_chat_members', async (ctx) => {
     try {
         const chatId = ctx.chat.id;
-        const settings = await getChatSettings(chatId);
         for (const member of ctx.message.new_chat_members) {
-            if (member.is_bot) continue;
-            if (settings.captcha && settings.captcha.enabled) {
-                await dispatchCaptchaChallenge(ctx, chatId, member, settings);
-            } else {
-                await sendWelcomeGreeting(ctx, chatId, member);
-            }
+            await handleNewMemberJoin(ctx, chatId, member);
         }
-    } catch (err) {}
+    } catch (err) {
+        console.error("[new_chat_members] error:", err.message);
+    }
 });
 
-// 1.1 Welcome New Members (Chat Member Update: covers Supergroups with hidden join messages & invite links)
+// 1.1 Welcome New Members (Chat Member Update: covers ALL Supergroups & Restricted Default Permissions)
 bot.on('chat_member', async (ctx) => {
     try {
         const update = ctx.chatMember;
         if (!update || !ctx.chat) return;
+
         const oldStatus = update.old_chat_member?.status;
         const newStatus = update.new_chat_member?.status;
 
-        // User joined group or was accepted from join request
-        if (['left', 'kicked'].includes(oldStatus) && newStatus === 'member') {
-            const member = update.new_chat_member.user;
+        const wasMember = ['member', 'administrator', 'creator'].includes(oldStatus) || Boolean(update.old_chat_member?.is_member);
+        const isNowMember = ['member', 'administrator', 'creator'].includes(newStatus) || Boolean(update.new_chat_member?.is_member);
+
+        // Case A: User joined group (via invite link, added, or approved)
+        if (!wasMember && isNowMember) {
+            const member = update.new_chat_member?.user;
             if (member && !member.is_bot) {
-                const settings = await getChatSettings(ctx.chat.id);
-                if (settings.captcha && settings.captcha.enabled) {
-                    await dispatchCaptchaChallenge(ctx, ctx.chat.id, member, settings);
-                } else {
-                    await sendWelcomeGreeting(ctx, ctx.chat.id, member);
-                }
+                await handleNewMemberJoin(ctx, ctx.chat.id, member);
             }
         }
-        
-        // Track departed member if left
-        if (['member', 'administrator'].includes(oldStatus) && ['left', 'kicked'].includes(newStatus)) {
-            const user = update.old_chat_member.user;
+
+        // Case B: Member departed (left or kicked)
+        if (wasMember && !isNowMember) {
+            const user = update.old_chat_member?.user;
             if (user && !user.is_bot) {
                 const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.first_name || 'Member';
                 await db.ref(`groups/${ctx.chat.id}/left_members/${user.id}`).set({
@@ -821,16 +868,24 @@ bot.on('chat_member', async (ctx) => {
                 }).catch(() => {});
             }
         }
-    } catch (cmErr) {}
+    } catch (cmErr) {
+        console.error("[chat_member] error:", cmErr.message);
+    }
 });
 
-// 1.2 Welcome Join Requests
+// 1.2 Welcome Join Requests (Auto-approves and triggers challenge / greeting)
 bot.on('chat_join_request', async (ctx) => {
     try {
         const req = ctx.chatJoinRequest;
         if (!req || !req.chat || !req.from) return;
-        await sendWelcomeGreeting(ctx, req.chat.id, req.from);
-    } catch (e) {}
+        const user = req.from;
+        if (user && !user.is_bot) {
+            await ctx.approveChatJoinRequest(user.id).catch(() => {});
+            await handleNewMemberJoin(ctx, req.chat.id, user);
+        }
+    } catch (e) {
+        console.error("[chat_join_request] error:", e.message);
+    }
 });
 
 // 2. Member Left Tracker
